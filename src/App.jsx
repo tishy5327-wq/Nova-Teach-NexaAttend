@@ -927,7 +927,7 @@ export default function App() {
                       <span style={{ fontSize: 18 }}>👤</span>
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 15 }}>Shahs Tishya</div>
+                      <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 15 }}>Shah Tishya</div>
                       <div className="mono" style={{ fontSize: 10, color: "rgba(26,25,22,0.4)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>Founder, Nova Teach Solution · Ahmedabad</div>
                       <p style={{ fontSize: 13.5, color: "rgba(26,25,22,0.6)", lineHeight: 1.75, fontStyle: "italic" }}>
                         "Every school deserves the tools that well-funded institutions use. We built NexaAttend to be the most practical, affordable, and reliable attendance system for Indian schools — and we stand behind it with a full 1-month money-back guarantee."
