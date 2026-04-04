@@ -65,6 +65,114 @@ const modules = [
   },
 ];
 
+/* ─── Pricing Data ─── */
+const PLANS = [
+  {
+    id: "basic",
+    name: "Basic",
+    students: 300,
+    monthly: 6000,
+    setup: 30000,
+    setupDiscounted: null,
+    desc: "Perfect for smaller schools. Everything you need to replace manual attendance from day one.",
+    color: "#1A2B4A",
+    features: [
+      "Up to 300 students",
+      "AI face recognition attendance",
+      "2 cameras included",
+      "Student management",
+      "WhatsApp parent alerts",
+      "Basic attendance reports",
+      "1 admin account",
+      "Email support",
+      "Free lifetime updates",
+    ],
+  },
+  {
+    id: "standard",
+    name: "Standard",
+    students: 600,
+    monthly: 9000,
+    setup: 60000,
+    setupDiscounted: 40000,
+    badge: "⭐ Best Value",
+    desc: "The most popular choice. Full ERP — payroll, analytics, multi-role access, and more.",
+    color: "#1B4D3E",
+    features: [
+      "Up to 600 students",
+      "AI face recognition attendance",
+      "2 cameras included",
+      "Student + Staff management",
+      "WhatsApp parent alerts",
+      "Advanced reports & analytics",
+      "Payroll automation",
+      "Multi-role admin access",
+      "Leave management",
+      "Priority phone support",
+      "Free lifetime updates",
+    ],
+  },
+  {
+    id: "premium",
+    name: "Premium",
+    students: 999,
+    monthly: 12000,
+    setup: 120000,
+    setupDiscounted: null,
+    desc: "For large schools and institutes. Full control, unlimited accounts, and dedicated support.",
+    color: "#3D1A4A",
+    features: [
+      "Up to 999 students",
+      "AI face recognition attendance",
+      "2 cameras included",
+      "Complete School ERP",
+      "WhatsApp parent alerts",
+      "Custom report builder",
+      "Payroll automation",
+      "Unlimited admin accounts",
+      "Shift & leave management",
+      "Dedicated account manager",
+      "Priority phone support",
+      "Free lifetime updates",
+    ],
+  },
+];
+
+const ADDONS = [
+  {
+    id: "whatsapp",
+    icon: "💬",
+    name: "WhatsApp Messaging",
+    desc: "Automated absence alerts, custom messages & broadcasts to parents via WhatsApp.",
+    priceLabel: "Custom pricing",
+    cta: "Contact us",
+  },
+  {
+    id: "sms",
+    icon: "📱",
+    name: "SMS Alerts",
+    desc: "SMS notifications for parents without WhatsApp. Delivery reports included.",
+    priceLabel: "Custom pricing",
+    cta: "Contact us",
+  },
+  {
+    id: "camera",
+    icon: "📷",
+    name: "Extra Camera (3rd+)",
+    desc: "Need more than 2 cameras? Add extra cameras for additional entry points or classrooms.",
+    priceLabel: "₹15,000 / camera",
+    priceSub: "one-time setup",
+    cta: "Add to plan",
+  },
+];
+
+const fmt = (n) =>
+  n >= 100000
+    ? `₹${(n / 100000).toFixed(n % 100000 === 0 ? 0 : 1)}L`
+    : `₹${n.toLocaleString("en-IN")}`;
+
+const fmtFull = (n) => `₹${n.toLocaleString("en-IN")}`;
+
 /* ─── LinkedIn Icon ─── */
 const LiIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -77,7 +185,10 @@ export default function App() {
   const [logIndex, setLogIndex] = useState(3);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
-  const [selectedTab, setSelectedTab] = useState("plans");
+
+  // Pricing state
+  const [selectedPlan, setSelectedPlan] = useState("standard");
+  const [activeAddon, setActiveAddon] = useState(null);
 
   useEffect(() => {
     const fn = () => setNavScrolled(window.scrollY > 40);
@@ -95,13 +206,16 @@ export default function App() {
     setMenuOpen(false);
   };
 
+  const plan = PLANS.find((p) => p.id === selectedPlan);
+
   const faqs = [
     { q: "Does it work without internet?", a: "Yes — NexaAttend is designed offline-first. All recognition, data storage, and reports happen on your own computer. Internet is optional and only used for cloud backups if you choose that add-on." },
     { q: "How long does setup take?", a: "Our team completes the full installation, camera setup, and staff training in 3 days. You don't need an IT department — we handle everything." },
-    { q: "What cameras does it require?", a: "Any standard webcam or IP camera. You don't need to buy proprietary hardware. If you already have cameras installed, we assess compatibility during the free demo." },
+    { q: "What cameras does it require?", a: "Every plan includes 2 cameras. Any standard webcam or IP camera works. If you need more entry points, extra cameras are available as an add-on at ₹15,000 per camera (one-time setup)." },
     { q: "How accurate is the face recognition?", a: "99%+ accuracy under normal lighting conditions. The system handles glasses, hair changes, and varying lighting. We test it rigorously before handover." },
     { q: "What happens to our student data?", a: "Your data never leaves your premises. It is stored on your own computer or local server — not on any cloud. You have complete ownership and control." },
     { q: "What is the 30-day guarantee?", a: "Use NexaAttend for 30 days. If it doesn't measurably save time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no paperwork." },
+    { q: "What does the setup fee cover?", a: "The one-time setup fee covers on-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support. After that, you only pay the monthly fee." },
   ];
 
   return (
@@ -118,7 +232,6 @@ export default function App() {
 
         .sec { padding: 88px 6%; }
 
-        /* Pill label */
         .pill {
           display: inline-flex; align-items: center; gap: 6px;
           font-size: 11px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;
@@ -128,7 +241,6 @@ export default function App() {
         .pill-cream { color: #8A6A2A; background: rgba(184,146,42,0.12); }
         .pill-dark  { color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.08); }
 
-        /* Buttons */
         .btn-primary {
           display: inline-flex; align-items: center; gap: 8px;
           background: #1C1B17; color: #F7F5EF;
@@ -165,7 +277,6 @@ export default function App() {
         }
         .btn-cta-outline:hover { border-color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.07); }
 
-        /* Cards */
         .card {
           background: #FFFFFF; border: 1px solid rgba(28,27,23,0.07);
           border-radius: 12px; padding: 24px;
@@ -173,7 +284,6 @@ export default function App() {
         }
         .card:hover { box-shadow: 0 6px 32px rgba(28,27,23,0.07); transform: translateY(-2px); }
 
-        /* Nav links */
         .nav-link {
           font-size: 13px; font-weight: 500; color: rgba(28,27,23,0.55);
           cursor: pointer; border: none; background: none;
@@ -181,7 +291,6 @@ export default function App() {
         }
         .nav-link:hover { color: #1C1B17; }
 
-        /* Terminal */
         .status-present { color: #1B7A45; font-weight: 700; }
         .status-late    { color: #9A6B0A; font-weight: 700; }
         .status-absent  { color: #8A2A1A; font-weight: 700; }
@@ -189,18 +298,15 @@ export default function App() {
         @keyframes fsi  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         @keyframes pdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
         @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        @keyframes count { from { opacity: 0; } to { opacity: 1; } }
 
         .pdot { animation: pdot 2s ease-in-out infinite; }
         .log-row { animation: fsi 0.4s ease forwards; }
         .ticker-inner { display: flex; gap: 52px; animation: ticker 26s linear infinite; width: max-content; }
 
-        /* Grid helpers */
         .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
         .g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
 
-        /* Mobile nav */
         .mmenu {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 90;
           background: rgba(247,245,239,0.98); backdrop-filter: blur(24px);
@@ -218,45 +324,6 @@ export default function App() {
         }
         .mlink:hover { color: #2A6B4A; }
 
-        /* Pricing */
-        .plan-card {
-          background: #FFFFFF; border: 1.5px solid rgba(28,27,23,0.08);
-          border-radius: 16px; padding: 36px; display: flex; flex-direction: column;
-          transition: all 0.3s ease; position: relative;
-        }
-        .plan-card:hover { box-shadow: 0 12px 36px rgba(28,27,23,0.08), 0 2px 8px rgba(28,27,23,0.05); transform: translateY(-4px); }
-        .plan-card.advanced {
-          background: #1C1B17; color: #F7F5EF; border: 2px solid #2A6B4A;
-          box-shadow: 0 24px 56px rgba(42,107,74,0.16); transform: scale(1.02);
-        }
-        .plan-card.advanced:hover { box-shadow: 0 32px 72px rgba(42,107,74,0.22); transform: scale(1.026) translateY(-4px); }
-        .plan-badge {
-          position: absolute; top: -12px; left: 24px; background: #2A6B4A;
-          color: #F7F5EF; font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
-          text-transform: uppercase; padding: 6px 16px; border-radius: 100px;
-        }
-        .plan-title { font-size: 20px; font-weight: 600; margin-bottom: 10px; margin-top: 10px; }
-        .plan-desc { font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
-        .plan-card.standard .plan-desc { color: rgba(28,27,23,0.52); }
-        .plan-card.advanced .plan-desc { color: rgba(247,245,239,0.6); }
-        .pricing-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-        .pricing-label { font-size: 11px; font-weight: 600; color: rgba(28,27,23,0.38); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
-        .plan-card.advanced .pricing-label { color: rgba(247,245,239,0.35); }
-        .pricing-amount { font-size: 28px; font-weight: 700; color: #1C1B17; }
-        .plan-card.advanced .pricing-amount { color: #5AC87A; }
-        .plan-cta { display: flex; gap: 8px; margin-bottom: 24px; }
-        .btn-plan { flex: 1; padding: 11px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.22s; font-family: 'Instrument Sans', sans-serif; }
-        .btn-plan-secondary { border: 1.5px solid rgba(28,27,23,0.18); background: transparent; color: #1C1B17; }
-        .btn-plan-secondary:hover { background: rgba(28,27,23,0.06); border-color: #1C1B17; }
-        .btn-plan-primary { background: #5AC87A; color: #1C1B17; border: none; font-weight: 700; }
-        .btn-plan-primary:hover { background: #6FD68D; transform: translateY(-2px); }
-        .plan-features { list-style: none; display: flex; flex-direction: column; gap: 11px; flex: 1; }
-        .plan-features li { display: flex; gap: 9px; font-size: 13.5px; color: rgba(28,27,23,0.64); align-items: flex-start; }
-        .plan-card.advanced .plan-features li { color: rgba(247,245,239,0.7); }
-        .checkmark { color: #2A6B4A; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
-        .plan-card.advanced .checkmark { color: #5AC87A; }
-        
-        /* FAQ */
         .faq-item { border-bottom: 1px solid rgba(28,27,23,0.08); }
         .faq-q {
           width: 100%; text-align: left; padding: 20px 0; background: none; border: none;
@@ -265,7 +332,29 @@ export default function App() {
         }
         .faq-a { padding: 0 0 20px; font-size: 14px; line-height: 1.85; color: rgba(28,27,23,0.6); }
 
-        /* ─── Responsive ─── */
+        .plan-btn {
+          padding: 10px 28px;
+          border-radius: 100px;
+          font-size: 14px; font-weight: 600;
+          cursor: pointer; transition: all 0.22s;
+          font-family: 'Instrument Sans', sans-serif;
+          display: inline-flex; align-items: center; gap: 8px;
+        }
+        .plan-btn-active {
+          background: #2A6B4A; color: #F7F5EF; border: 2px solid #2A6B4A;
+        }
+        .plan-btn-inactive {
+          background: #FFFFFF; color: rgba(28,27,23,0.6); border: 1.5px solid rgba(28,27,23,0.14);
+        }
+        .plan-btn-inactive:hover { border-color: rgba(28,27,23,0.3); color: #1C1B17; }
+
+        .addon-card {
+          background: #FFFFFF;
+          border-radius: 14px; padding: 24px;
+          transition: all 0.22s; cursor: pointer;
+        }
+        .addon-card:hover { box-shadow: 0 6px 28px rgba(28,27,23,0.07); }
+
         @media (max-width: 900px) {
           .g3 { grid-template-columns: 1fr 1fr !important; }
           .g4 { grid-template-columns: 1fr 1fr !important; }
@@ -282,8 +371,10 @@ export default function App() {
           .flex-cta a, .flex-cta button { width: 100% !important; justify-content: center !important; }
           .hbg { display: flex !important; }
           .mob-show { display: block !important; }
-          .plan-card.advanced { transform: scale(1) !important; }
-          .plan-grid { grid-template-columns: 1fr !important; }
+          .plan-selector { flex-direction: column !important; }
+          .plan-strip { grid-template-columns: 1fr !important; }
+          .pricing-stats { grid-template-columns: 1fr 1fr !important; }
+          .addon-grid { grid-template-columns: 1fr !important; }
         }
         @media (min-width: 641px) {
           .hbg { display: none !important; }
@@ -308,7 +399,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── NAV ── */}
+      {/* ══════════════════════════════════════
+          NAV
+         ══════════════════════════════════════ */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         padding: navScrolled ? "11px 6%" : "18px 6%",
@@ -318,7 +411,6 @@ export default function App() {
         transition: "all 0.38s ease",
         display: "flex", alignItems: "center", justifyContent: "space-between"
       }}>
-        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => scrollTo("hero")}>
           <div style={{ width: 32, height: 32, background: "#2A6B4A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="15" height="15" viewBox="0 0 18 18" fill="none">
@@ -358,14 +450,12 @@ export default function App() {
           HERO
          ══════════════════════════════════════ */}
       <section id="hero" className="hero-pad" style={{ minHeight: "100vh", padding: "130px 6% 80px", position: "relative", overflow: "hidden" }}>
-        {/* BG texture */}
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
           background: "radial-gradient(ellipse 72% 64% at 72% 38%, rgba(42,107,74,0.06) 0%, transparent 65%), radial-gradient(ellipse 50% 40% at 20% 75%, rgba(184,146,42,0.05) 0%, transparent 55%)"
         }}/>
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "rgba(28,27,23,0.06)" }}/>
 
         <div className="g2" style={{ maxWidth: 1200, margin: "0 auto", gap: 64, alignItems: "center", position: "relative", zIndex: 1 }}>
-          {/* Left column */}
           <div>
             <div style={{ opacity: 0, animation: "fsi 0.8s 0.1s ease forwards" }}>
               <div className="pill pill-green">
@@ -407,10 +497,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right column — Live terminal */}
+          {/* Right — Live terminal */}
           <div className="hide-mob" style={{ opacity: 0, animation: "fsi 1s 0.5s ease forwards" }}>
             <div style={{ background: "#FFFFFF", borderRadius: 16, border: "1px solid rgba(28,27,23,0.08)", boxShadow: "0 28px 80px rgba(28,27,23,0.09), 0 4px 12px rgba(28,27,23,0.05)", overflow: "hidden" }}>
-              {/* Titlebar */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "11px 16px", borderBottom: "1px solid rgba(28,27,23,0.07)", background: "#FAFAF8" }}>
                 {[["#F05A5A"],["#F0B45A"],["#5AF07A"]].map(([c], i) => (
                   <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }}/>
@@ -421,8 +510,6 @@ export default function App() {
                   <span className="mono" style={{ fontSize: 9, color: "#1B7A45", fontWeight: 600, letterSpacing: "0.08em" }}>LIVE</span>
                 </div>
               </div>
-
-              {/* Stat bar */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "#FAFAF8", borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
                 {[{ l: "Present", v: "284", c: "#1B7A45" }, { l: "Late", v: "12", c: "#9A6B0A" }, { l: "Absent", v: "8", c: "#8A2A1A" }].map(s => (
                   <div key={s.l} style={{ padding: "14px 10px", textAlign: "center", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
@@ -431,8 +518,6 @@ export default function App() {
                   </div>
                 ))}
               </div>
-
-              {/* Log */}
               <div style={{ padding: "12px 14px 14px" }}>
                 <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.28)", marginBottom: 8 }}>Recognition Log</div>
                 {logs.slice(0, logIndex).map((log, i) => (
@@ -444,8 +529,6 @@ export default function App() {
                   </div>
                 ))}
               </div>
-
-              {/* Bottom strip */}
               <div style={{ padding: "10px 14px", background: "rgba(42,107,74,0.05)", borderTop: "1px solid rgba(28,27,23,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 12, color: "rgba(28,27,23,0.45)" }}>Today's attendance rate</span>
                 <span className="serif" style={{ fontSize: 18, color: "#1B7A45", fontWeight: 700 }}>96.8%</span>
@@ -515,7 +598,6 @@ export default function App() {
          ══════════════════════════════════════ */}
       <section id="solution" className="sec" style={{ background: "#1C1B17", color: "#F7F5EF", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -120, right: -120, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.12), transparent 70%)", pointerEvents: "none" }}/>
-
         <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
           <FadeIn>
             <div className="pill pill-dark">The Platform</div>
@@ -528,7 +610,6 @@ export default function App() {
             </p>
           </FadeIn>
 
-          {/* Module cards */}
           <div className="g2" style={{ marginBottom: 24 }}>
             {modules.map((mod, i) => (
               <FadeIn key={i} delay={i * 0.07}>
@@ -552,7 +633,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Feature pills */}
           <FadeIn delay={0.15}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 8 }}>
               {["⚡ Mark attendance in under 3 seconds","🔒 100% offline — data stays on-site","📊 Reports auto-generated","💬 Parent alerts via WhatsApp","🎓 Works for students & staff","🖥️ Multi-role dashboards"].map(t => (
@@ -577,7 +657,6 @@ export default function App() {
           </FadeIn>
 
           <div className="g2" style={{ marginBottom: 16 }}>
-            {/* Dashboard card */}
             <FadeIn>
               <div className="card" style={{ padding: 20 }}>
                 <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.35)", marginBottom: 14 }}>Admin Dashboard — Today</div>
@@ -607,7 +686,6 @@ export default function App() {
               </div>
             </FadeIn>
 
-            {/* Time saved */}
             <FadeIn delay={0.1}>
               <div className="card" style={{ background: "#2A6B4A", border: "none", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div>
@@ -625,7 +703,6 @@ export default function App() {
           </div>
 
           <div className="g2">
-            {/* Monthly table */}
             <FadeIn>
               <div className="card">
                 <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.35)", marginBottom: 12 }}>Monthly Attendance Report</div>
@@ -641,7 +718,6 @@ export default function App() {
               </div>
             </FadeIn>
 
-            {/* Proxy */}
             <FadeIn delay={0.1}>
               <div className="card" style={{ background: "#1C1B17", border: "none" }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.28)", marginBottom: 12 }}>Proxy Attendance Detected</div>
@@ -654,7 +730,7 @@ export default function App() {
       </section>
 
       {/* ══════════════════════════════════════
-          TRUST — Real Validation
+          TRUST
          ══════════════════════════════════════ */}
       <section className="sec" style={{ background: "#FFFFFF" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -668,7 +744,6 @@ export default function App() {
             </p>
           </FadeIn>
 
-          {/* Validation badge */}
           <FadeIn>
             <div style={{ background: "rgba(42,107,74,0.06)", border: "1.5px solid rgba(42,107,74,0.2)", borderRadius: 12, padding: "24px 28px", marginBottom: 32, display: "flex", gap: 18, alignItems: "flex-start" }}>
               <span style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🏛️</span>
@@ -681,36 +756,15 @@ export default function App() {
             </div>
           </FadeIn>
 
-          {/* Anonymous testimonials */}
           <div className="g3" style={{ marginBottom: 40 }}>
             {[
-              {
-                quote: "We used to spend the first 20 minutes of every session taking attendance. Now it just happens. Our teachers were sceptical at first — within a week they refused to go back.",
-                person: "Vice Principal",
-                inst: "Higher Secondary School, Gujarat",
-                initial: "V",
-                color: "#1B5C3A"
-              },
-              {
-                quote: "The payroll module alone saved us hours each month. Everything was manual before — now salaries are calculated automatically from attendance data. No more disputes.",
-                person: "School Administrator",
-                inst: "Technical Institute, India",
-                initial: "S",
-                color: "#1A2B4A"
-              },
-              {
-                quote: "Parents kept calling us to check if their child came to school. Now they get a WhatsApp message automatically. We haven't had a single call about attendance in two months.",
-                person: "Principal",
-                inst: "Day School, Ahmedabad",
-                initial: "P",
-                color: "#3D1A4A"
-              },
+              { quote: "We used to spend the first 20 minutes of every session taking attendance. Now it just happens. Our teachers were sceptical at first — within a week they refused to go back.", person: "Vice Principal", inst: "Higher Secondary School, Gujarat", initial: "V", color: "#1B5C3A" },
+              { quote: "The payroll module alone saved us hours each month. Everything was manual before — now salaries are calculated automatically from attendance data. No more disputes.", person: "School Administrator", inst: "Technical Institute, India", initial: "S", color: "#1A2B4A" },
+              { quote: "Parents kept calling us to check if their child came to school. Now they get a WhatsApp message automatically. We haven't had a single call about attendance in two months.", person: "Principal", inst: "Day School, Ahmedabad", initial: "P", color: "#3D1A4A" },
             ].map((t, i) => (
               <FadeIn key={i} delay={i * 0.08}>
                 <div className="card" style={{ borderLeft: `3px solid ${t.color}20`, borderRadius: "0 12px 12px 0", height: "100%" }}>
-                  <p style={{ fontSize: 14, color: "rgba(28,27,23,0.65)", lineHeight: 1.85, marginBottom: 20, fontStyle: "italic" }}>
-                    "{t.quote}"
-                  </p>
+                  <p style={{ fontSize: 14, color: "rgba(28,27,23,0.65)", lineHeight: 1.85, marginBottom: 20, fontStyle: "italic" }}>"{t.quote}"</p>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${t.color}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600, color: t.color, flexShrink: 0 }}>{t.initial}</div>
                     <div>
@@ -726,7 +780,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Stats */}
           <FadeIn>
             <div style={{ background: "#1C1B17", borderRadius: 14, padding: "32px 28px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2, overflow: "hidden" }}>
               {[
@@ -747,285 +800,253 @@ export default function App() {
       </section>
 
       {/* ══════════════════════════════════════
-          PRICING
+          PRICING  ← NEW FLAT PRICING
          ══════════════════════════════════════ */}
       <section id="pricing" className="sec" style={{ background: "#F7F5EF", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -200, left: "10%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.05), transparent 70%)", pointerEvents: "none" }}/>
         <div style={{ position: "absolute", bottom: -150, right: "5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(184,146,42,0.03), transparent 70%)", pointerEvents: "none" }}/>
 
         <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
-          <FadeIn style={{ textAlign: "center", marginBottom: 64 }}>
+
+          {/* Header */}
+          <FadeIn style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", padding: "5px 13px", borderRadius: 100, marginBottom: 20, background: "rgba(42,107,74,0.1)", color: "#1B5C3A" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2A6B4A", animation: "pdot 2s ease-in-out infinite" }}/>
-              Smart Investment · Transparent Pricing
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2A6B4A" }} className="pdot"/>
+              Transparent Pricing · No Hidden Fees
             </div>
             <h2 className="serif" style={{ fontSize: "clamp(2rem, 4.5vw, 3.2rem)", lineHeight: 1.08, letterSpacing: "-0.022em", marginBottom: 12 }}>
-              Plans That Scale With Your School
+              Simple, Flat Pricing
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(28,27,23,0.58)", maxWidth: 520, margin: "0 auto", lineHeight: 1.85 }}>
-              From 100 to 5,000 students. Pay only for what you use. No lock-in. Same features across all plans.
+            <p style={{ fontSize: 16, color: "rgba(28,27,23,0.58)", maxWidth: 480, margin: "0 auto 0", lineHeight: 1.85 }}>
+              One price per school size. No per-student fees. No surprises.<br/>Pick your plan, choose your add-ons.
             </p>
           </FadeIn>
 
-          {/* Founding offer banner */}
+          {/* Founding discount banner */}
           <FadeIn>
-            <div style={{ background: "linear-gradient(135deg, #FFF8E8 0%, #FFFBF0 100%)", border: "1.5px solid #D4A433", borderRadius: 12, padding: "14px 20px", marginBottom: 24, display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 20 }}>⚠️</span>
+            <div style={{ background: "linear-gradient(135deg, #FFF8E8 0%, #FFFBF0 100%)", border: "1.5px solid #D4A433", borderRadius: 12, padding: "14px 20px", marginBottom: 36, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 20 }}>⚡</span>
               <div>
-                <strong style={{ fontSize: 14, color: "#7A5000" }}>Founding Partner Offer — 3 slots remaining at ₹40,000.</strong>
-                <span style={{ fontSize: 13.5, color: "#9A6B0A" }}> Once filled, setup price returns to ₹75,000 permanently. This is not a promotional sale.</span>
+                <strong style={{ fontSize: 14, color: "#7A5000" }}>Standard plan setup: ₹60,000 → ₹40,000 — Founding Partner Discount.</strong>
+                <span style={{ fontSize: 13.5, color: "#9A6B0A" }}> Limited slots. Once filled, returns to ₹60,000 permanently.</span>
               </div>
             </div>
           </FadeIn>
 
-          {/* Tab navigation */}
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 48 }}>
-            {[
-              { id: "plans", label: "Monthly Plans" },
-              { id: "comparison", label: "Full Comparison" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedTab(tab.id)}
-                style={{
-                  padding: "10px 20px",
-                  border: "none",
-                  borderRadius: 8,
-                  background: selectedTab === tab.id ? "#1C1B17" : "rgba(28,27,23,0.06)",
-                  color: selectedTab === tab.id ? "#F7F5EF" : "rgba(28,27,23,0.54)",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "all 0.22s",
-                  fontFamily: "'Instrument Sans', sans-serif",
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {/* Plan selector buttons */}
+          <FadeIn>
+            <div className="plan-selector" style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 44, flexWrap: "wrap" }}>
+              {PLANS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPlan(p.id)}
+                  className={`plan-btn ${selectedPlan === p.id ? "plan-btn-active" : "plan-btn-inactive"}`}
+                >
+                  {p.name}
+                  {p.badge && (
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", background: selectedPlan === p.id ? "rgba(247,245,239,0.18)" : "rgba(42,107,74,0.1)", color: selectedPlan === p.id ? "#F7F5EF" : "#1B5C3A", padding: "2px 8px", borderRadius: 100 }}>
+                      BEST VALUE
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </FadeIn>
 
-          {/* PLANS TAB */}
-          {selectedTab === "plans" && (
-            <div>
-              <div className="plan-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 32 }}>
-                {/* Standard Plan */}
-                <div className="plan-card standard">
-                  <div className="serif plan-title">Standard</div>
-                  <div className="plan-desc">Perfect for growing schools. Core ERP essentials at entry-level pricing.</div>
+          {/* Main pricing card */}
+          <FadeIn>
+            <div style={{ background: "#FFFFFF", border: `2px solid ${plan.color}22`, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 64px rgba(28,27,23,0.07)", marginBottom: 24, transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
 
-                  <div className="pricing-row">
-                    <div>
-                      <div className="pricing-label">Per Student/mo</div>
-                      <div className="serif pricing-amount">₹25</div>
+              {/* Coloured top bar */}
+              <div style={{ background: plan.color, padding: "28px 36px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(247,245,239,0.45)", marginBottom: 6 }}>
+                    {plan.name} Plan · Up to {plan.students} students
+                  </div>
+                  <div className="serif" style={{ fontSize: "clamp(1.2rem, 2.5vw, 1.7rem)", color: "#F7F5EF", lineHeight: 1.2, maxWidth: 560 }}>
+                    {plan.desc}
+                  </div>
+                </div>
+                {plan.badge && (
+                  <div style={{ background: "#5AC87A", color: "#1C1B17", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "7px 18px", borderRadius: 100, flexShrink: 0, alignSelf: "flex-start" }}>
+                    {plan.badge}
+                  </div>
+                )}
+              </div>
+
+              {/* Pricing breakdown */}
+              <div style={{ padding: "32px 36px", borderBottom: "1px solid rgba(28,27,23,0.07)" }}>
+                <div className="pricing-stats" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, marginBottom: 32 }}>
+
+                  {/* Monthly fee */}
+                  <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>Monthly Fee</div>
+                    <div className="serif" style={{ fontSize: 40, color: "#1C1B17", lineHeight: 1, marginBottom: 4 }}>
+                      {fmt(plan.monthly)}
                     </div>
-                    <div>
-                      <div className="pricing-label">Per Staff/mo</div>
-                      <div className="serif pricing-amount">₹50</div>
+                    <div style={{ fontSize: 12, color: "rgba(28,27,23,0.42)" }}>per month · flat rate</div>
+                    <div style={{ marginTop: 10, fontSize: 12, color: "#1B7A45", fontWeight: 600 }}>
+                      ≈ {fmtFull(Math.round(plan.monthly / plan.students))}/student
                     </div>
                   </div>
 
-                  <div className="plan-cta">
-                    <button className="btn-plan btn-plan-secondary">Learn More</button>
+                  {/* Setup fee */}
+                  <div style={{ background: plan.setupDiscounted ? "rgba(42,107,74,0.04)" : "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: plan.setupDiscounted ? "1px solid rgba(42,107,74,0.15)" : "1px solid rgba(28,27,23,0.05)", position: "relative" }}>
+                    {plan.setupDiscounted && (
+                      <div style={{ position: "absolute", top: -10, right: 16, background: "#2A6B4A", color: "#F7F5EF", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", padding: "4px 12px", borderRadius: 100 }}>
+                        SAVE ₹20,000
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>One-Time Setup</div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                      <div className="serif" style={{ fontSize: 40, color: plan.setupDiscounted ? "#2A6B4A" : "#1C1B17", lineHeight: 1, marginBottom: 4 }}>
+                        {fmt(plan.setupDiscounted ?? plan.setup)}
+                      </div>
+                      {plan.setupDiscounted && (
+                        <div className="serif" style={{ fontSize: 18, color: "rgba(28,27,23,0.3)", textDecoration: "line-through" }}>
+                          {fmt(plan.setup)}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: "rgba(28,27,23,0.42)" }}>installation + training</div>
+                    <div style={{ marginTop: 10, fontSize: 12, color: plan.setupDiscounted ? "#1B7A45" : "rgba(28,27,23,0.38)", fontWeight: 600 }}>
+                      {plan.setupDiscounted ? "Founding partner price" : "Includes 3-day onboarding"}
+                    </div>
                   </div>
 
-                  <ul className="plan-features">
-                    <li><span className="checkmark">✓</span> Face recognition attendance</li>
-                    <li><span className="checkmark">✓</span> WhatsApp parent alerts</li>
-                    <li><span className="checkmark">✓</span> Basic attendance reports</li>
-                    <li><span className="checkmark">✓</span> Student management</li>
-                    <li><span className="checkmark">✓</span> 1 admin account</li>
-                  </ul>
+                  {/* What's included */}
+                  <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 14 }}>Always Included</div>
+                    {[["👤", `Up to ${plan.students} students`], ["📷", "2 cameras"], ["🛠️", "3-day setup"], ["🛡️", "30-day guarantee"]].map(([icon, text]) => (
+                      <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "rgba(28,27,23,0.65)" }}>
+                        <span style={{ fontSize: 14 }}>{icon}</span>{text}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Advanced Plan - MOST POPULAR */}
-                <div className="plan-card advanced">
-                  <div className="plan-badge">⭐ Most Popular</div>
-                  <div className="serif plan-title">Advanced</div>
-                  <div className="plan-desc">Smart choice for established schools. Full control, advanced analytics, better insights.</div>
-
-                  <div className="pricing-row">
-                    <div>
-                      <div className="pricing-label">Per Student/mo</div>
-                      <div className="serif pricing-amount">₹50</div>
-                    </div>
-                    <div>
-                      <div className="pricing-label">Per Staff/mo</div>
-                      <div className="serif pricing-amount">₹75</div>
-                    </div>
+                {/* Features list */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.35)", marginBottom: 14 }}>Everything included</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "8px 24px" }}>
+                    {plan.features.map((f) => (
+                      <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13.5, color: "rgba(28,27,23,0.7)" }}>
+                        <span style={{ color: "#2A6B4A", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
+                        {f}
+                      </div>
+                    ))}
                   </div>
-
-                  <div className="plan-cta">
-                    <button className="btn-plan btn-plan-primary" onClick={() => scrollTo("demo")}>Book Demo</button>
-                  </div>
-
-                  <div style={{ background: "rgba(90,200,122,0.08)", border: "1px solid rgba(90,200,122,0.15)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "rgba(247,245,239,0.75)", lineHeight: 1.6, textAlign: "center" }}>
-                    <strong>Most schools choose this plan.</strong> Better control over operations and actionable insights.
-                  </div>
-
-                  <ul className="plan-features">
-                    <li>Everything in Standard, plus:</li>
-                    <li><span className="checkmark">✓</span> Advanced payroll automation</li>
-                    <li><span className="checkmark">✓</span> Multi-role admin access</li>
-                    <li><span className="checkmark">✓</span> Custom report builder</li>
-                    <li><span className="checkmark">✓</span> Staff shift management</li>
-                    <li><span className="checkmark">✓</span> Priority phone support</li>
-                  </ul>
-                </div>
-
-                {/* Enterprise Plan */}
-                <div className="plan-card standard">
-                  <div className="serif plan-title">Enterprise</div>
-                  <div className="plan-desc">Large school networks. Custom integration and dedicated support.</div>
-
-                  <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(28,27,23,0.52)", marginBottom: 12 }}>Custom pricing based on:</div>
-                    <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 7, marginBottom: 16 }}>
-                      {["Number of students", "Staff headcount", "Custom API integrations", "Dedicated server setup"].map(item => (
-                        <li key={item} style={{ display: "flex", gap: 8, fontSize: 12.5, color: "rgba(28,27,23,0.58)" }}>
-                          <span style={{ flexShrink: 0 }}>•</span>{item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="plan-cta">
-                    <button className="btn-plan btn-plan-secondary">Contact Sales</button>
-                  </div>
-
-                  <ul className="plan-features">
-                    <li>Everything in Advanced, plus:</li>
-                    <li><span className="checkmark">✓</span> Unlimited admin accounts</li>
-                    <li><span className="checkmark">✓</span> API access & integrations</li>
-                    <li><span className="checkmark">✓</span> Dedicated server setup</li>
-                    <li><span className="checkmark">✓</span> Custom feature development</li>
-                    <li><span className="checkmark">✓</span> Dedicated account manager</li>
-                  </ul>
                 </div>
               </div>
 
-              {/* Guarantee Banner */}
-              <FadeIn>
-                <div style={{ background: "#FFFFFF", border: "2px solid rgba(42,107,74,0.2)", borderRadius: 12, padding: 32, textAlign: "center", display: "flex", gap: 20, alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 40, lineHeight: 1, flexShrink: 0 }}>🛡️</span>
-                  <div style={{ textAlign: "left" }}>
-                    <h3 className="serif" style={{ fontSize: 18, fontWeight: 600, color: "#1C1B17", marginBottom: 6 }}>30-Day Performance Guarantee</h3>
-                    <p style={{ fontSize: 14, color: "rgba(28,27,23,0.58)", lineHeight: 1.7, margin: 0 }}>
-                      Use NexaAttend for 30 days. If it doesn't measurably save your staff time, reduce errors, and simplify operations — we refund you in full. No conditions, no fine print.
-                    </p>
+              {/* CTA bar */}
+              <div style={{ padding: "22px 36px", background: "rgba(28,27,23,0.015)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+                <div style={{ fontSize: 13.5, color: "rgba(28,27,23,0.5)", lineHeight: 1.7 }}>
+                  30-day money-back guarantee · No lock-in · Free 7-day trial first
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <a href="https://wa.me/919974724656"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#1C1B17", color: "#F7F5EF", border: "none", borderRadius: 8, padding: "12px 22px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", textDecoration: "none", transition: "all 0.22s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#2A6B4A"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#1C1B17"; e.currentTarget.style.transform = "none"; }}
+                  >
+                    💬 WhatsApp for {plan.name}
+                  </a>
+                  <button onClick={() => scrollTo("demo")}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: "#1C1B17", border: "1.5px solid rgba(28,27,23,0.2)", borderRadius: 8, padding: "11px 20px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.22s" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = "#1C1B17"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(28,27,23,0.2)"}
+                  >
+                    Book Free Demo →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+
+          {/* Plan quick-compare strip */}
+          <FadeIn delay={0.05}>
+            <div className="plan-strip" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 56 }}>
+              {PLANS.map((p) => (
+                <button key={p.id} onClick={() => setSelectedPlan(p.id)}
+                  style={{ background: selectedPlan === p.id ? "#1C1B17" : "#FFFFFF", border: selectedPlan === p.id ? "2px solid #1C1B17" : "1.5px solid rgba(28,27,23,0.1)", borderRadius: 12, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.22s", fontFamily: "'Instrument Sans', sans-serif" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: selectedPlan === p.id ? "#F7F5EF" : "#1C1B17", marginBottom: 4 }}>{p.name}</div>
+                  <div className="serif" style={{ fontSize: 22, color: selectedPlan === p.id ? "#5AC87A" : "#2A6B4A", marginBottom: 2 }}>
+                    {fmt(p.monthly)}<span style={{ fontSize: 12, fontWeight: 400, fontFamily: "'Instrument Sans', sans-serif", color: selectedPlan === p.id ? "rgba(247,245,239,0.5)" : "rgba(28,27,23,0.4)" }}>/mo</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: selectedPlan === p.id ? "rgba(247,245,239,0.45)" : "rgba(28,27,23,0.4)", marginBottom: p.setupDiscounted ? 6 : 0 }}>Up to {p.students} students</div>
+                  {p.setupDiscounted && (
+                    <div style={{ fontSize: 10, fontWeight: 600, color: selectedPlan === p.id ? "#5AC87A" : "#2A6B4A", letterSpacing: "0.06em" }}>⚡ Setup ₹40K (was ₹60K)</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </FadeIn>
+
+          {/* ── ADD-ONS ── */}
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: "#1B5C3A", marginBottom: 10 }}>Optional Add-ons</div>
+              <h3 className="serif" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", letterSpacing: "-0.02em", marginBottom: 8 }}>
+                Extend Your Plan
+              </h3>
+              <p style={{ fontSize: 14, color: "rgba(28,27,23,0.52)", lineHeight: 1.8 }}>
+                Every plan includes 2 cameras. Need more? Add what you need, when you need it.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="addon-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 48 }}>
+            {ADDONS.map((addon) => (
+              <FadeIn key={addon.id} delay={0.05}>
+                <div className="addon-card"
+                  style={{ border: activeAddon === addon.id ? "2px solid #2A6B4A" : "1.5px solid rgba(28,27,23,0.08)" }}
+                  onClick={() => setActiveAddon(activeAddon === addon.id ? null : addon.id)}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(42,107,74,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{addon.icon}</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: "#1C1B17" }}>{addon.name}</div>
+                    </div>
+                    {activeAddon === addon.id && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#1B5C3A", background: "rgba(42,107,74,0.1)", padding: "3px 10px", borderRadius: 100 }}>Selected</span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 13.5, color: "rgba(28,27,23,0.58)", lineHeight: 1.75, marginBottom: 16 }}>{addon.desc}</p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div className="serif" style={{ fontSize: 16, fontWeight: 700, color: addon.priceSub ? "#2A6B4A" : "#1C1B17" }}>{addon.priceLabel}</div>
+                      {addon.priceSub && <div style={{ fontSize: 11, color: "rgba(28,27,23,0.4)", marginTop: 2 }}>{addon.priceSub}</div>}
+                    </div>
+                    <a href="https://wa.me/919974724656" onClick={e => e.stopPropagation()}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#1C1B17", color: "#F7F5EF", borderRadius: 8, padding: "9px 16px", fontSize: 12, fontWeight: 600, textDecoration: "none", transition: "background 0.2s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#2A6B4A"}
+                      onMouseLeave={e => e.currentTarget.style.background = "#1C1B17"}>
+                      {addon.cta} →
+                    </a>
                   </div>
                 </div>
               </FadeIn>
-            </div>
-          )}
+            ))}
+          </div>
 
-          {/* COMPARISON TAB */}
-          {selectedTab === "comparison" && (
-            <div style={{ marginTop: 48 }}>
-              <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid rgba(28,27,23,0.08)" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", background: "#FFFFFF" }}>
-                  <thead>
-                    <tr style={{ background: "#F7F5EF", borderBottom: "1px solid rgba(28,27,23,0.08)" }}>
-                      <th style={{ padding: "18px 20px", textAlign: "left", fontSize: 13, fontWeight: 700, color: "#1C1B17", borderRight: "1px solid rgba(28,27,23,0.08)" }}>Feature</th>
-                      <th style={{ padding: "18px 20px", textAlign: "center", fontSize: 13, fontWeight: 700, color: "#1C1B17", borderRight: "1px solid rgba(28,27,23,0.08)" }}>Standard</th>
-                      <th style={{ padding: "18px 20px", textAlign: "center", fontSize: 13, fontWeight: 600, color: "#2A6B4A", background: "rgba(42,107,74,0.04)", borderRight: "1px solid rgba(28,27,23,0.08)" }}>Advanced ⭐</th>
-                      <th style={{ padding: "18px 20px", textAlign: "center", fontSize: 13, fontWeight: 700, color: "#1C1B17" }}>Enterprise</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {
-                        category: "Attendance",
-                        features: [
-                          { name: "AI Face Recognition", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Offline Functionality", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Real-time Logs", std: "✓", adv: "✓", ent: "✓" },
-                        ],
-                      },
-                      {
-                        category: "Reports & Insights",
-                        features: [
-                          { name: "Basic Attendance Reports", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Custom Report Builder", std: "—", adv: "✓", ent: "✓" },
-                          { name: "Advanced Analytics", std: "—", adv: "✓", ent: "✓" },
-                          { name: "Export to Excel/PDF", std: "✓", adv: "✓", ent: "✓" },
-                        ],
-                      },
-                      {
-                        category: "Staff Management",
-                        features: [
-                          { name: "Staff Attendance", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Basic Payroll", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Advanced Payroll Automation", std: "—", adv: "✓", ent: "✓" },
-                          { name: "Shift Management", std: "—", adv: "✓", ent: "✓" },
-                          { name: "Leave Management", std: "—", adv: "✓", ent: "✓" },
-                        ],
-                      },
-                      {
-                        category: "Administration",
-                        features: [
-                          { name: "Admin Dashboard", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Single Admin Account", std: "1", adv: "Unlimited", ent: "Unlimited" },
-                          { name: "Role-based Access", std: "—", adv: "✓", ent: "✓" },
-                          { name: "Multi-user Dashboard", std: "—", adv: "✓", ent: "✓" },
-                        ],
-                      },
-                      {
-                        category: "Communications",
-                        features: [
-                          { name: "WhatsApp Parent Alerts", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Custom Alert Templates", std: "—", adv: "✓", ent: "✓" },
-                        ],
-                      },
-                      {
-                        category: "Support & Updates",
-                        features: [
-                          { name: "Email Support", std: "✓", adv: "✓", ent: "✓" },
-                          { name: "Priority Phone Support", std: "—", adv: "✓", ent: "✓" },
-                          { name: "Dedicated Account Manager", std: "—", adv: "—", ent: "✓" },
-                          { name: "Free Lifetime Updates", std: "✓", adv: "✓", ent: "✓" },
-                        ],
-                      },
-                    ].map((section, sIdx) => (
-                      <tbody key={sIdx}>
-                        <tr style={{ background: "rgba(28,27,23,0.02)" }}>
-                          <td colSpan="4" style={{ padding: "14px 20px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B4A", borderBottom: "1px solid rgba(28,27,23,0.08)" }}>
-                            {section.category}
-                          </td>
-                        </tr>
-                        {section.features.map((feat, fIdx) => (
-                          <tr key={fIdx} style={{ borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
-                            <td style={{ padding: "14px 20px", fontSize: 13.5, color: "#1C1B17", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
-                              {feat.name}
-                            </td>
-                            <td style={{ padding: "14px 20px", textAlign: "center", fontSize: 15, color: feat.std === "—" ? "rgba(28,27,23,0.2)" : "#2A6B4A", fontWeight: feat.std === "—" ? 400 : 600, borderRight: "1px solid rgba(28,27,23,0.06)" }}>
-                              {feat.std}
-                            </td>
-                            <td style={{ padding: "14px 20px", textAlign: "center", fontSize: 15, color: feat.adv === "—" ? "rgba(28,27,23,0.2)" : "#2A6B4A", fontWeight: feat.adv === "—" ? 400 : 700, background: "rgba(42,107,74,0.04)", borderRight: "1px solid rgba(28,27,23,0.08)" }}>
-                              {feat.adv}
-                            </td>
-                            <td style={{ padding: "14px 20px", textAlign: "center", fontSize: 15, color: feat.ent === "—" ? "rgba(28,27,23,0.2)" : "#2A6B4A", fontWeight: feat.ent === "—" ? 400 : 600 }}>
-                              {feat.ent}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div style={{ marginTop: 32, textAlign: "center" }}>
-                <p style={{ fontSize: 15, color: "rgba(28,27,23,0.54)", marginBottom: 20, lineHeight: 1.7 }}>
-                  Still not sure which plan fits your school?<br/>
-                  Book a free demo. We'll show you exactly what you need.
+          {/* Guarantee */}
+          <FadeIn>
+            <div style={{ background: "#FFFFFF", border: "2px solid rgba(42,107,74,0.18)", borderRadius: 16, padding: "28px 32px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 44, lineHeight: 1, flexShrink: 0 }}>🛡️</span>
+              <div style={{ flex: 1 }}>
+                <h3 className="serif" style={{ fontSize: 20, color: "#1C1B17", marginBottom: 6 }}>30-Day Performance Guarantee</h3>
+                <p style={{ fontSize: 14, color: "rgba(28,27,23,0.58)", lineHeight: 1.75, margin: 0 }}>
+                  Use NexaAttend for 30 days. If it doesn't measurably save your staff time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no fine print, no paperwork.
                 </p>
-                <button className="btn-primary" onClick={() => scrollTo("demo")} style={{ padding: "14px 28px", fontSize: 15 }}>
-                  📞 Book Your Free Demo
-                </button>
               </div>
+              <button onClick={() => scrollTo("demo")}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#2A6B4A", color: "#F7F5EF", border: "none", borderRadius: 8, padding: "13px 22px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.22s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#1B4D3E"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#2A6B4A"; e.currentTarget.style.transform = "none"; }}>
+                Start Free Trial →
+              </button>
             </div>
-          )}
+          </FadeIn>
         </div>
       </section>
 
@@ -1095,7 +1116,6 @@ export default function App() {
 
             <FadeIn delay={0.1}>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {/* Founder card */}
                 <div className="card" style={{ borderLeft: "4px solid #2A6B4A", borderRadius: "0 12px 12px 0" }}>
                   <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                     <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#2A6B4A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>👤</div>
@@ -1106,12 +1126,9 @@ export default function App() {
                         "I built NexaAttend because I was tired of seeing schools run on 5 disconnected systems when one well-made tool could replace all of them. Every feature exists because a real school needed it."
                       </p>
                       <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-                        <a href="https://wa.me/919974724656" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 500, color: "#1B5C3A", textDecoration: "none" }}>
-                          💬 WhatsApp directly
-                        </a>
+                        <a href="https://wa.me/919974724656" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 500, color: "#1B5C3A", textDecoration: "none" }}>💬 WhatsApp directly</a>
                         <span style={{ color: "rgba(28,27,23,0.2)" }}>·</span>
-                        <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer"
-                          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 500, color: "#1B5C3A", textDecoration: "none" }}>
+                        <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 500, color: "#1B5C3A", textDecoration: "none" }}>
                           <LiIcon/> LinkedIn
                         </a>
                       </div>
@@ -1119,7 +1136,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Trust cards */}
                 {[
                   { icon: "🏙️", title: "Ahmedabad-based team", body: "We are local. Same time zone, same context, same language. When you need us, we're reachable — not a ticket queue." },
                   { icon: "🔒", title: "Offline-first by design", body: "No vendor lock-in. Your data belongs to your school, on your server. Not a SaaS dependency." },
@@ -1156,9 +1172,7 @@ export default function App() {
                   <span>{faq.q}</span>
                   <span style={{ fontSize: 18, color: "rgba(28,27,23,0.35)", transition: "transform 0.22s", transform: activeFaq === i ? "rotate(45deg)" : "none", flexShrink: 0, lineHeight: 1 }}>+</span>
                 </button>
-                {activeFaq === i && (
-                  <div className="faq-a">{faq.a}</div>
-                )}
+                {activeFaq === i && <div className="faq-a">{faq.a}</div>}
               </div>
             ))}
           </FadeIn>
@@ -1187,9 +1201,7 @@ export default function App() {
                 <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5"/><path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff"/></svg>
                 WhatsApp Us Now
               </a>
-              <a href="tel:+919974724656" className="btn-cta-outline">
-                📞 Call +91 99747 24656
-              </a>
+              <a href="tel:+919974724656" className="btn-cta-outline">📞 Call +91 99747 24656</a>
             </div>
 
             <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
@@ -1200,12 +1212,10 @@ export default function App() {
               ))}
             </div>
 
-            {/* LinkedIn */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "rgba(247,245,239,0.08)", border: "1px solid rgba(247,245,239,0.12)", borderRadius: 10, padding: "11px 18px", flexWrap: "wrap", justifyContent: "center" }}>
               <span style={{ color: "rgba(247,245,239,0.5)", lineHeight: 1 }}><LiIcon/></span>
               <span style={{ fontSize: 13, color: "rgba(247,245,239,0.65)" }}>Follow updates —</span>
-              <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 13, fontWeight: 600, color: "#F7F5EF", textDecoration: "underline", textUnderlineOffset: 3 }}>
+              <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "#F7F5EF", textDecoration: "underline", textUnderlineOffset: 3 }}>
                 Nova Teach on LinkedIn
               </a>
             </div>
@@ -1228,7 +1238,7 @@ export default function App() {
                 </div>
               </div>
               <p style={{ fontSize: 13, color: "rgba(247,245,239,0.35)", lineHeight: 1.85, maxWidth: 300 }}>
-                Complete School ERP with AI face recognition. Offline-first. Transparent pricing. 30-day guarantee.
+                Complete School ERP with AI face recognition. Offline-first. Flat pricing. 30-day guarantee.
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
@@ -1269,5 +1279,3 @@ export default function App() {
     </div>
   );
 }
-
-
