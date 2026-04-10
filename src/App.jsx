@@ -65,8 +65,7 @@ const modules = [
   },
 ];
 
-/* ─── Pricing Data ─── */
-/* ─── Pricing Data ─── */
+/* ─── Pricing Data — matches Sales Handbook PDF exactly ─── */
 const PLANS = [
   {
     id: "basic",
@@ -75,7 +74,7 @@ const PLANS = [
     monthly: 6000,
     setup: 75000,
     setupDiscounted: 45000,
-    badge: "⭐ Best Value",
+    badge: ⭐ Best Value For Smalle Size  School And Perfact For Them,
     desc: "Perfect for smaller schools. Everything you need to replace manual attendance from day one.",
     color: "#1A2B4A",
     features: [
@@ -97,7 +96,7 @@ const PLANS = [
     monthly: 9000,
     setup: 75000,
     setupDiscounted: 45000,
-    badge: "⭐ Best Value",
+    badge: ⭐ Best Value For Mid Size  School And  Most Popular ,
     desc: "The most popular choice. Full ERP — payroll, analytics, multi-role access, and more.",
     color: "#1B4D3E",
     features: [
@@ -121,7 +120,7 @@ const PLANS = [
     monthly: 12000,
     setup: 75000,
     setupDiscounted: 45000,
-    badge: "⭐ Best Value",
+    badge: "⭐ Best Value For Larger School",
     desc: "For large schools and institutes. Full control, unlimited accounts, and dedicated support.",
     color: "#3D1A4A",
     features: [
@@ -803,7 +802,7 @@ export default function App() {
       </section>
 
       {/* ══════════════════════════════════════
-          PRICING  ← NEW FLAT PRICING
+          PRICING — matches Sales Handbook PDF
          ══════════════════════════════════════ */}
       <section id="pricing" className="sec" style={{ background: "#F7F5EF", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -200, left: "10%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.05), transparent 70%)", pointerEvents: "none" }}/>
@@ -825,13 +824,13 @@ export default function App() {
             </p>
           </FadeIn>
 
-          {/* Founding discount banner */}
+          {/* Founding Member Offer banner — ₹75,000 → ₹45,000, saving ₹30,000 */}
           <FadeIn>
             <div style={{ background: "linear-gradient(135deg, #FFF8E8 0%, #FFFBF0 100%)", border: "1.5px solid #D4A433", borderRadius: 12, padding: "14px 20px", marginBottom: 36, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: 20 }}>⚡</span>
               <div>
-                <strong style={{ fontSize: 14, color: "#7A5000" }}>Standard plan setup: ₹60,000 → ₹40,000 — Founding Partner Discount.</strong>
-                <span style={{ fontSize: 13.5, color: "#9A6B0A" }}> Limited slots. Once filled, returns to ₹60,000 permanently.</span>
+                <strong style={{ fontSize: 14, color: "#7A5000" }}>Founding Member Offer: One-time setup ₹75,000 → ₹45,000 on all plans.</strong>
+                <span style={{ fontSize: 13.5, color: "#9A6B0A" }}> Limited slots. Once filled, returns to ₹75,000 permanently.</span>
               </div>
             </div>
           </FadeIn>
@@ -893,11 +892,11 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Setup fee */}
+                  {/* Setup fee — SAVE ₹30,000 */}
                   <div style={{ background: plan.setupDiscounted ? "rgba(42,107,74,0.04)" : "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: plan.setupDiscounted ? "1px solid rgba(42,107,74,0.15)" : "1px solid rgba(28,27,23,0.05)", position: "relative" }}>
                     {plan.setupDiscounted && (
                       <div style={{ position: "absolute", top: -10, right: 16, background: "#2A6B4A", color: "#F7F5EF", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", padding: "4px 12px", borderRadius: 100 }}>
-                        SAVE ₹20,000
+                        SAVE ₹30,000
                       </div>
                     )}
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>One-Time Setup</div>
@@ -913,7 +912,7 @@ export default function App() {
                     </div>
                     <div style={{ fontSize: 12, color: "rgba(28,27,23,0.42)" }}>installation + training</div>
                     <div style={{ marginTop: 10, fontSize: 12, color: plan.setupDiscounted ? "#1B7A45" : "rgba(28,27,23,0.38)", fontWeight: 600 }}>
-                      {plan.setupDiscounted ? "Founding partner price" : "Includes 3-day onboarding"}
+                      {plan.setupDiscounted ? "Founding member price" : "Includes 3-day onboarding"}
                     </div>
                   </div>
 
@@ -967,7 +966,7 @@ export default function App() {
             </div>
           </FadeIn>
 
-          {/* Plan quick-compare strip */}
+          {/* Plan quick-compare strip — setup ₹45K (was ₹75K) */}
           <FadeIn delay={0.05}>
             <div className="plan-strip" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 56 }}>
               {PLANS.map((p) => (
@@ -977,9 +976,9 @@ export default function App() {
                   <div className="serif" style={{ fontSize: 22, color: selectedPlan === p.id ? "#5AC87A" : "#2A6B4A", marginBottom: 2 }}>
                     {fmt(p.monthly)}<span style={{ fontSize: 12, fontWeight: 400, fontFamily: "'Instrument Sans', sans-serif", color: selectedPlan === p.id ? "rgba(247,245,239,0.5)" : "rgba(28,27,23,0.4)" }}>/mo</span>
                   </div>
-                  <div style={{ fontSize: 11, color: selectedPlan === p.id ? "rgba(247,245,239,0.45)" : "rgba(28,27,23,0.4)", marginBottom: p.setupDiscounted ? 6 : 0 }}>Up to {p.students} students</div>
+                  <div style={{ fontSize: 11, color: selectedPlan === p.id ? "rgba(247,245,239,0.45)" : "rgba(28,27,23,0.4)", marginBottom: 6 }}>Up to {p.students} students</div>
                   {p.setupDiscounted && (
-                    <div style={{ fontSize: 10, fontWeight: 600, color: selectedPlan === p.id ? "#5AC87A" : "#2A6B4A", letterSpacing: "0.06em" }}>⚡ Setup ₹40K (was ₹60K)</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: selectedPlan === p.id ? "#5AC87A" : "#2A6B4A", letterSpacing: "0.06em" }}>⚡ Setup ₹45K (was ₹75K)</div>
                   )}
                 </button>
               ))}
