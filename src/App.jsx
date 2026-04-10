@@ -66,14 +66,16 @@ const modules = [
 ];
 
 /* ─── Pricing Data ─── */
+/* ─── Pricing Data ─── */
 const PLANS = [
   {
     id: "basic",
     name: "Basic",
     students: 300,
     monthly: 6000,
-    setup: 30000,
-    setupDiscounted: null,
+    setup: 75000,
+    setupDiscounted: 45000,
+    badge: "⭐ Best Value",
     desc: "Perfect for smaller schools. Everything you need to replace manual attendance from day one.",
     color: "#1A2B4A",
     features: [
@@ -93,8 +95,8 @@ const PLANS = [
     name: "Standard",
     students: 600,
     monthly: 9000,
-    setup: 60000,
-    setupDiscounted: 40000,
+    setup: 75000,
+    setupDiscounted: 45000,
     badge: "⭐ Best Value",
     desc: "The most popular choice. Full ERP — payroll, analytics, multi-role access, and more.",
     color: "#1B4D3E",
@@ -117,8 +119,9 @@ const PLANS = [
     name: "Premium",
     students: 999,
     monthly: 12000,
-    setup: 120000,
-    setupDiscounted: null,
+    setup: 75000,
+    setupDiscounted: 45000,
+    badge: "⭐ Best Value",
     desc: "For large schools and institutes. Full control, unlimited accounts, and dedicated support.",
     color: "#3D1A4A",
     features: [
