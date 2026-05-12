@@ -65,7 +65,7 @@ const modules = [
   },
 ];
 
-/* ─── Pricing Data — matches Sales Handbook PDF exactly ─── */
+/* ─── Pricing Data ─── */
 const PLANS = [
   {
     id: "basic",
@@ -74,7 +74,7 @@ const PLANS = [
     monthly: 6000,
     setup: 75000,
     setupDiscounted: 45000,
-    badge: ⭐ Best Value For Smalle Size  School And Perfact For Them,
+    badge: "⭐ Best Value For Small Schools",
     desc: "Perfect for smaller schools. Everything you need to replace manual attendance from day one.",
     color: "#1A2B4A",
     features: [
@@ -96,7 +96,7 @@ const PLANS = [
     monthly: 9000,
     setup: 75000,
     setupDiscounted: 45000,
-    badge: ⭐ Best Value For Mid Size  School And  Most Popular ,
+    badge: "⭐ Most Popular",
     desc: "The most popular choice. Full ERP — payroll, analytics, multi-role access, and more.",
     color: "#1B4D3E",
     features: [
@@ -120,7 +120,7 @@ const PLANS = [
     monthly: 12000,
     setup: 75000,
     setupDiscounted: 45000,
-    badge: "⭐ Best Value For Larger School",
+    badge: "⭐ Best Value For Larger Schools",
     desc: "For large schools and institutes. Full control, unlimited accounts, and dedicated support.",
     color: "#3D1A4A",
     features: [
@@ -182,15 +182,234 @@ const LiIcon = () => (
   </svg>
 );
 
+/* ─── Demo Video Player Component ─── */
+const DemoVideoPlayer = () => {
+  const videoRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const controlsTimer = useRef(null);
+  const containerRef = useRef(null);
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setPlaying(true);
+      setHasStarted(true);
+    } else {
+      videoRef.current.pause();
+      setPlaying(false);
+    }
+  };
+
+  const onTimeUpdate = () => {
+    if (!videoRef.current) return;
+    setCurrentTime(videoRef.current.currentTime);
+    setProgress((videoRef.current.currentTime / videoRef.current.duration) * 100);
+  };
+
+  const onLoaded = () => {
+    if (videoRef.current) setDuration(videoRef.current.duration);
+  };
+
+  const seek = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    if (videoRef.current) {
+      videoRef.current.currentTime = pct * videoRef.current.duration;
+    }
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    clearTimeout(controlsTimer.current);
+    if (playing) {
+      controlsTimer.current = setTimeout(() => setShowControls(false), 2800);
+    }
+  };
+
+  const toggleFS = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen?.();
+      setFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setFullscreen(false);
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => playing && setShowControls(false)}
+      style={{
+        position: "relative",
+        borderRadius: 16,
+        overflow: "hidden",
+        background: "#0a0a0a",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.7), 0 0 0 1px rgba(247,245,239,0.08)",
+        cursor: playing && !showControls ? "none" : "default",
+        aspectRatio: "16/9",
+      }}
+    >
+      {/* The actual video */}
+      <video
+        ref={videoRef}
+        src="/2026-05-09_11-48-06.mp4"
+        style={{ width: "100%", height: "100%", display: "block", objectFit: "contain", background: "#0a0a0a" }}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onLoaded}
+        onEnded={() => { setPlaying(false); setShowControls(true); }}
+        muted={muted}
+        playsInline
+        preload="metadata"
+      />
+
+      {/* Big play button overlay — shown before first play */}
+      {!hasStarted && (
+        <div
+          onClick={togglePlay}
+          style={{
+            position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", cursor: "pointer",
+            background: "linear-gradient(135deg, rgba(10,9,8,0.55) 0%, rgba(10,9,8,0.3) 100%)",
+            backdropFilter: "blur(2px)",
+          }}
+        >
+          {/* Browser chrome mockup label */}
+          <div style={{
+            position: "absolute", top: 16, left: 16,
+            display: "flex", alignItems: "center", gap: 8,
+            background: "rgba(10,9,8,0.6)", borderRadius: 8, padding: "6px 14px",
+            border: "1px solid rgba(247,245,239,0.12)"
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5AC87A" }} className="pdot" />
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "rgba(247,245,239,0.5)", letterSpacing: "0.08em" }}>
+              nexaattend — live portal walkthrough
+            </span>
+          </div>
+
+          {/* Play button */}
+          <div style={{
+            width: 76, height: 76, borderRadius: "50%",
+            background: "rgba(247,245,239,0.95)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 12px rgba(247,245,239,0.12)",
+            transition: "transform 0.2s, box-shadow 0.2s",
+            marginBottom: 16,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#1C1B17" style={{ marginLeft: 4 }}>
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+          <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: "clamp(1rem, 2.5vw, 1.4rem)", color: "#F7F5EF", marginBottom: 6 }}>
+            Watch Product Demo
+          </div>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "rgba(247,245,239,0.4)", letterSpacing: "0.1em" }}>
+            {formatTime(duration)} · Full walkthrough
+          </div>
+        </div>
+      )}
+
+      {/* Controls bar — shown on hover or when paused */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        padding: "32px 18px 14px",
+        background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)",
+        opacity: (showControls || !playing) && hasStarted ? 1 : 0,
+        transition: "opacity 0.3s",
+        pointerEvents: (showControls || !playing) && hasStarted ? "auto" : "none",
+      }}>
+        {/* Progress bar */}
+        <div
+          onClick={seek}
+          style={{
+            width: "100%", height: 3, background: "rgba(247,245,239,0.2)",
+            borderRadius: 2, marginBottom: 10, cursor: "pointer", position: "relative"
+          }}
+        >
+          <div style={{
+            height: "100%", width: `${progress}%`, background: "#5AC87A",
+            borderRadius: 2, position: "relative", transition: "width 0.1s linear"
+          }}>
+            <div style={{
+              position: "absolute", right: -5, top: "50%", transform: "translateY(-50%)",
+              width: 11, height: 11, borderRadius: "50%", background: "#5AC87A",
+              boxShadow: "0 0 6px rgba(90,200,122,0.6)"
+            }} />
+          </div>
+        </div>
+
+        {/* Controls row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Play/Pause */}
+          <button onClick={togglePlay} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#F7F5EF", display: "flex", alignItems: "center" }}>
+            {playing
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            }
+          </button>
+
+          {/* Mute */}
+          <button onClick={() => setMuted(m => !m)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }}>
+            {muted
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+            }
+          </button>
+
+          {/* Time */}
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "rgba(247,245,239,0.55)", marginLeft: 2 }}>
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </span>
+
+          <div style={{ flex: 1 }} />
+
+          {/* Fullscreen */}
+          <button onClick={toggleFS} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              {fullscreen
+                ? <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                : <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+              }
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Click to play/pause when started */}
+      {hasStarted && (
+        <div onClick={togglePlay} style={{ position: "absolute", inset: 0, cursor: "pointer", zIndex: 1 }} />
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   const [navScrolled, setNavScrolled] = useState(false);
   const [logIndex, setLogIndex] = useState(3);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
-
-  // Pricing state
   const [selectedPlan, setSelectedPlan] = useState("standard");
   const [activeAddon, setActiveAddon] = useState(null);
+  const [heroLoaded, setHeroLoaded] = useState(false);
 
   useEffect(() => {
     const fn = () => setNavScrolled(window.scrollY > 40);
@@ -201,6 +420,12 @@ export default function App() {
   useEffect(() => {
     const t = setInterval(() => setLogIndex(i => (i >= logs.length ? 1 : i + 1)), 1800);
     return () => clearInterval(t);
+  }, []);
+
+  // Trigger hero content fade-in shortly after mount
+  useEffect(() => {
+    const t = setTimeout(() => setHeroLoaded(true), 80);
+    return () => clearTimeout(t);
   }, []);
 
   const scrollTo = (id) => {
@@ -243,6 +468,14 @@ export default function App() {
         .pill-cream { color: #8A6A2A; background: rgba(184,146,42,0.12); }
         .pill-dark  { color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.08); }
 
+        /* ── Hero pill variant — white on dark video ── */
+        .pill-hero {
+          color: rgba(247,245,239,0.9);
+          background: rgba(247,245,239,0.12);
+          border: 1px solid rgba(247,245,239,0.18);
+          backdrop-filter: blur(8px);
+        }
+
         .btn-primary {
           display: inline-flex; align-items: center; gap: 8px;
           background: #1C1B17; color: #F7F5EF;
@@ -260,6 +493,33 @@ export default function App() {
           cursor: pointer; transition: all 0.22s; text-decoration: none;
         }
         .btn-secondary:hover { border-color: #1C1B17; background: rgba(28,27,23,0.04); }
+
+        /* ── Hero CTA buttons — glassmorphism style ── */
+        .btn-hero-primary {
+          display: inline-flex; align-items: center; gap: 10px;
+          background: #F7F5EF; color: #1C1B17;
+          border: none; border-radius: 8px; padding: 14px 26px;
+          font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 700;
+          cursor: pointer; transition: all 0.25s cubic-bezier(0.16,1,0.3,1); text-decoration: none;
+          box-shadow: 0 2px 24px rgba(28,27,23,0.18), 0 1px 4px rgba(28,27,23,0.12);
+        }
+        .btn-hero-primary:hover {
+          background: #fff; transform: translateY(-2px);
+          box-shadow: 0 12px 40px rgba(28,27,23,0.22), 0 2px 8px rgba(28,27,23,0.1);
+        }
+
+        .btn-hero-secondary {
+          display: inline-flex; align-items: center; gap: 10px;
+          background: rgba(247,245,239,0.1); color: rgba(247,245,239,0.9);
+          border: 1.5px solid rgba(247,245,239,0.28); border-radius: 8px; padding: 13px 24px;
+          font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500;
+          cursor: pointer; transition: all 0.25s; text-decoration: none;
+          backdrop-filter: blur(12px);
+        }
+        .btn-hero-secondary:hover {
+          background: rgba(247,245,239,0.18); border-color: rgba(247,245,239,0.5);
+          transform: translateY(-1px);
+        }
 
         .btn-cta {
           display: inline-flex; align-items: center; gap: 10px;
@@ -293,9 +553,128 @@ export default function App() {
         }
         .nav-link:hover { color: #1C1B17; }
 
-        .status-present { color: #1B7A45; font-weight: 700; }
-        .status-late    { color: #9A6B0A; font-weight: 700; }
-        .status-absent  { color: #8A2A1A; font-weight: 700; }
+        .status-present { color: #22c55e; font-weight: 700; }
+        .status-late    { color: #f59e0b; font-weight: 700; }
+        .status-absent  { color: #ef4444; font-weight: 700; }
+
+        /* ═══════════════════════════════════════
+           HERO VIDEO SYSTEM
+        ═══════════════════════════════════════ */
+
+        /* The video itself */
+        .hero-video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          z-index: 0;
+          pointer-events: none;
+          /* Exact cinematic correction — slightly darker, slightly more contrast */
+          filter: brightness(0.72) contrast(1.08);
+        }
+
+        /* Primary gradient overlay — stays LOW opacity so video is clearly visible */
+        .hero-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          background: linear-gradient(
+            135deg,
+            rgba(247,245,239,0.40) 0%,
+            rgba(247,245,239,0.20) 45%,
+            rgba(28,27,23,0.25) 100%
+          );
+        }
+
+        /* Secondary cinematic vignette — adds depth, keeps edges dark */
+        .hero-vignette {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          pointer-events: none;
+          background:
+            radial-gradient(ellipse 80% 60% at 30% 50%, transparent 40%, rgba(10,9,8,0.28) 100%),
+            linear-gradient(to bottom, rgba(10,9,8,0.18) 0%, transparent 22%, transparent 68%, rgba(10,9,8,0.38) 100%);
+        }
+
+        /* Subtle brand color tints on top of vignette */
+        .hero-tints {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          pointer-events: none;
+          background:
+            radial-gradient(ellipse 50% 50% at 78% 42%, rgba(42,107,74,0.07) 0%, transparent 60%),
+            radial-gradient(ellipse 40% 30% at 18% 78%, rgba(184,146,42,0.04) 0%, transparent 55%);
+        }
+
+        /* Hero content layer */
+        .hero-content {
+          position: relative;
+          z-index: 3;
+        }
+
+        /* ── Floating animation for dashboard card ── */
+        @keyframes floatCard {
+          0%   { transform: translateY(0px) rotate(0.2deg); }
+          33%  { transform: translateY(-10px) rotate(-0.15deg); }
+          66%  { transform: translateY(-5px) rotate(0.1deg); }
+          100% { transform: translateY(0px) rotate(0.2deg); }
+        }
+
+        /* ── Hero text animations ── */
+        @keyframes heroFadeUp {
+          from { opacity: 0; transform: translateY(32px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes heroPillIn {
+          from { opacity: 0; transform: translateY(16px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .hero-pill-anim {
+          opacity: 0;
+          animation: heroPillIn 0.7s cubic-bezier(0.16,1,0.3,1) 0.1s forwards;
+        }
+        .hero-h1-anim {
+          opacity: 0;
+          animation: heroFadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.22s forwards;
+        }
+        .hero-sub-anim {
+          opacity: 0;
+          animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.38s forwards;
+        }
+        .hero-cta-anim {
+          opacity: 0;
+          animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.52s forwards;
+        }
+        .hero-badges-anim {
+          opacity: 0;
+          animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.66s forwards;
+        }
+        .hero-card-anim {
+          opacity: 0;
+          animation: heroFadeUp 1s cubic-bezier(0.16,1,0.3,1) 0.48s forwards;
+        }
+
+        /* ── Glassmorphism dashboard card ── */
+        .glass-card {
+          background: rgba(255,255,255,0.88);
+          backdrop-filter: blur(20px) saturate(1.4);
+          -webkit-backdrop-filter: blur(20px) saturate(1.4);
+          border: 1px solid rgba(255,255,255,0.6);
+          border-radius: 18px;
+          box-shadow:
+            0 32px 80px rgba(10,9,8,0.28),
+            0 8px 24px rgba(10,9,8,0.14),
+            0 1px 0 rgba(255,255,255,0.9) inset;
+          overflow: hidden;
+          animation: floatCard 7s ease-in-out infinite;
+          will-change: transform;
+        }
 
         @keyframes fsi  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         @keyframes pdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
@@ -367,7 +746,7 @@ export default function App() {
           .g3  { grid-template-columns: 1fr !important; }
           .g4  { grid-template-columns: 1fr 1fr !important; }
           .hero-h { font-size: clamp(2.2rem, 9vw, 2.8rem) !important; }
-          .hero-pad { padding: 100px 5% 56px !important; min-height: auto !important; }
+          .hero-pad { padding: 110px 5% 64px !important; min-height: auto !important; }
           .hide-mob { display: none !important; }
           .flex-cta { flex-direction: column !important; }
           .flex-cta a, .flex-cta button { width: 100% !important; justify-content: center !important; }
@@ -386,7 +765,7 @@ export default function App() {
 
       {/* ── Mobile Menu ── */}
       <div className={`mmenu ${menuOpen ? "open" : ""}`}>
-        {[["problem","Why NexaAttend"],["solution","Platform"],["pricing","Pricing"],["process","How It Works"],["trust","Trust & Guarantee"],["demo","Book Demo"]].map(([id, label]) => (
+        {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["solution","Platform"],["pricing","Pricing"],["process","How It Works"],["trust","Trust & Guarantee"],["demo","Book Demo"]].map(([id, label]) => (
           <button key={id} className="mlink" onClick={() => scrollTo(id)}>{label}</button>
         ))}
         <div style={{ marginTop: "auto", paddingTop: 28 }}>
@@ -422,122 +801,211 @@ export default function App() {
             </svg>
           </div>
           <div>
-            <div className="serif" style={{ fontSize: 17, lineHeight: 1.1, letterSpacing: "-0.01em" }}>NexaAttend</div>
-            <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#2A6B4A", fontWeight: 600 }}>Complete School ERP</div>
+            <div className="serif" style={{ fontSize: 17, lineHeight: 1.1, letterSpacing: "-0.01em", color: navScrolled ? "#1C1B17" : "#F7F5EF" }}>NexaAttend</div>
+            <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: navScrolled ? "#2A6B4A" : "rgba(247,245,239,0.6)", fontWeight: 600 }}>Complete School ERP</div>
           </div>
         </div>
 
         <div className="hide-mob" style={{ display: "flex", gap: 24, alignItems: "center" }}>
-          {[["problem","Why NexaAttend"],["solution","Platform"],["pricing","Pricing"],["process","How It Works"],["trust","Guarantee"]].map(([id, label]) => (
-            <button key={id} className="nav-link" onClick={() => scrollTo(id)}>{label}</button>
+          {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["pricing","Pricing"],["process","How It Works"],["trust","Guarantee"]].map(([id, label]) => (
+            <button key={id} className="nav-link" onClick={() => scrollTo(id)}
+              style={{ color: navScrolled ? "rgba(28,27,23,0.55)" : "rgba(247,245,239,0.7)" }}>{label}</button>
           ))}
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <a href="tel:+919974724656" className="btn-secondary hide-mob" style={{ padding: "8px 14px", fontSize: 13 }}>+91 99747 24656</a>
-          <button className="btn-primary" onClick={() => scrollTo("demo")} style={{ padding: "9px 17px", fontSize: 13 }}>Book Free Demo</button>
+          <a href="tel:+919974724656" className="btn-secondary hide-mob"
+            style={{ padding: "8px 14px", fontSize: 13,
+              background: navScrolled ? "transparent" : "rgba(247,245,239,0.1)",
+              color: navScrolled ? "#1C1B17" : "rgba(247,245,239,0.85)",
+              border: navScrolled ? "1.5px solid rgba(28,27,23,0.2)" : "1.5px solid rgba(247,245,239,0.24)",
+              backdropFilter: navScrolled ? "none" : "blur(8px)"
+            }}>+91 99747 24656</a>
+          <button className="btn-primary" onClick={() => scrollTo("demo")}
+            style={{ padding: "9px 17px", fontSize: 13,
+              background: navScrolled ? "#1C1B17" : "#F7F5EF",
+              color: navScrolled ? "#F7F5EF" : "#1C1B17"
+            }}>Book Free Demo</button>
           <button className="hbg" onClick={() => setMenuOpen(o => !o)} style={{
-            background: "none", border: "1.5px solid rgba(28,27,23,0.18)", cursor: "pointer",
-            padding: "7px 9px", borderRadius: 6, alignItems: "center", justifyContent: "center"
+            background: navScrolled ? "none" : "rgba(247,245,239,0.1)",
+            border: navScrolled ? "1.5px solid rgba(28,27,23,0.18)" : "1.5px solid rgba(247,245,239,0.24)",
+            cursor: "pointer", padding: "7px 9px", borderRadius: 6,
+            alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)"
           }}>
             {menuOpen
-              ? <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="#1C1B17" strokeWidth="1.8" strokeLinecap="round"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="#1C1B17" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              ? <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
             }
           </button>
         </div>
       </nav>
 
       {/* ══════════════════════════════════════
-          HERO
+          HERO — CINEMATIC VIDEO BACKGROUND
          ══════════════════════════════════════ */}
-      <section id="hero" className="hero-pad" style={{ minHeight: "100vh", padding: "130px 6% 80px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
-          background: "radial-gradient(ellipse 72% 64% at 72% 38%, rgba(42,107,74,0.06) 0%, transparent 65%), radial-gradient(ellipse 50% 40% at 20% 75%, rgba(184,146,42,0.05) 0%, transparent 55%)"
-        }}/>
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "rgba(28,27,23,0.06)" }}/>
+      <section id="hero" className="hero-pad" style={{
+        minHeight: "100vh",
+        padding: "130px 6% 80px",
+        position: "relative",
+        overflow: "hidden",
+        /* Dark fallback while video loads */
+        background: "#1a1f1c"
+      }}>
 
-        <div className="g2" style={{ maxWidth: 1200, margin: "0 auto", gap: 64, alignItems: "center", position: "relative", zIndex: 1 }}>
-          <div>
-            <div style={{ opacity: 0, animation: "fsi 0.8s 0.1s ease forwards" }}>
-              <div className="pill pill-green">
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2A6B4A", flexShrink: 0 }} className="pdot"/>
-                Complete School ERP · AI-Powered
-              </div>
-            </div>
+        {/* ── LAYER 0: Background video ── */}
+        <video
+          className="hero-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+        >
+          <source src="/2026-05-09_11-48-06.mp4" type="video/mp4" />
+        </video>
 
-            <h1 className="serif hero-h" style={{
-              fontSize: "clamp(2.6rem, 4.8vw, 4rem)", lineHeight: 1.05, letterSpacing: "-0.02em",
-              marginBottom: 24, opacity: 0, animation: "fsi 0.9s 0.22s ease forwards"
-            }}>
-              Your Entire School,<br/>
-              Managed From<br/>
-              <em style={{ color: "#2A6B4A", fontStyle: "italic" }}>One System.</em>
-            </h1>
+        {/* ── LAYER 1: Primary gradient overlay (LOW opacity — video stays visible) ── */}
+        <div className="hero-overlay" />
 
-            <p style={{ fontSize: 16, lineHeight: 1.85, color: "rgba(28,27,23,0.62)", maxWidth: 460, marginBottom: 30,
-              opacity: 0, animation: "fsi 0.8s 0.38s ease forwards" }}>
-              NexaAttend is a complete School ERP — attendance, staff, payroll, reports, and parent communication — powered by AI face recognition that works 100% offline.
-            </p>
+        {/* ── LAYER 2: Cinematic vignette + brand tints ── */}
+        <div className="hero-vignette" />
+        <div className="hero-tints" />
 
-            <div className="flex-cta" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36, opacity: 0, animation: "fsi 0.8s 0.5s ease forwards" }}>
-              <button className="btn-primary" onClick={() => scrollTo("demo")} style={{ fontSize: 15, padding: "14px 24px" }}>
-                Get Free Trial
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-              <button className="btn-secondary" onClick={() => scrollTo("solution")} style={{ fontSize: 15, padding: "13px 22px" }}>
-                See the Platform
-              </button>
-            </div>
+        {/* ── LAYER 3: Hero content ── */}
+        <div className="hero-content">
+          <div className="g2" style={{ maxWidth: 1200, margin: "0 auto", gap: 64, alignItems: "center" }}>
 
-            <div style={{ display: "flex", gap: 20, flexWrap: "wrap", opacity: 0, animation: "fsi 0.8s 0.62s ease forwards" }}>
-              {[["🔒","100% offline"], ["⚡","3-day setup"], ["🛡️","30-day guarantee"], ["🏫","Made for India"]].map(([icon, text]) => (
-                <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500, color: "rgba(28,27,23,0.5)" }}>
-                  <span style={{ fontSize: 14 }}>{icon}</span>{text}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right — Live terminal */}
-          <div className="hide-mob" style={{ opacity: 0, animation: "fsi 1s 0.5s ease forwards" }}>
-            <div style={{ background: "#FFFFFF", borderRadius: 16, border: "1px solid rgba(28,27,23,0.08)", boxShadow: "0 28px 80px rgba(28,27,23,0.09), 0 4px 12px rgba(28,27,23,0.05)", overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "11px 16px", borderBottom: "1px solid rgba(28,27,23,0.07)", background: "#FAFAF8" }}>
-                {[["#F05A5A"],["#F0B45A"],["#5AF07A"]].map(([c], i) => (
-                  <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }}/>
-                ))}
-                <span className="mono" style={{ fontSize: 10, color: "rgba(28,27,23,0.32)", marginLeft: 8 }}>nexaattend — live dashboard</span>
-                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3DC87A" }} className="pdot"/>
-                  <span className="mono" style={{ fontSize: 9, color: "#1B7A45", fontWeight: 600, letterSpacing: "0.08em" }}>LIVE</span>
+            {/* Left — Text + CTAs */}
+            <div>
+              {/* Pill badge */}
+              <div className="hero-pill-anim">
+                <div className="pill pill-hero" style={{ marginBottom: 22 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A", flexShrink: 0 }} className="pdot"/>
+                  Complete School ERP · AI-Powered
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "#FAFAF8", borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
-                {[{ l: "Present", v: "284", c: "#1B7A45" }, { l: "Late", v: "12", c: "#9A6B0A" }, { l: "Absent", v: "8", c: "#8A2A1A" }].map(s => (
-                  <div key={s.l} style={{ padding: "14px 10px", textAlign: "center", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
-                    <div className="serif" style={{ fontSize: 28, color: s.c, lineHeight: 1 }}>{s.v}</div>
-                    <div className="mono" style={{ fontSize: 9, color: "rgba(28,27,23,0.38)", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.l}</div>
+
+              {/* Headline */}
+              <h1 className="serif hero-h hero-h1-anim" style={{
+                fontSize: "clamp(2.6rem, 4.8vw, 4rem)",
+                lineHeight: 1.05,
+                letterSpacing: "-0.025em",
+                marginBottom: 22,
+                color: "#F7F5EF",
+                textShadow: "0 2px 32px rgba(10,9,8,0.35)"
+              }}>
+                Your Entire School,<br/>
+                Managed From<br/>
+                <em style={{ color: "#5AC87A", fontStyle: "italic" }}>One System.</em>
+              </h1>
+
+              {/* Subheadline */}
+              <p className="hero-sub-anim" style={{
+                fontSize: 16,
+                lineHeight: 1.85,
+                color: "rgba(247,245,239,0.72)",
+                maxWidth: 460,
+                marginBottom: 30,
+                textShadow: "0 1px 8px rgba(10,9,8,0.3)"
+              }}>
+                NexaAttend is a complete School ERP — attendance, staff, payroll, reports, and parent communication — powered by AI face recognition that works 100% offline.
+              </p>
+
+              {/* CTA buttons */}
+              <div className="flex-cta hero-cta-anim" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36 }}>
+                <button className="btn-hero-primary" onClick={() => scrollTo("demo")} style={{ fontSize: 15, padding: "14px 26px" }}>
+                  Get Free Trial
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                <button className="btn-hero-secondary" onClick={() => scrollTo("solution")} style={{ fontSize: 15, padding: "13px 22px" }}>
+                  See the Platform
+                </button>
+              </div>
+
+              {/* Trust badges */}
+              <div className="hero-badges-anim" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                {[["🔒","100% offline"], ["⚡","3-day setup"], ["🛡️","30-day guarantee"], ["🏫","Made for India"]].map(([icon, text]) => (
+                  <div key={text} style={{
+                    display: "flex", alignItems: "center", gap: 7,
+                    fontSize: 12.5, fontWeight: 500,
+                    color: "rgba(247,245,239,0.62)",
+                    background: "rgba(247,245,239,0.08)",
+                    border: "1px solid rgba(247,245,239,0.14)",
+                    backdropFilter: "blur(8px)",
+                    borderRadius: 100, padding: "5px 12px"
+                  }}>
+                    <span style={{ fontSize: 13 }}>{icon}</span>{text}
                   </div>
                 ))}
               </div>
-              <div style={{ padding: "12px 14px 14px" }}>
-                <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.28)", marginBottom: 8 }}>Recognition Log</div>
-                {logs.slice(0, logIndex).map((log, i) => (
-                  <div key={i} className="log-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 7px", borderRadius: 4, background: i % 2 === 0 ? "rgba(28,27,23,0.02)" : "transparent", marginBottom: 1 }}>
-                    <span className="mono" style={{ color: "rgba(28,27,23,0.25)", minWidth: 52, fontSize: 10 }}>{log.time}</span>
-                    <span className="mono" style={{ color: "#1C1B17", fontWeight: 500, flex: 1, fontSize: 12 }}>{log.name}</span>
-                    <span className="mono" style={{ color: "rgba(28,27,23,0.32)", fontSize: 10 }}>{log.cls}</span>
-                    <span className={`mono status-${log.status}`} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.06em" }}>{log.status}</span>
+            </div>
+
+            {/* Right — Live dashboard card (glassmorphism + floating) */}
+            <div className="hide-mob hero-card-anim">
+              <div className="glass-card">
+                {/* Title bar */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "11px 16px", borderBottom: "1px solid rgba(28,27,23,0.07)",
+                  background: "rgba(250,250,248,0.85)"
+                }}>
+                  {[["#F05A5A"],["#F0B45A"],["#5AF07A"]].map(([c], i) => (
+                    <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }}/>
+                  ))}
+                  <span className="mono" style={{ fontSize: 10, color: "rgba(28,27,23,0.32)", marginLeft: 8 }}>nexaattend — live dashboard</span>
+                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3DC87A" }} className="pdot"/>
+                    <span className="mono" style={{ fontSize: 9, color: "#1B7A45", fontWeight: 600, letterSpacing: "0.08em" }}>LIVE</span>
                   </div>
-                ))}
-              </div>
-              <div style={{ padding: "10px 14px", background: "rgba(42,107,74,0.05)", borderTop: "1px solid rgba(28,27,23,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12, color: "rgba(28,27,23,0.45)" }}>Today's attendance rate</span>
-                <span className="serif" style={{ fontSize: 18, color: "#1B7A45", fontWeight: 700 }}>96.8%</span>
+                </div>
+
+                {/* Stats row */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "rgba(250,250,248,0.7)", borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
+                  {[{ l: "Present", v: "284", c: "#1B7A45" }, { l: "Late", v: "12", c: "#9A6B0A" }, { l: "Absent", v: "8", c: "#8A2A1A" }].map(s => (
+                    <div key={s.l} style={{ padding: "14px 10px", textAlign: "center", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
+                      <div className="serif" style={{ fontSize: 28, color: s.c, lineHeight: 1 }}>{s.v}</div>
+                      <div className="mono" style={{ fontSize: 9, color: "rgba(28,27,23,0.38)", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recognition log */}
+                <div style={{ padding: "12px 14px 14px", background: "rgba(255,255,255,0.6)" }}>
+                  <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.28)", marginBottom: 8 }}>Recognition Log</div>
+                  {logs.slice(0, logIndex).map((log, i) => (
+                    <div key={i} className="log-row" style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "6px 7px",
+                      borderRadius: 4, background: i % 2 === 0 ? "rgba(28,27,23,0.02)" : "transparent", marginBottom: 1
+                    }}>
+                      <span className="mono" style={{ color: "rgba(28,27,23,0.25)", minWidth: 52, fontSize: 10 }}>{log.time}</span>
+                      <span className="mono" style={{ color: "#1C1B17", fontWeight: 500, flex: 1, fontSize: 12 }}>{log.name}</span>
+                      <span className="mono" style={{ color: "rgba(28,27,23,0.32)", fontSize: 10 }}>{log.cls}</span>
+                      <span className={`mono status-${log.status}`} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.06em" }}>{log.status}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                  padding: "10px 14px",
+                  background: "rgba(42,107,74,0.08)",
+                  borderTop: "1px solid rgba(28,27,23,0.05)",
+                  display: "flex", alignItems: "center", justifyContent: "space-between"
+                }}>
+                  <span style={{ fontSize: 12, color: "rgba(28,27,23,0.45)" }}>Today's attendance rate</span>
+                  <span className="serif" style={{ fontSize: 18, color: "#1B7A45", fontWeight: 700 }}>96.8%</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* ── Bottom fade to next section ── */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, height: 80, zIndex: 3,
+          background: "linear-gradient(to bottom, transparent, #1C1B17)",
+          pointerEvents: "none"
+        }} />
       </section>
 
       {/* ── TICKER ── */}
@@ -551,6 +1019,54 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════
+          PRODUCT DEMO VIDEO
+         ══════════════════════════════════════ */}
+      <section id="demo-video" style={{ background: "#1C1B17", padding: "80px 6% 88px", position: "relative", overflow: "hidden" }}>
+        {/* Background glow */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(42,107,74,0.13) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+        <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
+          <FadeIn style={{ textAlign: "center", marginBottom: 48 }}>
+            <div className="pill pill-dark" style={{ justifyContent: "center" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A" }} className="pdot" />
+              Live Product Demo
+            </div>
+            <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4vw, 3rem)", lineHeight: 1.08, letterSpacing: "-0.022em", color: "#F7F5EF", marginBottom: 14 }}>
+              See NexaAttend<br/>
+              <em style={{ color: "#5AC87A", fontStyle: "italic" }}>in action.</em>
+            </h2>
+            <p style={{ fontSize: 15, color: "rgba(247,245,239,0.5)", maxWidth: 480, margin: "0 auto", lineHeight: 1.85 }}>
+              A real walkthrough of the portal — login, dashboard, attendance marking, and reports. Exactly what your school gets from day one.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.1}>
+            <DemoVideoPlayer />
+          </FadeIn>
+
+          {/* Feature callouts below video */}
+          <FadeIn delay={0.2}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginTop: 36 }}>
+              {[
+                { icon: "🎯", label: "Portal Login", desc: "Secure role-based access" },
+                { icon: "📊", label: "Live Dashboard", desc: "Real-time attendance data" },
+                { icon: "🤳", label: "Face Recognition", desc: "AI marks students in seconds" },
+                { icon: "📋", label: "Instant Reports", desc: "One-click PDF exports" },
+              ].map((f, i) => (
+                <div key={i} style={{ background: "rgba(247,245,239,0.04)", border: "1px solid rgba(247,245,239,0.08)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{f.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#F7F5EF", marginBottom: 2 }}>{f.label}</div>
+                    <div style={{ fontSize: 11.5, color: "rgba(247,245,239,0.38)" }}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
 
       {/* ══════════════════════════════════════
           PROBLEM
@@ -802,7 +1318,7 @@ export default function App() {
       </section>
 
       {/* ══════════════════════════════════════
-          PRICING — matches Sales Handbook PDF
+          PRICING
          ══════════════════════════════════════ */}
       <section id="pricing" className="sec" style={{ background: "#F7F5EF", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -200, left: "10%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.05), transparent 70%)", pointerEvents: "none" }}/>
@@ -810,7 +1326,6 @@ export default function App() {
 
         <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
 
-          {/* Header */}
           <FadeIn style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", padding: "5px 13px", borderRadius: 100, marginBottom: 20, background: "rgba(42,107,74,0.1)", color: "#1B5C3A" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2A6B4A" }} className="pdot"/>
@@ -824,7 +1339,6 @@ export default function App() {
             </p>
           </FadeIn>
 
-          {/* Founding Member Offer banner — ₹75,000 → ₹45,000, saving ₹30,000 */}
           <FadeIn>
             <div style={{ background: "linear-gradient(135deg, #FFF8E8 0%, #FFFBF0 100%)", border: "1.5px solid #D4A433", borderRadius: 12, padding: "14px 20px", marginBottom: 36, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: 20 }}>⚡</span>
@@ -835,7 +1349,6 @@ export default function App() {
             </div>
           </FadeIn>
 
-          {/* Plan selector buttons */}
           <FadeIn>
             <div className="plan-selector" style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 44, flexWrap: "wrap" }}>
               {PLANS.map((p) => (
@@ -855,11 +1368,8 @@ export default function App() {
             </div>
           </FadeIn>
 
-          {/* Main pricing card */}
           <FadeIn>
             <div style={{ background: "#FFFFFF", border: `2px solid ${plan.color}22`, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 64px rgba(28,27,23,0.07)", marginBottom: 24, transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
-
-              {/* Coloured top bar */}
               <div style={{ background: plan.color, padding: "28px 36px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(247,245,239,0.45)", marginBottom: 6 }}>
@@ -876,23 +1386,17 @@ export default function App() {
                 )}
               </div>
 
-              {/* Pricing breakdown */}
               <div style={{ padding: "32px 36px", borderBottom: "1px solid rgba(28,27,23,0.07)" }}>
                 <div className="pricing-stats" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, marginBottom: 32 }}>
-
-                  {/* Monthly fee */}
                   <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>Monthly Fee</div>
-                    <div className="serif" style={{ fontSize: 40, color: "#1C1B17", lineHeight: 1, marginBottom: 4 }}>
-                      {fmt(plan.monthly)}
-                    </div>
+                    <div className="serif" style={{ fontSize: 40, color: "#1C1B17", lineHeight: 1, marginBottom: 4 }}>{fmt(plan.monthly)}</div>
                     <div style={{ fontSize: 12, color: "rgba(28,27,23,0.42)" }}>per month · flat rate</div>
                     <div style={{ marginTop: 10, fontSize: 12, color: "#1B7A45", fontWeight: 600 }}>
                       ≈ {fmtFull(Math.round(plan.monthly / plan.students))}/student
                     </div>
                   </div>
 
-                  {/* Setup fee — SAVE ₹30,000 */}
                   <div style={{ background: plan.setupDiscounted ? "rgba(42,107,74,0.04)" : "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: plan.setupDiscounted ? "1px solid rgba(42,107,74,0.15)" : "1px solid rgba(28,27,23,0.05)", position: "relative" }}>
                     {plan.setupDiscounted && (
                       <div style={{ position: "absolute", top: -10, right: 16, background: "#2A6B4A", color: "#F7F5EF", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", padding: "4px 12px", borderRadius: 100 }}>
@@ -916,7 +1420,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* What's included */}
                   <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 14 }}>Always Included</div>
                     {[["👤", `Up to ${plan.students} students`], ["📷", "2 cameras"], ["🛠️", "3-day setup"], ["🛡️", "30-day guarantee"]].map(([icon, text]) => (
@@ -927,7 +1430,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Features list */}
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.35)", marginBottom: 14 }}>Everything included</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "8px 24px" }}>
@@ -941,7 +1443,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* CTA bar */}
               <div style={{ padding: "22px 36px", background: "rgba(28,27,23,0.015)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
                 <div style={{ fontSize: 13.5, color: "rgba(28,27,23,0.5)", lineHeight: 1.7 }}>
                   30-day money-back guarantee · No lock-in · Free 7-day trial first
@@ -966,7 +1467,6 @@ export default function App() {
             </div>
           </FadeIn>
 
-          {/* Plan quick-compare strip — setup ₹45K (was ₹75K) */}
           <FadeIn delay={0.05}>
             <div className="plan-strip" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 56 }}>
               {PLANS.map((p) => (
@@ -985,16 +1485,11 @@ export default function App() {
             </div>
           </FadeIn>
 
-          {/* ── ADD-ONS ── */}
           <FadeIn>
             <div style={{ textAlign: "center", marginBottom: 32 }}>
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: "#1B5C3A", marginBottom: 10 }}>Optional Add-ons</div>
-              <h3 className="serif" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", letterSpacing: "-0.02em", marginBottom: 8 }}>
-                Extend Your Plan
-              </h3>
-              <p style={{ fontSize: 14, color: "rgba(28,27,23,0.52)", lineHeight: 1.8 }}>
-                Every plan includes 2 cameras. Need more? Add what you need, when you need it.
-              </p>
+              <h3 className="serif" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", letterSpacing: "-0.02em", marginBottom: 8 }}>Extend Your Plan</h3>
+              <p style={{ fontSize: 14, color: "rgba(28,27,23,0.52)", lineHeight: 1.8 }}>Every plan includes 2 cameras. Need more? Add what you need, when you need it.</p>
             </div>
           </FadeIn>
 
@@ -1031,7 +1526,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Guarantee */}
           <FadeIn>
             <div style={{ background: "#FFFFFF", border: "2px solid rgba(42,107,74,0.18)", borderRadius: 16, padding: "28px 32px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ fontSize: 44, lineHeight: 1, flexShrink: 0 }}>🛡️</span>
