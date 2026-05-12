@@ -266,7 +266,6 @@ const DemoVideoPlayer = () => {
         aspectRatio: "16/9",
       }}
     >
-      {/* The actual video */}
       <video
         ref={videoRef}
         src="/2026-05-09_11-48-06.mp4"
@@ -279,7 +278,6 @@ const DemoVideoPlayer = () => {
         preload="metadata"
       />
 
-      {/* Big play button overlay — shown before first play */}
       {!hasStarted && (
         <div
           onClick={togglePlay}
@@ -290,7 +288,6 @@ const DemoVideoPlayer = () => {
             backdropFilter: "blur(2px)",
           }}
         >
-          {/* Browser chrome mockup label */}
           <div style={{
             position: "absolute", top: 16, left: 16,
             display: "flex", alignItems: "center", gap: 8,
@@ -303,7 +300,6 @@ const DemoVideoPlayer = () => {
             </span>
           </div>
 
-          {/* Play button */}
           <div style={{
             width: 76, height: 76, borderRadius: "50%",
             background: "rgba(247,245,239,0.95)",
@@ -328,7 +324,6 @@ const DemoVideoPlayer = () => {
         </div>
       )}
 
-      {/* Controls bar — shown on hover or when paused */}
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
         padding: "32px 18px 14px",
@@ -337,7 +332,6 @@ const DemoVideoPlayer = () => {
         transition: "opacity 0.3s",
         pointerEvents: (showControls || !playing) && hasStarted ? "auto" : "none",
       }}>
-        {/* Progress bar */}
         <div
           onClick={seek}
           style={{
@@ -357,9 +351,7 @@ const DemoVideoPlayer = () => {
           </div>
         </div>
 
-        {/* Controls row */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Play/Pause */}
           <button onClick={togglePlay} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#F7F5EF", display: "flex", alignItems: "center" }}>
             {playing
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -367,7 +359,6 @@ const DemoVideoPlayer = () => {
             }
           </button>
 
-          {/* Mute */}
           <button onClick={() => setMuted(m => !m)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }}>
             {muted
               ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
@@ -375,14 +366,12 @@ const DemoVideoPlayer = () => {
             }
           </button>
 
-          {/* Time */}
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "rgba(247,245,239,0.55)", marginLeft: 2 }}>
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
 
           <div style={{ flex: 1 }} />
 
-          {/* Fullscreen */}
           <button onClick={toggleFS} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               {fullscreen
@@ -394,7 +383,6 @@ const DemoVideoPlayer = () => {
         </div>
       </div>
 
-      {/* Click to play/pause when started */}
       {hasStarted && (
         <div onClick={togglePlay} style={{ position: "absolute", inset: 0, cursor: "pointer", zIndex: 1 }} />
       )}
@@ -422,7 +410,6 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  // Trigger hero content fade-in shortly after mount
   useEffect(() => {
     const t = setTimeout(() => setHeroLoaded(true), 80);
     return () => clearTimeout(t);
@@ -468,7 +455,6 @@ export default function App() {
         .pill-cream { color: #8A6A2A; background: rgba(184,146,42,0.12); }
         .pill-dark  { color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.08); }
 
-        /* ── Hero pill variant — white on dark video ── */
         .pill-hero {
           color: rgba(247,245,239,0.9);
           background: rgba(247,245,239,0.12);
@@ -494,7 +480,6 @@ export default function App() {
         }
         .btn-secondary:hover { border-color: #1C1B17; background: rgba(28,27,23,0.04); }
 
-        /* ── Hero CTA buttons — glassmorphism style ── */
         .btn-hero-primary {
           display: inline-flex; align-items: center; gap: 10px;
           background: #F7F5EF; color: #1C1B17;
@@ -556,65 +541,6 @@ export default function App() {
         .status-present { color: #22c55e; font-weight: 700; }
         .status-late    { color: #f59e0b; font-weight: 700; }
         .status-absent  { color: #ef4444; font-weight: 700; }
-
-        /* ═══════════════════════════════════════
-           HERO VIDEO SYSTEM
-        ═══════════════════════════════════════ */
-
-        /* The video itself */
-        .hero-video {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          z-index: 0;
-          pointer-events: none;
-          /* Exact cinematic correction — slightly darker, slightly more contrast */
-          filter: brightness(0.72) contrast(1.08);
-        }
-
-        /* Primary gradient overlay — stays LOW opacity so video is clearly visible */
-        .hero-overlay {
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          pointer-events: none;
-          background: linear-gradient(
-            135deg,
-            rgba(247,245,239,0.40) 0%,
-            rgba(247,245,239,0.20) 45%,
-            rgba(28,27,23,0.25) 100%
-          );
-        }
-
-        /* Secondary cinematic vignette — adds depth, keeps edges dark */
-        .hero-vignette {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          pointer-events: none;
-          background:
-            radial-gradient(ellipse 80% 60% at 30% 50%, transparent 40%, rgba(10,9,8,0.28) 100%),
-            linear-gradient(to bottom, rgba(10,9,8,0.18) 0%, transparent 22%, transparent 68%, rgba(10,9,8,0.38) 100%);
-        }
-
-        /* Subtle brand color tints on top of vignette */
-        .hero-tints {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          pointer-events: none;
-          background:
-            radial-gradient(ellipse 50% 50% at 78% 42%, rgba(42,107,74,0.07) 0%, transparent 60%),
-            radial-gradient(ellipse 40% 30% at 18% 78%, rgba(184,146,42,0.04) 0%, transparent 55%);
-        }
-
-        /* Hero content layer */
-        .hero-content {
-          position: relative;
-          z-index: 3;
-        }
 
         /* ── Floating animation for dashboard card ── */
         @keyframes floatCard {
@@ -683,6 +609,61 @@ export default function App() {
         .pdot { animation: pdot 2s ease-in-out infinite; }
         .log-row { animation: fsi 0.4s ease forwards; }
         .ticker-inner { display: flex; gap: 52px; animation: ticker 26s linear infinite; width: max-content; }
+
+        /* ── Hero background animated gradient ── */
+        @keyframes heroGradientShift {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        .hero-bg {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            135deg,
+            #0f1f18 0%,
+            #152b20 20%,
+            #0e1e17 40%,
+            #122518 60%,
+            #0b1a13 80%,
+            #0f1f18 100%
+          );
+          background-size: 300% 300%;
+          animation: heroGradientShift 14s ease infinite;
+          z-index: 0;
+        }
+
+        /* Subtle grid pattern overlay */
+        .hero-grid {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          background-image:
+            linear-gradient(rgba(90,200,122,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(90,200,122,0.04) 1px, transparent 1px);
+          background-size: 52px 52px;
+          mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+        }
+
+        /* Radial glow spots */
+        .hero-glow {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          background:
+            radial-gradient(ellipse 55% 45% at 28% 55%, rgba(42,107,74,0.22) 0%, transparent 65%),
+            radial-gradient(ellipse 35% 35% at 75% 30%, rgba(90,200,122,0.09) 0%, transparent 60%),
+            radial-gradient(ellipse 40% 30% at 15% 85%, rgba(27,77,62,0.15) 0%, transparent 55%);
+        }
+
+        /* Hero content layer */
+        .hero-content {
+          position: relative;
+          z-index: 3;
+        }
 
         .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
@@ -841,35 +822,23 @@ export default function App() {
       </nav>
 
       {/* ══════════════════════════════════════
-          HERO — CINEMATIC VIDEO BACKGROUND
+          HERO — CLEAN DARK BACKGROUND (no video)
          ══════════════════════════════════════ */}
       <section id="hero" className="hero-pad" style={{
         minHeight: "100vh",
         padding: "130px 6% 80px",
         position: "relative",
         overflow: "hidden",
-        /* Dark fallback while video loads */
-        background: "#1a1f1c"
       }}>
 
-        {/* ── LAYER 0: Background video ── */}
-        <video
-          className="hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-        >
-          <source src="/2026-05-09_11-48-06.mp4" type="video/mp4" />
-        </video>
+        {/* ── LAYER 0: Animated dark green background ── */}
+        <div className="hero-bg" />
 
-        {/* ── LAYER 1: Primary gradient overlay (LOW opacity — video stays visible) ── */}
-        <div className="hero-overlay" />
+        {/* ── LAYER 1: Subtle grid pattern ── */}
+        <div className="hero-grid" />
 
-        {/* ── LAYER 2: Cinematic vignette + brand tints ── */}
-        <div className="hero-vignette" />
-        <div className="hero-tints" />
+        {/* ── LAYER 2: Radial glow spots ── */}
+        <div className="hero-glow" />
 
         {/* ── LAYER 3: Hero content ── */}
         <div className="hero-content">
@@ -877,7 +846,6 @@ export default function App() {
 
             {/* Left — Text + CTAs */}
             <div>
-              {/* Pill badge */}
               <div className="hero-pill-anim">
                 <div className="pill pill-hero" style={{ marginBottom: 22 }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A", flexShrink: 0 }} className="pdot"/>
@@ -885,7 +853,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Headline */}
               <h1 className="serif hero-h hero-h1-anim" style={{
                 fontSize: "clamp(2.6rem, 4.8vw, 4rem)",
                 lineHeight: 1.05,
@@ -899,7 +866,6 @@ export default function App() {
                 <em style={{ color: "#5AC87A", fontStyle: "italic" }}>One System.</em>
               </h1>
 
-              {/* Subheadline */}
               <p className="hero-sub-anim" style={{
                 fontSize: 16,
                 lineHeight: 1.85,
@@ -911,7 +877,6 @@ export default function App() {
                 NexaAttend is a complete School ERP — attendance, staff, payroll, reports, and parent communication — powered by AI face recognition that works 100% offline.
               </p>
 
-              {/* CTA buttons */}
               <div className="flex-cta hero-cta-anim" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36 }}>
                 <button className="btn-hero-primary" onClick={() => scrollTo("demo")} style={{ fontSize: 15, padding: "14px 26px" }}>
                   Get Free Trial
@@ -922,7 +887,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Trust badges */}
               <div className="hero-badges-anim" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                 {[["🔒","100% offline"], ["⚡","3-day setup"], ["🛡️","30-day guarantee"], ["🏫","Made for India"]].map(([icon, text]) => (
                   <div key={text} style={{
@@ -943,7 +907,6 @@ export default function App() {
             {/* Right — Live dashboard card (glassmorphism + floating) */}
             <div className="hide-mob hero-card-anim">
               <div className="glass-card">
-                {/* Title bar */}
                 <div style={{
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "11px 16px", borderBottom: "1px solid rgba(28,27,23,0.07)",
@@ -959,7 +922,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Stats row */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "rgba(250,250,248,0.7)", borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
                   {[{ l: "Present", v: "284", c: "#1B7A45" }, { l: "Late", v: "12", c: "#9A6B0A" }, { l: "Absent", v: "8", c: "#8A2A1A" }].map(s => (
                     <div key={s.l} style={{ padding: "14px 10px", textAlign: "center", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
@@ -969,7 +931,6 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Recognition log */}
                 <div style={{ padding: "12px 14px 14px", background: "rgba(255,255,255,0.6)" }}>
                   <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.28)", marginBottom: 8 }}>Recognition Log</div>
                   {logs.slice(0, logIndex).map((log, i) => (
@@ -985,7 +946,6 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Footer */}
                 <div style={{
                   padding: "10px 14px",
                   background: "rgba(42,107,74,0.08)",
@@ -1000,7 +960,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ── Bottom fade to next section ── */}
+        {/* ── Bottom fade to ticker ── */}
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0, height: 80, zIndex: 3,
           background: "linear-gradient(to bottom, transparent, #1C1B17)",
@@ -1024,7 +984,6 @@ export default function App() {
           PRODUCT DEMO VIDEO
          ══════════════════════════════════════ */}
       <section id="demo-video" style={{ background: "#1C1B17", padding: "80px 6% 88px", position: "relative", overflow: "hidden" }}>
-        {/* Background glow */}
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(42,107,74,0.13) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
@@ -1046,7 +1005,6 @@ export default function App() {
             <DemoVideoPlayer />
           </FadeIn>
 
-          {/* Feature callouts below video */}
           <FadeIn delay={0.2}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginTop: 36 }}>
               {[
