@@ -428,7 +428,7 @@ export default function App() {
     { q: "What cameras does it require?", a: "Every plan includes 2 cameras. Any standard webcam or IP camera works. If you need more entry points, extra cameras are available as an add-on at ₹15,000 per camera (one-time setup)." },
     { q: "How accurate is the face recognition?", a: "99%+ accuracy under normal lighting conditions. The system handles glasses, hair changes, and varying lighting. We test it rigorously before handover." },
     { q: "What happens to our student data?", a: "Your data never leaves your premises. It is stored on your own computer or local server — not on any cloud. You have complete ownership and control." },
-    { q: "What is the 30-day guarantee?", a: "Use NexaAttend for 30 days. If it doesn't measurably save time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no paperwork." },
+    { q: "What is the 7-day guarantee?", a: "Use NexaAttend for 7 days. If it doesn't measurably save time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no paperwork." },
     { q: "What does the setup fee cover?", a: "The one-time setup fee covers on-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support. After that, you only pay the monthly fee." },
   ];
 
@@ -1490,7 +1490,7 @@ export default function App() {
               <div style={{ flex: 1 }}>
                 <h3 className="serif" style={{ fontSize: 20, color: "#1C1B17", marginBottom: 6 }}>30-Day Performance Guarantee</h3>
                 <p style={{ fontSize: 14, color: "rgba(28,27,23,0.58)", lineHeight: 1.75, margin: 0 }}>
-                  Use NexaAttend for 30 days. If it doesn't measurably save your staff time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no fine print, no paperwork.
+                  Use NexaAttend for 7 days. If it doesn't measurably save your staff time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no fine print, no paperwork.
                 </p>
               </div>
               <button onClick={() => scrollTo("demo")}
