@@ -1555,7 +1555,7 @@ export default function App() {
                 {[
                   "Your data never leaves your school premises — ever",
                   "Direct WhatsApp access to the founding developer",
-                  "1-month money-back guarantee, no conditions",
+                  "7-days money-back guarantee, no conditions",
                   "India-based support, not a foreign ticket system",
                   "Every onboarding personally overseen by the founder",
                   "Works when your internet doesn't — fully offline",
