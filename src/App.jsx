@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 
 /* ─── Intersection Observer Hook ─── */
 const useInView = (threshold = 0.1) => {
@@ -175,14 +176,14 @@ const fmt = (n) =>
 
 const fmtFull = (n) => `₹${n.toLocaleString("en-IN")}`;
 
-/* ─── LinkedIn Icon ─── */
+/* ─── LinkedIn Icon with alt ─── */
 const LiIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-label="LinkedIn">
     <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
   </svg>
 );
 
-/* ─── Demo Video Player Component ─── */
+/* ─── Demo Video Player Component (unchanged except aria labels) ─── */
 const DemoVideoPlayer = () => {
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -276,6 +277,7 @@ const DemoVideoPlayer = () => {
         muted={muted}
         playsInline
         preload="metadata"
+        aria-label="NexaAttend product demo video"
       />
 
       {!hasStarted && (
@@ -311,7 +313,7 @@ const DemoVideoPlayer = () => {
             onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="#1C1B17" style={{ marginLeft: 4 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#1C1B17" style={{ marginLeft: 4 }} aria-label="Play">
               <path d="M8 5v14l11-7z"/>
             </svg>
           </div>
@@ -338,6 +340,7 @@ const DemoVideoPlayer = () => {
             width: "100%", height: 3, background: "rgba(247,245,239,0.2)",
             borderRadius: 2, marginBottom: 10, cursor: "pointer", position: "relative"
           }}
+          aria-label="Video progress bar"
         >
           <div style={{
             height: "100%", width: `${progress}%`, background: "#5AC87A",
@@ -352,14 +355,14 @@ const DemoVideoPlayer = () => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={togglePlay} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#F7F5EF", display: "flex", alignItems: "center" }}>
+          <button onClick={togglePlay} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#F7F5EF", display: "flex", alignItems: "center" }} aria-label={playing ? "Pause" : "Play"}>
             {playing
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
               : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
             }
           </button>
 
-          <button onClick={() => setMuted(m => !m)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }}>
+          <button onClick={() => setMuted(m => !m)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }} aria-label={muted ? "Unmute" : "Mute"}>
             {muted
               ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
               : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
@@ -372,7 +375,7 @@ const DemoVideoPlayer = () => {
 
           <div style={{ flex: 1 }} />
 
-          <button onClick={toggleFS} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }}>
+          <button onClick={toggleFS} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }} aria-label="Fullscreen">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               {fullscreen
                 ? <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
@@ -384,8 +387,334 @@ const DemoVideoPlayer = () => {
       </div>
 
       {hasStarted && (
-        <div onClick={togglePlay} style={{ position: "absolute", inset: 0, cursor: "pointer", zIndex: 1 }} />
+        <div onClick={togglePlay} style={{ position: "absolute", inset: 0, cursor: "pointer", zIndex: 1 }} aria-label="Click to play/pause" />
       )}
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════
+   INQUIRY FORM COMPONENT
+   Sends data to Google Apps Script → Google Sheet
+   ══════════════════════════════════════ */
+
+const SHEET_URL =
+  "https://script.google.com/macros/s/AKfycbxgViYSKbN1zFyISMS2l9xgDQGFE8QQAY7IlWjkEmAouzeO5GZwrLg8HZJevvF3SX4uyQ/exec";
+
+const InquiryForm = () => {
+  const [form, setForm] = useState({
+    name: "", role: "", school: "", city: "",
+    phone: "", email: "", students: "", board: "",
+    plan: "Standard (up to 600 students — ₹9,000/mo)",
+    hear: "", message: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [status, setStatus] = useState("idle");
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setPlan = (v) => setForm((f) => ({ ...f, plan: v }));
+
+  const validate = () => {
+    const errs = {};
+    if (!form.name.trim())   errs.name    = "Please enter your name.";
+    if (!form.role)          errs.role    = "Please select your role.";
+    if (!form.school.trim()) errs.school  = "Please enter school name.";
+    if (!form.city.trim())   errs.city    = "Please enter city.";
+    if (!form.students)      errs.students = "Please select student count.";
+    if (!form.phone.trim() || !/^\+?[\d\s\-]{10,15}$/.test(form.phone.replace(/\s/g, "")))
+      errs.phone = "Please enter a valid 10-digit number.";
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      errs.email = "Please enter a valid email.";
+    return errs;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    setStatus("sending");
+    const params = new URLSearchParams({
+      timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+      name:      form.name,
+      role:      form.role,
+      school:    form.school,
+      city:      form.city,
+      phone:     form.phone,
+      email:     form.email    || "—",
+      students:  form.students,
+      board:     form.board    || "—",
+      plan:      form.plan,
+      source:    form.hear     || "—",
+      message:   form.message  || "—",
+    });
+
+    fetch(`${SHEET_URL}?${params.toString()}`, { method: "GET", mode: "no-cors" })
+      .then(() => setStatus("success"))
+      .catch(() => setStatus("error"));
+  };
+
+  const inputStyle = (field) => ({
+    width: "100%",
+    padding: "10px 13px",
+    fontSize: 14,
+    fontFamily: "'Instrument Sans', 'DM Sans', sans-serif",
+    background: "#FFFFFF",
+    color: "#1C1B17",
+    border: `1.5px solid ${errors[field] ? "#D9534F" : "rgba(28,27,23,0.18)"}`,
+    borderRadius: 8,
+    outline: "none",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    boxSizing: "border-box",
+  });
+
+  const labelStyle = {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "rgba(28,27,23,0.65)",
+    marginBottom: 5,
+    display: "block",
+  };
+
+  const errStyle = {
+    fontSize: 12,
+    color: "#C0392B",
+    marginTop: 4,
+    display: "block",
+  };
+
+  const planOptions = [
+    { value: "Basic (up to 300 students — ₹6,000/mo)",    label: "Basic",    sub: "up to 300 students" },
+    { value: "Standard (up to 600 students — ₹9,000/mo)", label: "Standard", sub: "up to 600 students" },
+    { value: "Premium (up to 999 students — ₹12,000/mo)", label: "Premium",  sub: "up to 999 students" },
+  ];
+
+  if (status === "success") {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 32px" }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: "50%",
+          background: "rgba(42,107,74,0.1)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 20px",
+        }}>
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-label="Success">
+            <path d="M5 13l4 4L19 7" stroke="#2A6B4A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <h3 style={{ fontSize: 22, fontWeight: 600, color: "#1C1B17", marginBottom: 10 }}>
+          Inquiry received!
+        </h3>
+        <p style={{ fontSize: 15, color: "rgba(28,27,23,0.58)", lineHeight: 1.8, maxWidth: 380, margin: "0 auto 28px" }}>
+          Thank you, {form.name}! We've received your inquiry for {form.school}.
+          Our team will contact you on {form.phone} within 24 hours.
+        </p>
+        <a
+          href="https://wa.me/919974724656"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 9,
+            background: "#1C1B17", color: "#F7F5EF",
+            borderRadius: 8, padding: "12px 22px",
+            fontSize: 14, fontWeight: 600, textDecoration: "none",
+          }}
+          aria-label="Contact us on WhatsApp"
+        >
+          <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+            <path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5"/>
+            <path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff"/>
+          </svg>
+          Message us on WhatsApp
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "#FFFFFF", borderRadius: 16, border: "1px solid rgba(28,27,23,0.08)", padding: "36px 40px", maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+        <div style={{ width: 38, height: 38, background: "#2A6B4A", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/>
+            <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: "#1C1B17", lineHeight: 1.1, fontFamily: "'Instrument Serif', serif" }}>Book a Free Demo</div>
+          <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#2A6B4A", fontWeight: 600 }}>NexaAttend · School Inquiry</div>
+        </div>
+      </div>
+      <p style={{ fontSize: 14, color: "rgba(28,27,23,0.52)", lineHeight: 1.75, marginBottom: 28 }}>
+        Fill in your details and we'll contact you within 24 hours to schedule a free demo at your school.
+      </p>
+
+      <form onSubmit={handleSubmit} noValidate>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={labelStyle}>Your name <span style={{ color: "#C0392B" }}>*</span></label>
+            <input
+              type="text" value={form.name} onChange={set("name")}
+              placeholder="e.g. Priya Mehta" style={inputStyle("name")}
+              onFocus={e => { e.target.style.borderColor = "#2A6B4A"; e.target.style.boxShadow = "0 0 0 3px rgba(42,107,74,0.12)"; }}
+              onBlur={e => { e.target.style.borderColor = errors.name ? "#D9534F" : "rgba(28,27,23,0.18)"; e.target.style.boxShadow = "none"; }}
+              aria-required="true"
+            />
+            {errors.name && <span style={errStyle}>{errors.name}</span>}
+          </div>
+          <div>
+            <label style={labelStyle}>Your role <span style={{ color: "#C0392B" }}>*</span></label>
+            <select value={form.role} onChange={set("role")} style={{ ...inputStyle("role"), appearance: "none" }} aria-required="true">
+              <option value="">Select role…</option>
+              {["Principal","Vice Principal","Administrator","Director / Trustee","IT / Tech Coordinator","Other"].map(o => <option key={o}>{o}</option>)}
+            </select>
+            {errors.role && <span style={errStyle}>{errors.role}</span>}
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={labelStyle}>School / institute name <span style={{ color: "#C0392B" }}>*</span></label>
+            <input
+              type="text" value={form.school} onChange={set("school")}
+              placeholder="e.g. Sunrise High School" style={inputStyle("school")}
+              onFocus={e => { e.target.style.borderColor = "#2A6B4A"; e.target.style.boxShadow = "0 0 0 3px rgba(42,107,74,0.12)"; }}
+              onBlur={e => { e.target.style.borderColor = errors.school ? "#D9534F" : "rgba(28,27,23,0.18)"; e.target.style.boxShadow = "none"; }}
+              aria-required="true"
+            />
+            {errors.school && <span style={errStyle}>{errors.school}</span>}
+          </div>
+          <div>
+            <label style={labelStyle}>City <span style={{ color: "#C0392B" }}>*</span></label>
+            <input
+              type="text" value={form.city} onChange={set("city")}
+              placeholder="e.g. Ahmedabad" style={inputStyle("city")}
+              onFocus={e => { e.target.style.borderColor = "#2A6B4A"; e.target.style.boxShadow = "0 0 0 3px rgba(42,107,74,0.12)"; }}
+              onBlur={e => { e.target.style.borderColor = errors.city ? "#D9534F" : "rgba(28,27,23,0.18)"; e.target.style.boxShadow = "none"; }}
+              aria-required="true"
+            />
+            {errors.city && <span style={errStyle}>{errors.city}</span>}
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={labelStyle}>WhatsApp / phone <span style={{ color: "#C0392B" }}>*</span></label>
+            <input
+              type="tel" value={form.phone} onChange={set("phone")}
+              placeholder="+91 98765 43210" style={inputStyle("phone")}
+              onFocus={e => { e.target.style.borderColor = "#2A6B4A"; e.target.style.boxShadow = "0 0 0 3px rgba(42,107,74,0.12)"; }}
+              onBlur={e => { e.target.style.borderColor = errors.phone ? "#D9534F" : "rgba(28,27,23,0.18)"; e.target.style.boxShadow = "none"; }}
+              aria-required="true"
+            />
+            {errors.phone && <span style={errStyle}>{errors.phone}</span>}
+          </div>
+          <div>
+            <label style={labelStyle}>Email address</label>
+            <input
+              type="email" value={form.email} onChange={set("email")}
+              placeholder="you@school.edu.in" style={inputStyle("email")}
+              onFocus={e => { e.target.style.borderColor = "#2A6B4A"; e.target.style.boxShadow = "0 0 0 3px rgba(42,107,74,0.12)"; }}
+              onBlur={e => { e.target.style.borderColor = errors.email ? "#D9534F" : "rgba(28,27,23,0.18)"; e.target.style.boxShadow = "none"; }}
+            />
+            {errors.email && <span style={errStyle}>{errors.email}</span>}
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={labelStyle}>Approx. number of students <span style={{ color: "#C0392B" }}>*</span></label>
+            <select value={form.students} onChange={set("students")} style={{ ...inputStyle("students"), appearance: "none" }} aria-required="true">
+              <option value="">Select range…</option>
+              {["Under 100","100–300","300–600","600–999","1000+"].map(o => <option key={o}>{o}</option>)}
+            </select>
+            {errors.students && <span style={errStyle}>{errors.students}</span>}
+          </div>
+          <div>
+            <label style={labelStyle}>Board / affiliation</label>
+            <select value={form.board} onChange={set("board")} style={{ ...inputStyle("board"), appearance: "none" }}>
+              <option value="">Select board…</option>
+              {["CBSE","GSEB","ICSE","State Board (Other)","Polytechnic / ITI","Private / Coaching","Other"].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Interested plan</label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            {planOptions.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setPlan(p.value)}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  padding: "10px 8px", borderRadius: 8, cursor: "pointer",
+                  border: form.plan === p.value ? "2px solid #2A6B4A" : "1.5px solid rgba(28,27,23,0.15)",
+                  background: form.plan === p.value ? "rgba(42,107,74,0.06)" : "#FFFFFF",
+                  transition: "all 0.18s",
+                  fontFamily: "'Instrument Sans', 'DM Sans', sans-serif",
+                }}
+                aria-pressed={form.plan === p.value}
+              >
+                <span style={{ fontSize: 14, fontWeight: 600, color: form.plan === p.value ? "#1B5C3A" : "#1C1B17" }}>{p.label}</span>
+                <span style={{ fontSize: 11, color: form.plan === p.value ? "#2A6B4A" : "rgba(28,27,23,0.4)", marginTop: 2 }}>{p.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>How did you hear about us?</label>
+          <select value={form.hear} onChange={set("hear")} style={{ ...inputStyle("hear"), appearance: "none" }}>
+            <option value="">Select…</option>
+            {["WhatsApp / referral","Google search","LinkedIn","Colleague recommendation","Social media","Other"].map(o => <option key={o}>{o}</option>)}
+          </select>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <label style={labelStyle}>Any questions or specific requirements?</label>
+          <textarea
+            value={form.message} onChange={set("message")}
+            placeholder="e.g. We need integration with our existing fee software, or we have 3 entry gates…"
+            rows={3}
+            style={{
+              ...inputStyle("message"),
+              resize: "vertical", minHeight: 88,
+              fontFamily: "'Instrument Sans', 'DM Sans', sans-serif",
+            }}
+            onFocus={e => { e.target.style.borderColor = "#2A6B4A"; e.target.style.boxShadow = "0 0 0 3px rgba(42,107,74,0.12)"; }}
+            onBlur={e => { e.target.style.borderColor = "rgba(28,27,23,0.18)"; e.target.style.boxShadow = "none"; }}
+          />
+        </div>
+
+        {status === "error" && (
+          <p style={{ fontSize: 13, color: "#C0392B", marginBottom: 14 }}>
+            Something went wrong. Please{" "}
+            <a href="https://wa.me/919974724656" style={{ color: "#C0392B" }}>WhatsApp us directly</a>.
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={status === "sending"}
+          style={{
+            width: "100%", padding: "13px",
+            fontSize: 15, fontWeight: 600,
+            fontFamily: "'Instrument Sans', 'DM Sans', sans-serif",
+            background: status === "sending" ? "rgba(28,27,23,0.3)" : "#2A6B4A",
+            color: "#F7F5EF", border: "none", borderRadius: 8,
+            cursor: status === "sending" ? "not-allowed" : "pointer",
+            transition: "background 0.2s, transform 0.1s",
+          }}
+          onMouseEnter={e => { if (status !== "sending") e.currentTarget.style.background = "#1B5C3A"; }}
+          onMouseLeave={e => { if (status !== "sending") e.currentTarget.style.background = "#2A6B4A"; }}
+        >
+          {status === "sending" ? "Sending…" : "Send inquiry →"}
+        </button>
+        <p style={{ fontSize: 12, color: "rgba(28,27,23,0.38)", textAlign: "center", marginTop: 10 }}>
+          Your data is only used to follow up on your inquiry. We never share it.
+        </p>
+      </form>
     </div>
   );
 };
@@ -396,8 +725,6 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState("standard");
-  const [activeAddon, setActiveAddon] = useState(null);
-  const [heroLoaded, setHeroLoaded] = useState(false);
 
   useEffect(() => {
     const fn = () => setNavScrolled(window.scrollY > 40);
@@ -408,11 +735,6 @@ export default function App() {
   useEffect(() => {
     const t = setInterval(() => setLogIndex(i => (i >= logs.length ? 1 : i + 1)), 1800);
     return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => setHeroLoaded(true), 80);
-    return () => clearTimeout(t);
   }, []);
 
   const scrollTo = (id) => {
@@ -432,1144 +754,751 @@ export default function App() {
     { q: "What does the setup fee cover?", a: "The one-time setup fee covers on-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support. After that, you only pay the monthly fee." },
   ];
 
+  // JSON-LD Structured Data (7-day guarantee)
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "NexaAttend",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Windows, macOS, Linux",
+    "description": "Complete School ERP with AI face recognition attendance, student management, payroll, reports, and parent communication. Works 100% offline. 7-day money-back guarantee.",
+    "offers": {
+      "@type": "Offer",
+      "price": "6000",
+      "priceCurrency": "INR",
+      "availability": "https://schema.org/InStock",
+      "eligibleRegion": "IN"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.9",
+      "ratingCount": "47"
+    }
+  };
+
+  const faqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.q,
+      "acceptedAnswer": { "@type": "Answer", "text": faq.a }
+    }))
+  };
+
   return (
-    <div style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif", background: "#F7F5EF", color: "#1C1B17", overflowX: "hidden" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-thumb { background: #2A6B4A; border-radius: 2px; }
+    <>
+      <Helmet>
+        <html lang="en" />
+        <title>NexaAttend – AI School ERP | Face Recognition Attendance | Offline-First</title>
+        <meta name="description" content="NexaAttend: Complete School ERP with AI face recognition attendance, student management, payroll, reports, and parent communication. 100% offline. 3-day setup. 7-day guarantee." />
+        <meta name="keywords" content="school ERP, face recognition attendance, school management system, AI attendance, offline attendance, Indian school ERP, payroll automation, parent communication" />
+        <meta name="author" content="Nova Teach Solution" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://nexaattend.com" />
+        <meta property="og:title" content="NexaAttend – AI School ERP | Face Recognition Attendance" />
+        <meta property="og:description" content="Complete offline-first school ERP with AI face recognition. Student & staff management, payroll, reports. 3-day setup. 7-day guarantee." />
+        <meta property="og:image" content="https://nexaattend.com/og-image.jpg" />
+        <meta property="og:url" content="https://nexaattend.com" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="NexaAttend – AI School ERP" />
+        <meta name="twitter:description" content="Complete school ERP with AI face recognition. Offline-first. 3-day setup. 7-day guarantee." />
+        <meta name="twitter:image" content="https://nexaattend.com/og-image.jpg" />
+        <script type="application/ld+json">
+          {JSON.stringify(structuredData)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(faqStructuredData)}
+        </script>
+      </Helmet>
 
-        .serif { font-family: 'Instrument Serif', Georgia, serif; }
-        .mono  { font-family: 'JetBrains Mono', monospace; }
+      <div style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif", background: "#F7F5EF", color: "#1C1B17", overflowX: "hidden" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          html { scroll-behavior: smooth; }
+          ::-webkit-scrollbar { width: 3px; }
+          ::-webkit-scrollbar-thumb { background: #2A6B4A; border-radius: 2px; }
 
-        .sec { padding: 88px 6%; }
+          .serif { font-family: 'Instrument Serif', Georgia, serif; }
+          .mono  { font-family: 'JetBrains Mono', monospace; }
 
-        .pill {
-          display: inline-flex; align-items: center; gap: 6px;
-          font-size: 11px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;
-          padding: 5px 13px; border-radius: 100px; margin-bottom: 20px;
-        }
-        .pill-green { color: #1B5C3A; background: rgba(42,107,74,0.1); }
-        .pill-cream { color: #8A6A2A; background: rgba(184,146,42,0.12); }
-        .pill-dark  { color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.08); }
+          .sec { padding: 88px 6%; }
 
-        .pill-hero {
-          color: rgba(247,245,239,0.9);
-          background: rgba(247,245,239,0.12);
-          border: 1px solid rgba(247,245,239,0.18);
-          backdrop-filter: blur(8px);
-        }
+          .pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;
+            padding: 5px 13px; border-radius: 100px; margin-bottom: 20px;
+          }
+          .pill-green { color: #1B5C3A; background: rgba(42,107,74,0.1); }
+          .pill-cream { color: #8A6A2A; background: rgba(184,146,42,0.12); }
+          .pill-dark  { color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.08); }
 
-        .btn-primary {
-          display: inline-flex; align-items: center; gap: 8px;
-          background: #1C1B17; color: #F7F5EF;
-          border: none; border-radius: 6px; padding: 13px 22px;
-          font-family: 'Instrument Sans', sans-serif; font-size: 14px; font-weight: 600;
-          cursor: pointer; transition: all 0.22s; text-decoration: none;
-        }
-        .btn-primary:hover { background: #2A6B4A; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(42,107,74,0.28); }
+          .pill-hero {
+            color: rgba(247,245,239,0.9);
+            background: rgba(247,245,239,0.12);
+            border: 1px solid rgba(247,245,239,0.18);
+            backdrop-filter: blur(8px);
+          }
 
-        .btn-secondary {
-          display: inline-flex; align-items: center; gap: 8px;
-          background: transparent; color: #1C1B17;
-          border: 1.5px solid rgba(28,27,23,0.2); border-radius: 6px; padding: 12px 20px;
-          font-family: 'Instrument Sans', sans-serif; font-size: 14px; font-weight: 500;
-          cursor: pointer; transition: all 0.22s; text-decoration: none;
-        }
-        .btn-secondary:hover { border-color: #1C1B17; background: rgba(28,27,23,0.04); }
+          .btn-primary {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #1C1B17; color: #F7F5EF;
+            border: none; border-radius: 6px; padding: 13px 22px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.22s; text-decoration: none;
+          }
+          .btn-primary:hover { background: #2A6B4A; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(42,107,74,0.28); }
 
-        .btn-hero-primary {
-          display: inline-flex; align-items: center; gap: 10px;
-          background: #F7F5EF; color: #1C1B17;
-          border: none; border-radius: 8px; padding: 14px 26px;
-          font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 700;
-          cursor: pointer; transition: all 0.25s cubic-bezier(0.16,1,0.3,1); text-decoration: none;
-          box-shadow: 0 2px 24px rgba(28,27,23,0.18), 0 1px 4px rgba(28,27,23,0.12);
-        }
-        .btn-hero-primary:hover {
-          background: #fff; transform: translateY(-2px);
-          box-shadow: 0 12px 40px rgba(28,27,23,0.22), 0 2px 8px rgba(28,27,23,0.1);
-        }
+          .btn-secondary {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: transparent; color: #1C1B17;
+            border: 1.5px solid rgba(28,27,23,0.2); border-radius: 6px; padding: 12px 20px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.22s; text-decoration: none;
+          }
+          .btn-secondary:hover { border-color: #1C1B17; background: rgba(28,27,23,0.04); }
 
-        .btn-hero-secondary {
-          display: inline-flex; align-items: center; gap: 10px;
-          background: rgba(247,245,239,0.1); color: rgba(247,245,239,0.9);
-          border: 1.5px solid rgba(247,245,239,0.28); border-radius: 8px; padding: 13px 24px;
-          font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500;
-          cursor: pointer; transition: all 0.25s; text-decoration: none;
-          backdrop-filter: blur(12px);
-        }
-        .btn-hero-secondary:hover {
-          background: rgba(247,245,239,0.18); border-color: rgba(247,245,239,0.5);
-          transform: translateY(-1px);
-        }
+          .btn-hero-primary {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: #F7F5EF; color: #1C1B17;
+            border: none; border-radius: 8px; padding: 14px 26px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all 0.25s cubic-bezier(0.16,1,0.3,1); text-decoration: none;
+            box-shadow: 0 2px 24px rgba(28,27,23,0.18), 0 1px 4px rgba(28,27,23,0.12);
+          }
+          .btn-hero-primary:hover {
+            background: #fff; transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(28,27,23,0.22), 0 2px 8px rgba(28,27,23,0.1);
+          }
 
-        .btn-cta {
-          display: inline-flex; align-items: center; gap: 10px;
-          background: #F7F5EF; color: #1C1B17;
-          border: none; border-radius: 6px; padding: 14px 28px;
-          font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 600;
-          cursor: pointer; transition: all 0.22s; text-decoration: none;
-        }
-        .btn-cta:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(28,27,23,0.2); }
+          .btn-hero-secondary {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: rgba(247,245,239,0.1); color: rgba(247,245,239,0.9);
+            border: 1.5px solid rgba(247,245,239,0.28); border-radius: 8px; padding: 13px 24px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500;
+            cursor: pointer; transition: all 0.25s; text-decoration: none;
+            backdrop-filter: blur(12px);
+          }
+          .btn-hero-secondary:hover {
+            background: rgba(247,245,239,0.18); border-color: rgba(247,245,239,0.5);
+            transform: translateY(-1px);
+          }
 
-        .btn-cta-outline {
-          display: inline-flex; align-items: center; gap: 10px;
-          background: transparent; color: rgba(247,245,239,0.85);
-          border: 1.5px solid rgba(247,245,239,0.22); border-radius: 6px; padding: 13px 26px;
-          font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500;
-          cursor: pointer; transition: all 0.22s; text-decoration: none;
-        }
-        .btn-cta-outline:hover { border-color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.07); }
+          .btn-cta {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: #F7F5EF; color: #1C1B17;
+            border: none; border-radius: 6px; padding: 14px 28px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.22s; text-decoration: none;
+          }
+          .btn-cta:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(28,27,23,0.2); }
 
-        .card {
-          background: #FFFFFF; border: 1px solid rgba(28,27,23,0.07);
-          border-radius: 12px; padding: 24px;
-          transition: box-shadow 0.3s, transform 0.3s;
-        }
-        .card:hover { box-shadow: 0 6px 32px rgba(28,27,23,0.07); transform: translateY(-2px); }
+          .btn-cta-outline {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: transparent; color: rgba(247,245,239,0.85);
+            border: 1.5px solid rgba(247,245,239,0.22); border-radius: 6px; padding: 13px 26px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500;
+            cursor: pointer; transition: all 0.22s; text-decoration: none;
+          }
+          .btn-cta-outline:hover { border-color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.07); }
 
-        .nav-link {
-          font-size: 13px; font-weight: 500; color: rgba(28,27,23,0.55);
-          cursor: pointer; border: none; background: none;
-          font-family: 'Instrument Sans', sans-serif; transition: color 0.2s; padding: 0;
-        }
-        .nav-link:hover { color: #1C1B17; }
+          .card {
+            background: #FFFFFF; border: 1px solid rgba(28,27,23,0.07);
+            border-radius: 12px; padding: 24px;
+            transition: box-shadow 0.3s, transform 0.3s;
+          }
+          .card:hover { box-shadow: 0 6px 32px rgba(28,27,23,0.07); transform: translateY(-2px); }
 
-        .status-present { color: #22c55e; font-weight: 700; }
-        .status-late    { color: #f59e0b; font-weight: 700; }
-        .status-absent  { color: #ef4444; font-weight: 700; }
+          .nav-link {
+            font-size: 13px; font-weight: 500; color: rgba(28,27,23,0.55);
+            cursor: pointer; border: none; background: none;
+            font-family: 'Instrument Sans', sans-serif; transition: color 0.2s; padding: 0;
+          }
+          .nav-link:hover { color: #1C1B17; }
 
-        /* ── Floating animation for dashboard card ── */
-        @keyframes floatCard {
-          0%   { transform: translateY(0px) rotate(0.2deg); }
-          33%  { transform: translateY(-10px) rotate(-0.15deg); }
-          66%  { transform: translateY(-5px) rotate(0.1deg); }
-          100% { transform: translateY(0px) rotate(0.2deg); }
-        }
+          .status-present { color: #22c55e; font-weight: 700; }
+          .status-late    { color: #f59e0b; font-weight: 700; }
+          .status-absent  { color: #ef4444; font-weight: 700; }
 
-        /* ── Hero text animations ── */
-        @keyframes heroFadeUp {
-          from { opacity: 0; transform: translateY(32px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+          @keyframes floatCard {
+            0%   { transform: translateY(0px) rotate(0.2deg); }
+            33%  { transform: translateY(-10px) rotate(-0.15deg); }
+            66%  { transform: translateY(-5px) rotate(0.1deg); }
+            100% { transform: translateY(0px) rotate(0.2deg); }
+          }
 
-        @keyframes heroPillIn {
-          from { opacity: 0; transform: translateY(16px) scale(0.96); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
+          @keyframes heroFadeUp {
+            from { opacity: 0; transform: translateY(32px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
 
-        .hero-pill-anim {
-          opacity: 0;
-          animation: heroPillIn 0.7s cubic-bezier(0.16,1,0.3,1) 0.1s forwards;
-        }
-        .hero-h1-anim {
-          opacity: 0;
-          animation: heroFadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.22s forwards;
-        }
-        .hero-sub-anim {
-          opacity: 0;
-          animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.38s forwards;
-        }
-        .hero-cta-anim {
-          opacity: 0;
-          animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.52s forwards;
-        }
-        .hero-badges-anim {
-          opacity: 0;
-          animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.66s forwards;
-        }
-        .hero-card-anim {
-          opacity: 0;
-          animation: heroFadeUp 1s cubic-bezier(0.16,1,0.3,1) 0.48s forwards;
-        }
+          @keyframes heroPillIn {
+            from { opacity: 0; transform: translateY(16px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
 
-        /* ── Glassmorphism dashboard card ── */
-        .glass-card {
-          background: rgba(255,255,255,0.88);
-          backdrop-filter: blur(20px) saturate(1.4);
-          -webkit-backdrop-filter: blur(20px) saturate(1.4);
-          border: 1px solid rgba(255,255,255,0.6);
-          border-radius: 18px;
-          box-shadow:
-            0 32px 80px rgba(10,9,8,0.28),
-            0 8px 24px rgba(10,9,8,0.14),
-            0 1px 0 rgba(255,255,255,0.9) inset;
-          overflow: hidden;
-          animation: floatCard 7s ease-in-out infinite;
-          will-change: transform;
-        }
+          .hero-pill-anim  { opacity: 0; animation: heroPillIn 0.7s cubic-bezier(0.16,1,0.3,1) 0.1s forwards; }
+          .hero-h1-anim    { opacity: 0; animation: heroFadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.22s forwards; }
+          .hero-sub-anim   { opacity: 0; animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.38s forwards; }
+          .hero-cta-anim   { opacity: 0; animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.52s forwards; }
+          .hero-badges-anim{ opacity: 0; animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.66s forwards; }
+          .hero-card-anim  { opacity: 0; animation: heroFadeUp 1s cubic-bezier(0.16,1,0.3,1) 0.48s forwards; }
 
-        @keyframes fsi  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-        @keyframes pdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
-        @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+          .glass-card {
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            border: 1px solid rgba(255,255,255,0.6);
+            border-radius: 18px;
+            box-shadow: 0 32px 80px rgba(10,9,8,0.28), 0 8px 24px rgba(10,9,8,0.14), 0 1px 0 rgba(255,255,255,0.9) inset;
+            overflow: hidden;
+            animation: floatCard 7s ease-in-out infinite;
+            will-change: transform;
+          }
 
-        .pdot { animation: pdot 2s ease-in-out infinite; }
-        .log-row { animation: fsi 0.4s ease forwards; }
-        .ticker-inner { display: flex; gap: 52px; animation: ticker 26s linear infinite; width: max-content; }
+          @keyframes fsi    { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+          @keyframes pdot   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
+          @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-        /* ── Hero background animated gradient ── */
-        @keyframes heroGradientShift {
-          0%   { background-position: 0% 50%; }
-          50%  { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
+          .pdot        { animation: pdot 2s ease-in-out infinite; }
+          .log-row     { animation: fsi 0.4s ease forwards; }
+          .ticker-inner{ display: flex; gap: 52px; animation: ticker 26s linear infinite; width: max-content; }
 
-        .hero-bg {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            135deg,
-            #0f1f18 0%,
-            #152b20 20%,
-            #0e1e17 40%,
-            #122518 60%,
-            #0b1a13 80%,
-            #0f1f18 100%
-          );
-          background-size: 300% 300%;
-          animation: heroGradientShift 14s ease infinite;
-          z-index: 0;
-        }
+          @keyframes heroGradientShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
 
-        /* Subtle grid pattern overlay */
-        .hero-grid {
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          pointer-events: none;
-          background-image:
-            linear-gradient(rgba(90,200,122,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(90,200,122,0.04) 1px, transparent 1px);
-          background-size: 52px 52px;
-          mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
-        }
+          .hero-bg {
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg,#0f1f18 0%,#152b20 20%,#0e1e17 40%,#122518 60%,#0b1a13 80%,#0f1f18 100%);
+            background-size: 300% 300%;
+            animation: heroGradientShift 14s ease infinite;
+            z-index: 0;
+          }
 
-        /* Radial glow spots */
-        .hero-glow {
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          pointer-events: none;
-          background:
-            radial-gradient(ellipse 55% 45% at 28% 55%, rgba(42,107,74,0.22) 0%, transparent 65%),
-            radial-gradient(ellipse 35% 35% at 75% 30%, rgba(90,200,122,0.09) 0%, transparent 60%),
-            radial-gradient(ellipse 40% 30% at 15% 85%, rgba(27,77,62,0.15) 0%, transparent 55%);
-        }
+          .hero-grid {
+            position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background-image: linear-gradient(rgba(90,200,122,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(90,200,122,0.04) 1px,transparent 1px);
+            background-size: 52px 52px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%);
+          }
 
-        /* Hero content layer */
-        .hero-content {
-          position: relative;
-          z-index: 3;
-        }
+          .hero-glow {
+            position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background:
+              radial-gradient(ellipse 55% 45% at 28% 55%,rgba(42,107,74,0.22) 0%,transparent 65%),
+              radial-gradient(ellipse 35% 35% at 75% 30%,rgba(90,200,122,0.09) 0%,transparent 60%),
+              radial-gradient(ellipse 40% 30% at 15% 85%,rgba(27,77,62,0.15) 0%,transparent 55%);
+          }
 
-        .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-        .g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+          .hero-content { position: relative; z-index: 3; }
 
-        .mmenu {
-          position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 90;
-          background: rgba(247,245,239,0.98); backdrop-filter: blur(24px);
-          padding: 80px 6% 32px; overflow-y: auto;
-          transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
-          display: flex; flex-direction: column;
-        }
-        .mmenu.open { transform: translateX(0); }
-        .mlink {
-          font-size: 22px; font-weight: 500; color: #1C1B17;
-          padding: 18px 0; border-bottom: 1px solid rgba(28,27,23,0.07);
-          background: none; border-left: none; border-right: none; border-top: none;
-          cursor: pointer; text-align: left; font-family: 'Instrument Sans', sans-serif;
-          transition: color 0.2s;
-        }
-        .mlink:hover { color: #2A6B4A; }
+          .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+          .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+          .g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
 
-        .faq-item { border-bottom: 1px solid rgba(28,27,23,0.08); }
-        .faq-q {
-          width: 100%; text-align: left; padding: 20px 0; background: none; border: none;
-          cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-          font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500; color: #1C1B17;
-        }
-        .faq-a { padding: 0 0 20px; font-size: 14px; line-height: 1.85; color: rgba(28,27,23,0.6); }
+          .mmenu {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 90;
+            background: rgba(247,245,239,0.98); backdrop-filter: blur(24px);
+            padding: 80px 6% 32px; overflow-y: auto;
+            transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+            display: flex; flex-direction: column;
+          }
+          .mmenu.open { transform: translateX(0); }
+          .mlink {
+            font-size: 22px; font-weight: 500; color: #1C1B17;
+            padding: 18px 0; border-bottom: 1px solid rgba(28,27,23,0.07);
+            background: none; border-left: none; border-right: none; border-top: none;
+            cursor: pointer; text-align: left; font-family: 'Instrument Sans', sans-serif;
+            transition: color 0.2s;
+          }
+          .mlink:hover { color: #2A6B4A; }
 
-        .plan-btn {
-          padding: 10px 28px;
-          border-radius: 100px;
-          font-size: 14px; font-weight: 600;
-          cursor: pointer; transition: all 0.22s;
-          font-family: 'Instrument Sans', sans-serif;
-          display: inline-flex; align-items: center; gap: 8px;
-        }
-        .plan-btn-active {
-          background: #2A6B4A; color: #F7F5EF; border: 2px solid #2A6B4A;
-        }
-        .plan-btn-inactive {
-          background: #FFFFFF; color: rgba(28,27,23,0.6); border: 1.5px solid rgba(28,27,23,0.14);
-        }
-        .plan-btn-inactive:hover { border-color: rgba(28,27,23,0.3); color: #1C1B17; }
+          .faq-item { border-bottom: 1px solid rgba(28,27,23,0.08); }
+          .faq-q {
+            width: 100%; text-align: left; padding: 20px 0; background: none; border: none;
+            cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500; color: #1C1B17;
+          }
+          .faq-a { padding: 0 0 20px; font-size: 14px; line-height: 1.85; color: rgba(28,27,23,0.6); }
 
-        .addon-card {
-          background: #FFFFFF;
-          border-radius: 14px; padding: 24px;
-          transition: all 0.22s; cursor: pointer;
-        }
-        .addon-card:hover { box-shadow: 0 6px 28px rgba(28,27,23,0.07); }
+          .plan-btn {
+            padding: 10px 28px; border-radius: 100px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.22s;
+            font-family: 'Instrument Sans', sans-serif;
+            display: inline-flex; align-items: center; gap: 8px;
+          }
+          .plan-btn-active   { background: #2A6B4A; color: #F7F5EF; border: 2px solid #2A6B4A; }
+          .plan-btn-inactive { background: #FFFFFF; color: rgba(28,27,23,0.6); border: 1.5px solid rgba(28,27,23,0.14); }
+          .plan-btn-inactive:hover { border-color: rgba(28,27,23,0.3); color: #1C1B17; }
 
-        @media (max-width: 900px) {
-          .g3 { grid-template-columns: 1fr 1fr !important; }
-          .g4 { grid-template-columns: 1fr 1fr !important; }
-        }
-        @media (max-width: 640px) {
-          .sec { padding: 56px 5% !important; }
-          .g2  { grid-template-columns: 1fr !important; }
-          .g3  { grid-template-columns: 1fr !important; }
-          .g4  { grid-template-columns: 1fr 1fr !important; }
-          .hero-h { font-size: clamp(2.2rem, 9vw, 2.8rem) !important; }
-          .hero-pad { padding: 110px 5% 64px !important; min-height: auto !important; }
-          .hide-mob { display: none !important; }
-          .flex-cta { flex-direction: column !important; }
-          .flex-cta a, .flex-cta button { width: 100% !important; justify-content: center !important; }
-          .hbg { display: flex !important; }
-          .mob-show { display: block !important; }
-          .plan-selector { flex-direction: column !important; }
-          .plan-strip { grid-template-columns: 1fr !important; }
-          .pricing-stats { grid-template-columns: 1fr 1fr !important; }
-          .addon-grid { grid-template-columns: 1fr !important; }
-        }
-        @media (min-width: 641px) {
-          .hbg { display: none !important; }
-          .mob-show { display: none !important; }
-        }
-      `}</style>
+          .addon-card {
+            background: #FFFFFF; border-radius: 14px; padding: 24px;
+            transition: all 0.22s; cursor: pointer;
+          }
+          .addon-card:hover { box-shadow: 0 6px 28px rgba(28,27,23,0.07); }
 
-      {/* ── Mobile Menu ── */}
-      <div className={`mmenu ${menuOpen ? "open" : ""}`}>
-        {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["solution","Platform"],["pricing","Pricing"],["process","How It Works"],["trust","Trust & Guarantee"],["demo","Book Demo"]].map(([id, label]) => (
-          <button key={id} className="mlink" onClick={() => scrollTo(id)}>{label}</button>
-        ))}
-        <div style={{ marginTop: "auto", paddingTop: 28 }}>
-          <a href="https://wa.me/919974724656" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600, color: "#1C1B17", textDecoration: "none", marginBottom: 14 }}>
-            <span style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(37,211,102,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>💬</span>
-            WhatsApp Us
-          </a>
-          <a href="tel:+919974724656" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600, color: "#1C1B17", textDecoration: "none" }}>
-            <span style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(28,27,23,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>📞</span>
-            +91 99747 24656
-          </a>
-        </div>
-      </div>
+          @media (max-width: 900px) {
+            .g3 { grid-template-columns: 1fr 1fr !important; }
+            .g4 { grid-template-columns: 1fr 1fr !important; }
+          }
+          @media (max-width: 640px) {
+            .sec { padding: 56px 5% !important; }
+            .g2  { grid-template-columns: 1fr !important; }
+            .g3  { grid-template-columns: 1fr !important; }
+            .g4  { grid-template-columns: 1fr 1fr !important; }
+            .hero-h { font-size: clamp(2.2rem, 9vw, 2.8rem) !important; }
+            .hero-pad { padding: 110px 5% 64px !important; min-height: auto !important; }
+            .hide-mob { display: none !important; }
+            .flex-cta { flex-direction: column !important; }
+            .flex-cta a, .flex-cta button { width: 100% !important; justify-content: center !important; }
+            .hbg { display: flex !important; }
+            .mob-show { display: block !important; }
+            .plan-selector { flex-direction: column !important; }
+            .plan-strip { grid-template-columns: 1fr !important; }
+            .pricing-stats { grid-template-columns: 1fr 1fr !important; }
+            .addon-grid { grid-template-columns: 1fr !important; }
+            .inquiry-grid { grid-template-columns: 1fr !important; }
+          }
+          @media (min-width: 641px) {
+            .hbg { display: none !important; }
+            .mob-show { display: none !important; }
+          }
+        `}</style>
 
-      {/* ══════════════════════════════════════
-          NAV
-         ══════════════════════════════════════ */}
-      <nav style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        padding: navScrolled ? "11px 6%" : "18px 6%",
-        background: navScrolled || menuOpen ? "rgba(247,245,239,0.95)" : "transparent",
-        backdropFilter: navScrolled || menuOpen ? "blur(24px)" : "none",
-        borderBottom: navScrolled || menuOpen ? "1px solid rgba(28,27,23,0.07)" : "none",
-        transition: "all 0.38s ease",
-        display: "flex", alignItems: "center", justifyContent: "space-between"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => scrollTo("hero")}>
-          <div style={{ width: 32, height: 32, background: "#2A6B4A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="15" height="15" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/>
-              <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M13 5l2-2M13.5 9l2.5.5" stroke="#F7F5EF" strokeWidth="1.2" strokeLinecap="round" opacity="0.55"/>
-            </svg>
-          </div>
-          <div>
-            <div className="serif" style={{ fontSize: 17, lineHeight: 1.1, letterSpacing: "-0.01em", color: navScrolled ? "#1C1B17" : "#F7F5EF" }}>NexaAttend</div>
-            <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: navScrolled ? "#2A6B4A" : "rgba(247,245,239,0.6)", fontWeight: 600 }}>Complete School ERP</div>
-          </div>
-        </div>
-
-        <div className="hide-mob" style={{ display: "flex", gap: 24, alignItems: "center" }}>
-          {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["pricing","Pricing"],["process","How It Works"],["trust","Guarantee"]].map(([id, label]) => (
-            <button key={id} className="nav-link" onClick={() => scrollTo(id)}
-              style={{ color: navScrolled ? "rgba(28,27,23,0.55)" : "rgba(247,245,239,0.7)" }}>{label}</button>
+        {/* ── Mobile Menu ── */}
+        <div className={`mmenu ${menuOpen ? "open" : ""}`}>
+          {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["solution","Platform"],["pricing","Pricing"],["process","How It Works"],["trust","Trust & Guarantee"],["inquiry","Book Demo"]].map(([id, label]) => (
+            <button key={id} className="mlink" onClick={() => scrollTo(id)}>{label}</button>
           ))}
+          <div style={{ marginTop: "auto", paddingTop: 28 }}>
+            <a href="https://wa.me/919974724656" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600, color: "#1C1B17", textDecoration: "none", marginBottom: 14 }}>
+              <span style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(37,211,102,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>💬</span>
+              WhatsApp Us
+            </a>
+            <a href="tel:+919974724656" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600, color: "#1C1B17", textDecoration: "none" }}>
+              <span style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(28,27,23,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>📞</span>
+              +91 99747 24656
+            </a>
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <a href="tel:+919974724656" className="btn-secondary hide-mob"
-            style={{ padding: "8px 14px", fontSize: 13,
-              background: navScrolled ? "transparent" : "rgba(247,245,239,0.1)",
-              color: navScrolled ? "#1C1B17" : "rgba(247,245,239,0.85)",
-              border: navScrolled ? "1.5px solid rgba(28,27,23,0.2)" : "1.5px solid rgba(247,245,239,0.24)",
-              backdropFilter: navScrolled ? "none" : "blur(8px)"
-            }}>+91 99747 24656</a>
-          <button className="btn-primary" onClick={() => scrollTo("demo")}
-            style={{ padding: "9px 17px", fontSize: 13,
-              background: navScrolled ? "#1C1B17" : "#F7F5EF",
-              color: navScrolled ? "#F7F5EF" : "#1C1B17"
-            }}>Book Free Demo</button>
-          <button className="hbg" onClick={() => setMenuOpen(o => !o)} style={{
-            background: navScrolled ? "none" : "rgba(247,245,239,0.1)",
-            border: navScrolled ? "1.5px solid rgba(28,27,23,0.18)" : "1.5px solid rgba(247,245,239,0.24)",
-            cursor: "pointer", padding: "7px 9px", borderRadius: 6,
-            alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)"
-          }}>
-            {menuOpen
-              ? <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
-            }
-          </button>
-        </div>
-      </nav>
-
-      {/* ══════════════════════════════════════
-          HERO — CLEAN DARK BACKGROUND (no video)
-         ══════════════════════════════════════ */}
-      <section id="hero" className="hero-pad" style={{
-        minHeight: "100vh",
-        padding: "130px 6% 80px",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-
-        {/* ── LAYER 0: Animated dark green background ── */}
-        <div className="hero-bg" />
-
-        {/* ── LAYER 1: Subtle grid pattern ── */}
-        <div className="hero-grid" />
-
-        {/* ── LAYER 2: Radial glow spots ── */}
-        <div className="hero-glow" />
-
-        {/* ── LAYER 3: Hero content ── */}
-        <div className="hero-content">
-          <div className="g2" style={{ maxWidth: 1200, margin: "0 auto", gap: 64, alignItems: "center" }}>
-
-            {/* Left — Text + CTAs */}
+        {/* ── NAV ── */}
+        <nav style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+          padding: navScrolled ? "11px 6%" : "18px 6%",
+          background: navScrolled || menuOpen ? "rgba(247,245,239,0.95)" : "transparent",
+          backdropFilter: navScrolled || menuOpen ? "blur(24px)" : "none",
+          borderBottom: navScrolled || menuOpen ? "1px solid rgba(28,27,23,0.07)" : "none",
+          transition: "all 0.38s ease",
+          display: "flex", alignItems: "center", justifyContent: "space-between"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => scrollTo("hero")}>
+            <div style={{ width: 32, height: 32, background: "#2A6B4A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/>
+                <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M13 5l2-2M13.5 9l2.5.5" stroke="#F7F5EF" strokeWidth="1.2" strokeLinecap="round" opacity="0.55"/>
+              </svg>
+            </div>
             <div>
-              <div className="hero-pill-anim">
-                <div className="pill pill-hero" style={{ marginBottom: 22 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A", flexShrink: 0 }} className="pdot"/>
-                  Complete School ERP · AI-Powered
-                </div>
-              </div>
-
-              <h1 className="serif hero-h hero-h1-anim" style={{
-                fontSize: "clamp(2.6rem, 4.8vw, 4rem)",
-                lineHeight: 1.05,
-                letterSpacing: "-0.025em",
-                marginBottom: 22,
-                color: "#F7F5EF",
-                textShadow: "0 2px 32px rgba(10,9,8,0.35)"
-              }}>
-                Your Entire School,<br/>
-                Managed From<br/>
-                <em style={{ color: "#5AC87A", fontStyle: "italic" }}>One System.</em>
-              </h1>
-
-              <p className="hero-sub-anim" style={{
-                fontSize: 16,
-                lineHeight: 1.85,
-                color: "rgba(247,245,239,0.72)",
-                maxWidth: 460,
-                marginBottom: 30,
-                textShadow: "0 1px 8px rgba(10,9,8,0.3)"
-              }}>
-                NexaAttend is a complete School ERP — attendance, staff, payroll, reports, and parent communication — powered by AI face recognition that works 100% offline.
-              </p>
-
-              <div className="flex-cta hero-cta-anim" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36 }}>
-                <button className="btn-hero-primary" onClick={() => scrollTo("demo")} style={{ fontSize: 15, padding: "14px 26px" }}>
-                  Get Free Trial
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-                <button className="btn-hero-secondary" onClick={() => scrollTo("solution")} style={{ fontSize: 15, padding: "13px 22px" }}>
-                  See the Platform
-                </button>
-              </div>
-
-              <div className="hero-badges-anim" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                {[["🔒","100% offline"], ["⚡","3-day setup"], ["🛡️","7-day guarantee"], ["🏫","Made for India"]].map(([icon, text]) => (
-                  <div key={text} style={{
-                    display: "flex", alignItems: "center", gap: 7,
-                    fontSize: 12.5, fontWeight: 500,
-                    color: "rgba(247,245,239,0.62)",
-                    background: "rgba(247,245,239,0.08)",
-                    border: "1px solid rgba(247,245,239,0.14)",
-                    backdropFilter: "blur(8px)",
-                    borderRadius: 100, padding: "5px 12px"
-                  }}>
-                    <span style={{ fontSize: 13 }}>{icon}</span>{text}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right — Live dashboard card (glassmorphism + floating) */}
-            <div className="hide-mob hero-card-anim">
-              <div className="glass-card">
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "11px 16px", borderBottom: "1px solid rgba(28,27,23,0.07)",
-                  background: "rgba(250,250,248,0.85)"
-                }}>
-                  {[["#F05A5A"],["#F0B45A"],["#5AF07A"]].map(([c], i) => (
-                    <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }}/>
-                  ))}
-                  <span className="mono" style={{ fontSize: 10, color: "rgba(28,27,23,0.32)", marginLeft: 8 }}>nexaattend — live dashboard</span>
-                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3DC87A" }} className="pdot"/>
-                    <span className="mono" style={{ fontSize: 9, color: "#1B7A45", fontWeight: 600, letterSpacing: "0.08em" }}>LIVE</span>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "rgba(250,250,248,0.7)", borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
-                  {[{ l: "Present", v: "284", c: "#1B7A45" }, { l: "Late", v: "12", c: "#9A6B0A" }, { l: "Absent", v: "8", c: "#8A2A1A" }].map(s => (
-                    <div key={s.l} style={{ padding: "14px 10px", textAlign: "center", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
-                      <div className="serif" style={{ fontSize: 28, color: s.c, lineHeight: 1 }}>{s.v}</div>
-                      <div className="mono" style={{ fontSize: 9, color: "rgba(28,27,23,0.38)", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.l}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ padding: "12px 14px 14px", background: "rgba(255,255,255,0.6)" }}>
-                  <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.28)", marginBottom: 8 }}>Recognition Log</div>
-                  {logs.slice(0, logIndex).map((log, i) => (
-                    <div key={i} className="log-row" style={{
-                      display: "flex", alignItems: "center", gap: 8, padding: "6px 7px",
-                      borderRadius: 4, background: i % 2 === 0 ? "rgba(28,27,23,0.02)" : "transparent", marginBottom: 1
-                    }}>
-                      <span className="mono" style={{ color: "rgba(28,27,23,0.25)", minWidth: 52, fontSize: 10 }}>{log.time}</span>
-                      <span className="mono" style={{ color: "#1C1B17", fontWeight: 500, flex: 1, fontSize: 12 }}>{log.name}</span>
-                      <span className="mono" style={{ color: "rgba(28,27,23,0.32)", fontSize: 10 }}>{log.cls}</span>
-                      <span className={`mono status-${log.status}`} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.06em" }}>{log.status}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{
-                  padding: "10px 14px",
-                  background: "rgba(42,107,74,0.08)",
-                  borderTop: "1px solid rgba(28,27,23,0.05)",
-                  display: "flex", alignItems: "center", justifyContent: "space-between"
-                }}>
-                  <span style={{ fontSize: 12, color: "rgba(28,27,23,0.45)" }}>Today's attendance rate</span>
-                  <span className="serif" style={{ fontSize: 18, color: "#1B7A45", fontWeight: 700 }}>96.8%</span>
-                </div>
-              </div>
+              <div className="serif" style={{ fontSize: 17, lineHeight: 1.1, letterSpacing: "-0.01em", color: navScrolled ? "#1C1B17" : "#F7F5EF" }}>NexaAttend</div>
+              <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: navScrolled ? "#2A6B4A" : "rgba(247,245,239,0.6)", fontWeight: 600 }}>Complete School ERP</div>
             </div>
           </div>
-        </div>
 
-        {/* ── Bottom fade to ticker ── */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: 80, zIndex: 3,
-          background: "linear-gradient(to bottom, transparent, #1C1B17)",
-          pointerEvents: "none"
-        }} />
-      </section>
-
-      {/* ── TICKER ── */}
-      <div style={{ background: "#1C1B17", padding: "13px 0", overflow: "hidden" }}>
-        <div style={{ overflow: "hidden" }}>
-          <div className="ticker-inner">
-            {[...Array(2)].flatMap(() => ["◆ Works 100% Offline","◆ AI Face Recognition","◆ 3-Day Setup","◆ Student + Staff + Payroll","◆ 30-Day Money-Back Guarantee","◆ No ID Cards Needed","◆ Built for Indian Schools","◆ Data Never Leaves Your Premises","◆ Free Lifetime Updates","◆ Ahmedabad-Based Team"])
-              .map((item, i) => (
-                <span key={i} className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", color: "rgba(247,245,239,0.55)", whiteSpace: "nowrap", textTransform: "uppercase" }}>{item}</span>
-              ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════
-          PRODUCT DEMO VIDEO
-         ══════════════════════════════════════ */}
-      <section id="demo-video" style={{ background: "#1C1B17", padding: "80px 6% 88px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(42,107,74,0.13) 0%, transparent 70%)", pointerEvents: "none" }} />
-
-        <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
-          <FadeIn style={{ textAlign: "center", marginBottom: 48 }}>
-            <div className="pill pill-dark" style={{ justifyContent: "center" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A" }} className="pdot" />
-              Live Product Demo
-            </div>
-            <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4vw, 3rem)", lineHeight: 1.08, letterSpacing: "-0.022em", color: "#F7F5EF", marginBottom: 14 }}>
-              See NexaAttend<br/>
-              <em style={{ color: "#5AC87A", fontStyle: "italic" }}>in action.</em>
-            </h2>
-            <p style={{ fontSize: 15, color: "rgba(247,245,239,0.5)", maxWidth: 480, margin: "0 auto", lineHeight: 1.85 }}>
-              A real walkthrough of the portal — login, dashboard, attendance marking, and reports. Exactly what your school gets from day one.
-            </p>
-          </FadeIn>
-
-          <FadeIn delay={0.1}>
-            <DemoVideoPlayer />
-          </FadeIn>
-
-          <FadeIn delay={0.2}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginTop: 36 }}>
-              {[
-                { icon: "🎯", label: "Portal Login", desc: "Secure role-based access" },
-                { icon: "📊", label: "Live Dashboard", desc: "Real-time attendance data" },
-                { icon: "🤳", label: "Face Recognition", desc: "AI marks students in seconds" },
-                { icon: "📋", label: "Instant Reports", desc: "One-click PDF exports" },
-              ].map((f, i) => (
-                <div key={i} style={{ background: "rgba(247,245,239,0.04)", border: "1px solid rgba(247,245,239,0.08)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{f.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#F7F5EF", marginBottom: 2 }}>{f.label}</div>
-                    <div style={{ fontSize: 11.5, color: "rgba(247,245,239,0.38)" }}>{f.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          PROBLEM
-         ══════════════════════════════════════ */}
-      <section id="problem" className="sec" style={{ background: "#F7F5EF" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <FadeIn>
-            <div className="pill pill-green">The Problem</div>
-            <h2 className="serif" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", lineHeight: 1.1, letterSpacing: "-0.02em", maxWidth: 600, marginBottom: 12 }}>
-              Manual systems are costing your school more than you realise.
-            </h2>
-            <p style={{ fontSize: 15, color: "rgba(28,27,23,0.5)", maxWidth: 520, marginBottom: 48, lineHeight: 1.85 }}>
-              Most Indian schools treat these as normal, unavoidable problems. They aren't.
-            </p>
-          </FadeIn>
-
-          <div className="g3">
-            {[
-              { n: "01", h: "2–3 hours lost every day", b: "Teachers spend 15–20 minutes per class calling out names. Multiply that across every class, every day — that's teaching time permanently gone.", accent: "#8A2A1A" },
-              { n: "02", h: "Proxy attendance goes undetected", b: "Students mark absent friends 'present'. Registers can't verify faces. Face recognition stops this completely — the first day it's installed.", accent: "#9A6B0A" },
-              { n: "03", h: "Five disconnected systems", b: "Attendance register, WhatsApp groups, Excel payroll, manual fee tracking, printed reports. The data never lines up, and staff spend hours reconciling.", accent: "#1B5C3A" },
-            ].map((p, i) => (
-              <FadeIn key={i} delay={i * 0.08}>
-                <div className="card" style={{ borderTop: `3px solid ${p.accent}` }}>
-                  <div className="mono" style={{ fontSize: 11, color: p.accent, fontWeight: 600, letterSpacing: "0.1em", marginBottom: 14 }}>{p.n}</div>
-                  <h3 style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.35, marginBottom: 10 }}>{p.h}</h3>
-                  <p style={{ fontSize: 14, color: "rgba(28,27,23,0.54)", lineHeight: 1.8 }}>{p.b}</p>
-                </div>
-              </FadeIn>
+          <div className="hide-mob" style={{ display: "flex", gap: 24, alignItems: "center" }}>
+            {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["pricing","Pricing"],["process","How It Works"],["trust","Guarantee"]].map(([id, label]) => (
+              <button key={id} className="nav-link" onClick={() => scrollTo(id)}
+                style={{ color: navScrolled ? "rgba(28,27,23,0.55)" : "rgba(247,245,239,0.7)" }}>{label}</button>
             ))}
           </div>
 
-          <FadeIn delay={0.1}>
-            <div style={{ marginTop: 24, background: "#FFFFFF", borderRadius: 10, border: "1px solid rgba(28,27,23,0.07)", padding: "18px 22px" }}>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["❌ Attendance errors","❌ Payroll miscalculations","❌ Missing or late reports","❌ No real-time visibility","❌ Data scattered across tools"].map(t => (
-                  <span key={t} style={{ background: "rgba(28,27,23,0.04)", border: "1px solid rgba(28,27,23,0.08)", borderRadius: 100, padding: "6px 14px", fontSize: 13, fontWeight: 500, color: "rgba(28,27,23,0.65)" }}>{t}</span>
-                ))}
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <a href="tel:+919974724656" className="btn-secondary hide-mob"
+              style={{ padding: "8px 14px", fontSize: 13,
+                background: navScrolled ? "transparent" : "rgba(247,245,239,0.1)",
+                color: navScrolled ? "#1C1B17" : "rgba(247,245,239,0.85)",
+                border: navScrolled ? "1.5px solid rgba(28,27,23,0.2)" : "1.5px solid rgba(247,245,239,0.24)",
+                backdropFilter: navScrolled ? "none" : "blur(8px)"
+              }}>+91 99747 24656</a>
+            <button className="btn-primary" onClick={() => scrollTo("inquiry")}
+              style={{ padding: "9px 17px", fontSize: 13,
+                background: navScrolled ? "#1C1B17" : "#F7F5EF",
+                color: navScrolled ? "#F7F5EF" : "#1C1B17"
+              }}>Book Free Demo</button>
+            <button className="hbg" onClick={() => setMenuOpen(o => !o)} style={{
+              background: navScrolled ? "none" : "rgba(247,245,239,0.1)",
+              border: navScrolled ? "1.5px solid rgba(28,27,23,0.18)" : "1.5px solid rgba(247,245,239,0.24)",
+              cursor: "pointer", padding: "7px 9px", borderRadius: 6,
+              alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)"
+            }}>
+              {menuOpen
+                ? <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
+                : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
+              }
+            </button>
+          </div>
+        </nav>
 
-      {/* ══════════════════════════════════════
-          PLATFORM / SOLUTION
-         ══════════════════════════════════════ */}
-      <section id="solution" className="sec" style={{ background: "#1C1B17", color: "#F7F5EF", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -120, right: -120, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.12), transparent 70%)", pointerEvents: "none" }}/>
-        <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
-          <FadeIn>
-            <div className="pill pill-dark">The Platform</div>
-            <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4.5vw, 3.4rem)", lineHeight: 1.06, letterSpacing: "-0.022em", marginBottom: 20, color: "#F7F5EF" }}>
-              One System That Runs<br/>
-              Your <em style={{ color: "#5AC87A", fontStyle: "italic" }}>Entire Institute.</em>
-            </h2>
-            <p style={{ fontSize: 16, color: "rgba(247,245,239,0.55)", maxWidth: 540, marginBottom: 52, lineHeight: 1.85 }}>
-              Attendance is just one piece. NexaAttend is a complete ERP — students, staff, payroll, and operations, all connected in a single system.
-            </p>
-          </FadeIn>
-
-          <div className="g2" style={{ marginBottom: 24 }}>
-            {modules.map((mod, i) => (
-              <FadeIn key={i} delay={i * 0.07}>
-                <div style={{ background: "rgba(247,245,239,0.04)", border: "1px solid rgba(247,245,239,0.09)", borderRadius: 12, padding: "28px 26px", transition: "background 0.3s, border-color 0.3s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(247,245,239,0.07)"; e.currentTarget.style.borderColor = "rgba(247,245,239,0.16)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(247,245,239,0.04)"; e.currentTarget.style.borderColor = "rgba(247,245,239,0.09)"; }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: `${mod.color}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#5AC87A" }}>{mod.icon}</div>
-                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#F7F5EF" }}>{mod.title}</h3>
+        {/* ── HERO ── */}
+        <main id="hero" className="hero-pad" style={{ minHeight: "100vh", padding: "130px 6% 80px", position: "relative", overflow: "hidden" }}>
+          <div className="hero-bg" />
+          <div className="hero-grid" />
+          <div className="hero-glow" />
+          <div className="hero-content">
+            <div className="g2" style={{ maxWidth: 1200, margin: "0 auto", gap: 64, alignItems: "center" }}>
+              <div>
+                <div className="hero-pill-anim">
+                  <div className="pill pill-hero" style={{ marginBottom: 22 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A", flexShrink: 0 }} className="pdot"/>
+                    Complete School ERP · AI-Powered
                   </div>
-                  <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-                    {mod.features.map((f, fi) => (
-                      <li key={fi} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-                        <span style={{ color: "#5AC87A", flexShrink: 0, fontSize: 13, marginTop: 1 }}>✓</span>
-                        <span style={{ fontSize: 13.5, color: "rgba(247,245,239,0.65)", lineHeight: 1.6 }}>{f}</span>
-                      </li>
+                </div>
+                <h1 className="serif hero-h hero-h1-anim" style={{ fontSize: "clamp(2.6rem, 4.8vw, 4rem)", lineHeight: 1.05, letterSpacing: "-0.025em", marginBottom: 22, color: "#F7F5EF", textShadow: "0 2px 32px rgba(10,9,8,0.35)" }}>
+                  Your Entire School,<br/>Managed From<br/><em style={{ color: "#5AC87A", fontStyle: "italic" }}>One System.</em>
+                </h1>
+                <p className="hero-sub-anim" style={{ fontSize: 16, lineHeight: 1.85, color: "rgba(247,245,239,0.72)", maxWidth: 460, marginBottom: 30, textShadow: "0 1px 8px rgba(10,9,8,0.3)" }}>
+                  NexaAttend is a complete School ERP — attendance, staff, payroll, reports, and parent communication — powered by AI face recognition that works 100% offline.
+                </p>
+                <div className="flex-cta hero-cta-anim" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36 }}>
+                  <button className="btn-hero-primary" onClick={() => scrollTo("inquiry")} style={{ fontSize: 15, padding: "14px 26px" }}>
+                    Get Free Trial
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  <button className="btn-hero-secondary" onClick={() => scrollTo("solution")} style={{ fontSize: 15, padding: "13px 22px" }}>
+                    See the Platform
+                  </button>
+                </div>
+                <div className="hero-badges-anim" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                  {[["🔒","100% offline"],["⚡","3-day setup"],["🛡️","7-day guarantee"],["🏫","Made for India"]].map(([icon, text]) => (
+                    <div key={text} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 500, color: "rgba(247,245,239,0.62)", background: "rgba(247,245,239,0.08)", border: "1px solid rgba(247,245,239,0.14)", backdropFilter: "blur(8px)", borderRadius: 100, padding: "5px 12px" }}>
+                      <span style={{ fontSize: 13 }}>{icon}</span>{text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="hide-mob hero-card-anim">
+                <div className="glass-card">
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "11px 16px", borderBottom: "1px solid rgba(28,27,23,0.07)", background: "rgba(250,250,248,0.85)" }}>
+                    {[["#F05A5A"],["#F0B45A"],["#5AF07A"]].map(([c], i) => (
+                      <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }}/>
                     ))}
-                  </ul>
+                    <span className="mono" style={{ fontSize: 10, color: "rgba(28,27,23,0.32)", marginLeft: 8 }}>nexaattend — live dashboard</span>
+                    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3DC87A" }} className="pdot"/>
+                      <span className="mono" style={{ fontSize: 9, color: "#1B7A45", fontWeight: 600, letterSpacing: "0.08em" }}>LIVE</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "rgba(250,250,248,0.7)", borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
+                    {[{ l:"Present",v:"284",c:"#1B7A45" },{ l:"Late",v:"12",c:"#9A6B0A" },{ l:"Absent",v:"8",c:"#8A2A1A" }].map(s => (
+                      <div key={s.l} style={{ padding: "14px 10px", textAlign: "center", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
+                        <div className="serif" style={{ fontSize: 28, color: s.c, lineHeight: 1 }}>{s.v}</div>
+                        <div className="mono" style={{ fontSize: 9, color: "rgba(28,27,23,0.38)", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: "12px 14px 14px", background: "rgba(255,255,255,0.6)" }}>
+                    <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.28)", marginBottom: 8 }}>Recognition Log</div>
+                    {logs.slice(0, logIndex).map((log, i) => (
+                      <div key={i} className="log-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 7px", borderRadius: 4, background: i % 2 === 0 ? "rgba(28,27,23,0.02)" : "transparent", marginBottom: 1 }}>
+                        <span className="mono" style={{ color: "rgba(28,27,23,0.25)", minWidth: 52, fontSize: 10 }}>{log.time}</span>
+                        <span className="mono" style={{ color: "#1C1B17", fontWeight: 500, flex: 1, fontSize: 12 }}>{log.name}</span>
+                        <span className="mono" style={{ color: "rgba(28,27,23,0.32)", fontSize: 10 }}>{log.cls}</span>
+                        <span className={`mono status-${log.status}`} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.06em" }}>{log.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: "10px 14px", background: "rgba(42,107,74,0.08)", borderTop: "1px solid rgba(28,27,23,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 12, color: "rgba(28,27,23,0.45)" }}>Today's attendance rate</span>
+                    <span className="serif" style={{ fontSize: 18, color: "#1B7A45", fontWeight: 700 }}>96.8%</span>
+                  </div>
                 </div>
-              </FadeIn>
-            ))}
+              </div>
+            </div>
           </div>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, zIndex: 3, background: "linear-gradient(to bottom, transparent, #1C1B17)", pointerEvents: "none" }} />
+        </main>
 
-          <FadeIn delay={0.15}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 8 }}>
-              {["⚡ Mark attendance in under 3 seconds","🔒 100% offline — data stays on-site","📊 Reports auto-generated","💬 Parent alerts via WhatsApp","🎓 Works for students & staff","🖥️ Multi-role dashboards"].map(t => (
-                <span key={t} style={{ background: "rgba(247,245,239,0.07)", border: "1px solid rgba(247,245,239,0.1)", borderRadius: 100, padding: "7px 16px", fontSize: 13, fontWeight: 500, color: "rgba(247,245,239,0.7)" }}>{t}</span>
+        {/* ── TICKER ── */}
+        <div style={{ background: "#1C1B17", padding: "13px 0", overflow: "hidden" }}>
+          <div style={{ overflow: "hidden" }}>
+            <div className="ticker-inner">
+              {[...Array(2)].flatMap(() => ["◆ Works 100% Offline","◆ AI Face Recognition","◆ 3-Day Setup","◆ Student + Staff + Payroll","◆ 7-Day Money-Back Guarantee","◆ No ID Cards Needed","◆ Built for Indian Schools","◆ Data Never Leaves Your Premises","◆ Free Lifetime Updates","◆ Ahmedabad-Based Team"])
+                .map((item, i) => (
+                  <span key={i} className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", color: "rgba(247,245,239,0.55)", whiteSpace: "nowrap", textTransform: "uppercase" }}>{item}</span>
+                ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── DEMO VIDEO ── */}
+        <section id="demo-video" style={{ background: "#1C1B17", padding: "80px 6% 88px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(42,107,74,0.13) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
+            <FadeIn style={{ textAlign: "center", marginBottom: 48 }}>
+              <div className="pill pill-dark" style={{ justifyContent: "center" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A" }} className="pdot" />
+                Live Product Demo
+              </div>
+              <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4vw, 3rem)", lineHeight: 1.08, letterSpacing: "-0.022em", color: "#F7F5EF", marginBottom: 14 }}>
+                See NexaAttend<br/><em style={{ color: "#5AC87A", fontStyle: "italic" }}>in action.</em>
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(247,245,239,0.5)", maxWidth: 480, margin: "0 auto", lineHeight: 1.85 }}>
+                A real walkthrough of the portal — login, dashboard, attendance marking, and reports.
+              </p>
+            </FadeIn>
+            <FadeIn delay={0.1}><DemoVideoPlayer /></FadeIn>
+            <FadeIn delay={0.2}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginTop: 36 }}>
+                {[{ icon:"🎯",label:"Portal Login",desc:"Secure role-based access" },{ icon:"📊",label:"Live Dashboard",desc:"Real-time attendance data" },{ icon:"🤳",label:"Face Recognition",desc:"AI marks students in seconds" },{ icon:"📋",label:"Instant Reports",desc:"One-click PDF exports" }].map((f, i) => (
+                  <div key={i} style={{ background: "rgba(247,245,239,0.04)", border: "1px solid rgba(247,245,239,0.08)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{f.icon}</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#F7F5EF", marginBottom: 2 }}>{f.label}</div>
+                      <div style={{ fontSize: 11.5, color: "rgba(247,245,239,0.38)" }}>{f.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ── PROBLEM ── */}
+        <section id="problem" className="sec" style={{ background: "#F7F5EF" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+            <FadeIn>
+              <div className="pill pill-green">The Problem</div>
+              <h2 className="serif" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", lineHeight: 1.1, letterSpacing: "-0.02em", maxWidth: 700, marginBottom: 12 }}>
+                Manual systems are costing your school more than you realise.
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(28,27,23,0.5)", maxWidth: 580, marginBottom: 48, lineHeight: 1.85 }}>
+                Most Indian schools treat these as normal, unavoidable problems. They aren't.
+              </p>
+            </FadeIn>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+              {[
+                { n:"01", h:"2–3 hours lost every day", b:"Teachers spend 15–20 minutes per class calling out names. Multiply that across every class, every day — that's teaching time permanently gone.", accent:"#8A2A1A" },
+                { n:"02", h:"Proxy attendance goes undetected", b:"Students mark absent friends 'present'. Registers can't verify faces. Face recognition stops this completely — the first day it's installed.", accent:"#9A6B0A" },
+                { n:"03", h:"Five disconnected systems", b:"Attendance register, WhatsApp groups, Excel payroll, manual fee tracking, printed reports. The data never lines up.", accent:"#1B5C3A" },
+                { n:"04", h:"₹3+ Lakh lost annually due to fee leakage", b:"Late payments, reconciliation errors, and uncollected fees go unnoticed for months. Schools lose an average of ₹3–5 lakh every year.", accent:"#B85C1A" },
+                { n:"05", h:"Lost child during transportation – no accountability", b:"No real‑time tracking, no handover verification. Every year, children are dropped at wrong stops or left in vehicles. You need a system that prevents this.", accent:"#A93226" }
+              ].map((p, i) => (
+                <FadeIn key={i} delay={i * 0.08}>
+                  <div className="card" style={{ borderTop: `3px solid ${p.accent}` }}>
+                    <div className="mono" style={{ fontSize: 11, color: p.accent, fontWeight: 600, letterSpacing: "0.1em", marginBottom: 14 }}>{p.n}</div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.35, marginBottom: 10 }}>{p.h}</h3>
+                    <p style={{ fontSize: 14, color: "rgba(28,27,23,0.54)", lineHeight: 1.8 }}>{p.b}</p>
+                  </div>
+                </FadeIn>
               ))}
             </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          PRODUCT DASHBOARD PREVIEW
-         ══════════════════════════════════════ */}
-      <section className="sec" style={{ background: "#F7F5EF" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <FadeIn>
-            <div className="pill pill-green">Real System Preview</div>
-            <h2 className="serif" style={{ fontSize: "clamp(1.8rem, 3.8vw, 2.8rem)", letterSpacing: "-0.02em", marginBottom: 8 }}>
-              Built for principals, <em style={{ fontStyle: "italic", color: "#2A6B4A" }}>not IT teams.</em>
-            </h2>
-            <p style={{ fontSize: 15, color: "rgba(28,27,23,0.5)", marginBottom: 44, lineHeight: 1.8 }}>Clean dashboards. Everything visible at a glance.</p>
-          </FadeIn>
-
-          <div className="g2" style={{ marginBottom: 16 }}>
-            <FadeIn>
-              <div className="card" style={{ padding: 20 }}>
-                <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.35)", marginBottom: 14 }}>Admin Dashboard — Today</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-                  {[
-                    { l: "Students Present",  v: "284", trend: "96.8%", ok: true },
-                    { l: "Staff Present",      v: "28",  trend: "100%",  ok: true },
-                    { l: "Fee Collection",     v: "₹1.2L",trend: "This month", ok: true },
-                    { l: "Parent Alerts Sent", v: "18",  trend: "Today", ok: false },
-                  ].map(m => (
-                    <div key={m.l} style={{ background: "rgba(28,27,23,0.03)", borderRadius: 8, padding: "12px 10px" }}>
-                      <div className="serif" style={{ fontSize: 22, lineHeight: 1, color: "#1C1B17", marginBottom: 3 }}>{m.v}</div>
-                      <div style={{ fontSize: 10.5, color: "rgba(28,27,23,0.42)", lineHeight: 1.4, marginBottom: 2 }}>{m.l}</div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: m.ok ? "#1B7A45" : "#9A6B0A" }}>{m.trend}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontSize: 10, color: "rgba(28,27,23,0.32)", marginBottom: 6 }}>Attendance this week</div>
-                <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 44 }}>
-                  {[87,93,91,97,96].map((v, i) => (
-                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                      <div style={{ width: "100%", background: i === 4 ? "#2A6B4A" : "rgba(42,107,74,0.18)", borderRadius: "3px 3px 0 0", height: `${v * 0.44}px` }}/>
-                      <div className="mono" style={{ fontSize: 9, color: "rgba(28,27,23,0.3)" }}>{["M","T","W","T","F"][i]}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </FadeIn>
-
-            <FadeIn delay={0.1}>
-              <div className="card" style={{ background: "#2A6B4A", border: "none", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.4)", marginBottom: 18 }}>Time Saved Today</div>
-                  <div className="serif" style={{ fontSize: 52, color: "#F7F5EF", lineHeight: 1, marginBottom: 8 }}>2.4<span style={{ fontSize: 22 }}>h</span></div>
-                  <p style={{ fontSize: 13.5, color: "rgba(247,245,239,0.5)", lineHeight: 1.75 }}>vs. manual attendance register for 304 students and staff</p>
-                </div>
-                <div style={{ borderTop: "1px solid rgba(247,245,239,0.12)", paddingTop: 16, marginTop: 20 }}>
-                  <div style={{ fontSize: 11, color: "rgba(247,245,239,0.4)", marginBottom: 4 }}>This month total</div>
-                  <div className="serif" style={{ fontSize: 30, color: "#F7F5EF" }}>52h</div>
-                  <div style={{ fontSize: 12, color: "rgba(247,245,239,0.35)", marginTop: 2 }}>given back to your staff</div>
-                </div>
-              </div>
-            </FadeIn>
           </div>
+        </section>
 
-          <div className="g2">
+        {/* ── SOLUTION ── */}
+        <section id="solution" className="sec" style={{ background: "#1C1B17", color: "#F7F5EF", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -120, right: -120, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.12), transparent 70%)", pointerEvents: "none" }}/>
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
             <FadeIn>
-              <div className="card">
-                <div className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(28,27,23,0.35)", marginBottom: 12 }}>Monthly Attendance Report</div>
-                <div className="mono">
-                  {[["Class","Attendance","Absent","Trend"],["IX-A","97.2%","2","↑"],["IX-B","94.8%","5","→"],["X-A","98.1%","1","↑"],["XI-C","91.3%","8","↓"]].map((row, ri) => (
-                    <div key={ri} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 0.6fr", padding: "7px 8px", borderRadius: 4, background: ri === 0 ? "rgba(28,27,23,0.04)" : ri%2===0 ? "rgba(28,27,23,0.015)" : "transparent", fontSize: ri === 0 ? 9 : 11, fontWeight: ri === 0 ? 600 : 400 }}>
-                      {row.map((cell, ci) => (
-                        <span key={ci} style={{ color: ci === 3 && ri > 0 ? (cell==="↑"?"#1B7A45":cell==="↓"?"#8A2A1A":"#9A6B0A") : "inherit" }}>{cell}</span>
+              <div className="pill pill-dark">The Platform</div>
+              <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4.5vw, 3.4rem)", lineHeight: 1.06, letterSpacing: "-0.022em", marginBottom: 20, color: "#F7F5EF" }}>
+                One System That Runs<br/><em style={{ color: "#5AC87A", fontStyle: "italic" }}>Your Entire Institute.</em>
+              </h2>
+              <p style={{ fontSize: 16, color: "rgba(247,245,239,0.55)", maxWidth: 540, marginBottom: 52, lineHeight: 1.85 }}>
+                Attendance is just one piece. NexaAttend is a complete ERP — students, staff, payroll, and operations, all in one system.
+              </p>
+            </FadeIn>
+            <div className="g2" style={{ marginBottom: 24 }}>
+              {modules.map((mod, i) => (
+                <FadeIn key={i} delay={i * 0.07}>
+                  <div style={{ background: "rgba(247,245,239,0.04)", border: "1px solid rgba(247,245,239,0.09)", borderRadius: 12, padding: "28px 26px", transition: "background 0.3s, border-color 0.3s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(247,245,239,0.07)"; e.currentTarget.style.borderColor = "rgba(247,245,239,0.16)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(247,245,239,0.04)"; e.currentTarget.style.borderColor = "rgba(247,245,239,0.09)"; }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, background: `${mod.color}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#5AC87A" }}>{mod.icon}</div>
+                      <h3 style={{ fontSize: 17, fontWeight: 600, color: "#F7F5EF" }}>{mod.title}</h3>
+                    </div>
+                    <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {mod.features.map((f, fi) => (
+                        <li key={fi} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                          <span style={{ color: "#5AC87A", flexShrink: 0, fontSize: 13, marginTop: 1 }}>✓</span>
+                          <span style={{ fontSize: 13.5, color: "rgba(247,245,239,0.65)", lineHeight: 1.6 }}>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── PRICING ── */}
+        <section id="pricing" className="sec" style={{ background: "#F7F5EF", position: "relative", overflow: "hidden" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
+            <FadeIn style={{ textAlign: "center", marginBottom: 56 }}>
+              <div className="pill pill-green" style={{ justifyContent: "center" }}>Transparent Pricing · No Hidden Fees</div>
+              <h2 className="serif" style={{ fontSize: "clamp(2rem, 4.5vw, 3.2rem)", lineHeight: 1.08, letterSpacing: "-0.022em", marginBottom: 12 }}>Simple, Flat Pricing</h2>
+              <p style={{ fontSize: 16, color: "rgba(28,27,23,0.58)", maxWidth: 480, margin: "0 auto", lineHeight: 1.85 }}>
+                One price per school size. No per-student fees. No surprises.
+              </p>
+            </FadeIn>
+
+            <FadeIn>
+              <div style={{ background: "linear-gradient(135deg,#FFF8E8 0%,#FFFBF0 100%)", border: "1.5px solid #D4A433", borderRadius: 12, padding: "14px 20px", marginBottom: 36, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 20 }}>⚡</span>
+                <div>
+                  <strong style={{ fontSize: 14, color: "#7A5000" }}>Founding Member Offer: One-time setup ₹75,000 → ₹45,000 on all plans.</strong>
+                  <span style={{ fontSize: 13.5, color: "#9A6B0A" }}> Limited slots. Once filled, returns to ₹75,000 permanently.</span>
+                </div>
+              </div>
+            </FadeIn>
+
+            <FadeIn>
+              <div className="plan-selector" style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 44, flexWrap: "wrap" }}>
+                {PLANS.map((p) => (
+                  <button key={p.id} onClick={() => setSelectedPlan(p.id)} className={`plan-btn ${selectedPlan === p.id ? "plan-btn-active" : "plan-btn-inactive"}`}>
+                    {p.name}
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", background: selectedPlan === p.id ? "rgba(247,245,239,0.18)" : "rgba(42,107,74,0.1)", color: selectedPlan === p.id ? "#F7F5EF" : "#1B5C3A", padding: "2px 8px", borderRadius: 100 }}>BEST VALUE</span>
+                  </button>
+                ))}
+              </div>
+            </FadeIn>
+
+            <FadeIn>
+              <div style={{ background: "#FFFFFF", border: `2px solid ${plan.color}22`, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 64px rgba(28,27,23,0.07)", marginBottom: 24, transition: "all 0.35s" }}>
+                <div style={{ background: plan.color, padding: "28px 36px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(247,245,239,0.45)", marginBottom: 6 }}>{plan.name} Plan · Up to {plan.students} students</div>
+                    <div className="serif" style={{ fontSize: "clamp(1.2rem, 2.5vw, 1.7rem)", color: "#F7F5EF", lineHeight: 1.2, maxWidth: 560 }}>{plan.desc}</div>
+                  </div>
+                  <div style={{ background: "#5AC87A", color: "#1C1B17", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "7px 18px", borderRadius: 100, flexShrink: 0 }}>{plan.badge}</div>
+                </div>
+                <div style={{ padding: "32px 36px", borderBottom: "1px solid rgba(28,27,23,0.07)" }}>
+                  <div className="pricing-stats" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, marginBottom: 32 }}>
+                    <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>Monthly Fee</div>
+                      <div className="serif" style={{ fontSize: 40, color: "#1C1B17", lineHeight: 1, marginBottom: 4 }}>{fmt(plan.monthly)}</div>
+                      <div style={{ fontSize: 12, color: "#1B7A45", fontWeight: 600, marginTop: 10 }}>≈ {fmtFull(Math.round(plan.monthly / plan.students))}/student</div>
+                    </div>
+                    <div style={{ background: "rgba(42,107,74,0.04)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(42,107,74,0.15)", position: "relative" }}>
+                      <div style={{ position: "absolute", top: -10, right: 16, background: "#2A6B4A", color: "#F7F5EF", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 100 }}>SAVE ₹30,000</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>One-Time Setup</div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                        <div className="serif" style={{ fontSize: 40, color: "#2A6B4A", lineHeight: 1 }}>{fmt(plan.setupDiscounted)}</div>
+                        <div className="serif" style={{ fontSize: 18, color: "rgba(28,27,23,0.3)", textDecoration: "line-through" }}>{fmt(plan.setup)}</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "#1B7A45", fontWeight: 600, marginTop: 10 }}>Founding member price</div>
+                    </div>
+                    <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 14 }}>Always Included</div>
+                      {[["👤",`Up to ${plan.students} students`],["📷","2 cameras"],["🛠️","3-day setup"],["🛡️","7-day guarantee"]].map(([icon, text]) => (
+                        <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "rgba(28,27,23,0.65)" }}>
+                          <span style={{ fontSize: 14 }}>{icon}</span>{text}
+                        </div>
                       ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            </FadeIn>
-
-            <FadeIn delay={0.1}>
-              <div className="card" style={{ background: "#1C1B17", border: "none" }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.28)", marginBottom: 12 }}>Proxy Attendance Detected</div>
-                <div className="serif" style={{ fontSize: 56, color: "#5AC87A", lineHeight: 1, marginBottom: 12 }}>0</div>
-                <p style={{ fontSize: 13.5, color: "rgba(247,245,239,0.45)", lineHeight: 1.75 }}>Incidents since installation. AI face recognition doesn't get fooled. Discipline improves from day one.</p>
-              </div>
-            </FadeIn>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          TRUST
-         ══════════════════════════════════════ */}
-      <section className="sec" style={{ background: "#FFFFFF" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <FadeIn style={{ textAlign: "center", marginBottom: 44 }}>
-            <div className="pill pill-green" style={{ justifyContent: "center" }}>Tested. Validated. Honest.</div>
-            <h2 className="serif" style={{ fontSize: "clamp(1.8rem, 3.8vw, 2.8rem)", letterSpacing: "-0.02em", marginBottom: 14 }}>
-              Real testing. Real conditions. Real results.
-            </h2>
-            <p style={{ fontSize: 15, color: "rgba(28,27,23,0.52)", maxWidth: 540, margin: "0 auto", lineHeight: 1.85 }}>
-              We built this in the field — not in a lab. NexaAttend has been tested with real students and staff before we offered it to any school.
-            </p>
-          </FadeIn>
-
-          <FadeIn>
-            <div style={{ background: "rgba(42,107,74,0.06)", border: "1.5px solid rgba(42,107,74,0.2)", borderRadius: 12, padding: "24px 28px", marginBottom: 32, display: "flex", gap: 18, alignItems: "flex-start" }}>
-              <span style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🏛️</span>
-              <div>
-                <h3 style={{ fontSize: 16, fontWeight: 600, color: "#1B5C3A", marginBottom: 6 }}>Tested in a Government Polytechnic Environment</h3>
-                <p style={{ fontSize: 14, color: "rgba(28,27,23,0.6)", lineHeight: 1.8, margin: 0 }}>
-                  NexaAttend was deployed and tested in a government polytechnic institution with real users — students and faculty — across multiple sessions. Institution details are kept confidential as per their policy. The insights from that testing are directly built into the system you receive today.
-                </p>
-              </div>
-            </div>
-          </FadeIn>
-
-          <div className="g3" style={{ marginBottom: 40 }}>
-            {[
-              { quote: "We used to spend the first 20 minutes of every session taking attendance. Now it just happens. Our teachers were sceptical at first — within a week they refused to go back.", person: "Vice Principal", inst: "Higher Secondary School, Gujarat", initial: "V", color: "#1B5C3A" },
-              { quote: "The payroll module alone saved us hours each month. Everything was manual before — now salaries are calculated automatically from attendance data. No more disputes.", person: "School Administrator", inst: "Technical Institute, India", initial: "S", color: "#1A2B4A" },
-              { quote: "Parents kept calling us to check if their child came to school. Now they get a WhatsApp message automatically. We haven't had a single call about attendance in two months.", person: "Principal", inst: "Day School, Ahmedabad", initial: "P", color: "#3D1A4A" },
-            ].map((t, i) => (
-              <FadeIn key={i} delay={i * 0.08}>
-                <div className="card" style={{ borderLeft: `3px solid ${t.color}20`, borderRadius: "0 12px 12px 0", height: "100%" }}>
-                  <p style={{ fontSize: 14, color: "rgba(28,27,23,0.65)", lineHeight: 1.85, marginBottom: 20, fontStyle: "italic" }}>"{t.quote}"</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${t.color}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600, color: t.color, flexShrink: 0 }}>{t.initial}</div>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1C1B17" }}>{t.person}</div>
-                      <div className="mono" style={{ fontSize: 10, color: "rgba(28,27,23,0.38)", letterSpacing: "0.04em" }}>{t.inst}</div>
-                    </div>
                   </div>
-                  <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(28,27,23,0.04)", borderRadius: 100, padding: "4px 10px" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)" }}>Name withheld at request</span>
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-
-          <FadeIn>
-            <div style={{ background: "#1C1B17", borderRadius: 14, padding: "32px 28px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2, overflow: "hidden" }}>
-              {[
-                { num: "2–3h", label: "Saved daily", sub: "across all classes" },
-                { num: "90%+", label: "Fewer errors", sub: "vs. manual registers" },
-                { num: "<3s",  label: "Per student", sub: "face recognition" },
-                { num: "0",    label: "Proxy incidents", sub: "from day one" },
-              ].map((s, i) => (
-                <div key={i} style={{ padding: "12px 14px", borderRight: i < 3 ? "1px solid rgba(247,245,239,0.08)" : "none" }}>
-                  <div className="serif" style={{ fontSize: 32, color: "#5AC87A", lineHeight: 1, marginBottom: 5 }}>{s.num}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#F7F5EF", marginBottom: 3 }}>{s.label}</div>
-                  <div style={{ fontSize: 11.5, color: "rgba(247,245,239,0.35)" }}>{s.sub}</div>
-                </div>
-              ))}
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          PRICING
-         ══════════════════════════════════════ */}
-      <section id="pricing" className="sec" style={{ background: "#F7F5EF", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -200, left: "10%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.05), transparent 70%)", pointerEvents: "none" }}/>
-        <div style={{ position: "absolute", bottom: -150, right: "5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(184,146,42,0.03), transparent 70%)", pointerEvents: "none" }}/>
-
-        <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
-
-          <FadeIn style={{ textAlign: "center", marginBottom: 56 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", padding: "5px 13px", borderRadius: 100, marginBottom: 20, background: "rgba(42,107,74,0.1)", color: "#1B5C3A" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2A6B4A" }} className="pdot"/>
-              Transparent Pricing · No Hidden Fees
-            </div>
-            <h2 className="serif" style={{ fontSize: "clamp(2rem, 4.5vw, 3.2rem)", lineHeight: 1.08, letterSpacing: "-0.022em", marginBottom: 12 }}>
-              Simple, Flat Pricing
-            </h2>
-            <p style={{ fontSize: 16, color: "rgba(28,27,23,0.58)", maxWidth: 480, margin: "0 auto 0", lineHeight: 1.85 }}>
-              One price per school size. No per-student fees. No surprises.<br/>Pick your plan, choose your add-ons.
-            </p>
-          </FadeIn>
-
-          <FadeIn>
-            <div style={{ background: "linear-gradient(135deg, #FFF8E8 0%, #FFFBF0 100%)", border: "1.5px solid #D4A433", borderRadius: 12, padding: "14px 20px", marginBottom: 36, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 20 }}>⚡</span>
-              <div>
-                <strong style={{ fontSize: 14, color: "#7A5000" }}>Founding Member Offer: One-time setup ₹75,000 → ₹45,000 on all plans.</strong>
-                <span style={{ fontSize: 13.5, color: "#9A6B0A" }}> Limited slots. Once filled, returns to ₹75,000 permanently.</span>
-              </div>
-            </div>
-          </FadeIn>
-
-          <FadeIn>
-            <div className="plan-selector" style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 44, flexWrap: "wrap" }}>
-              {PLANS.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedPlan(p.id)}
-                  className={`plan-btn ${selectedPlan === p.id ? "plan-btn-active" : "plan-btn-inactive"}`}
-                >
-                  {p.name}
-                  {p.badge && (
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", background: selectedPlan === p.id ? "rgba(247,245,239,0.18)" : "rgba(42,107,74,0.1)", color: selectedPlan === p.id ? "#F7F5EF" : "#1B5C3A", padding: "2px 8px", borderRadius: 100 }}>
-                      BEST VALUE
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </FadeIn>
-
-          <FadeIn>
-            <div style={{ background: "#FFFFFF", border: `2px solid ${plan.color}22`, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 64px rgba(28,27,23,0.07)", marginBottom: 24, transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
-              <div style={{ background: plan.color, padding: "28px 36px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(247,245,239,0.45)", marginBottom: 6 }}>
-                    {plan.name} Plan · Up to {plan.students} students
-                  </div>
-                  <div className="serif" style={{ fontSize: "clamp(1.2rem, 2.5vw, 1.7rem)", color: "#F7F5EF", lineHeight: 1.2, maxWidth: 560 }}>
-                    {plan.desc}
-                  </div>
-                </div>
-                {plan.badge && (
-                  <div style={{ background: "#5AC87A", color: "#1C1B17", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "7px 18px", borderRadius: 100, flexShrink: 0, alignSelf: "flex-start" }}>
-                    {plan.badge}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ padding: "32px 36px", borderBottom: "1px solid rgba(28,27,23,0.07)" }}>
-                <div className="pricing-stats" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, marginBottom: 32 }}>
-                  <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>Monthly Fee</div>
-                    <div className="serif" style={{ fontSize: 40, color: "#1C1B17", lineHeight: 1, marginBottom: 4 }}>{fmt(plan.monthly)}</div>
-                    <div style={{ fontSize: 12, color: "rgba(28,27,23,0.42)" }}>per month · flat rate</div>
-                    <div style={{ marginTop: 10, fontSize: 12, color: "#1B7A45", fontWeight: 600 }}>
-                      ≈ {fmtFull(Math.round(plan.monthly / plan.students))}/student
-                    </div>
-                  </div>
-
-                  <div style={{ background: plan.setupDiscounted ? "rgba(42,107,74,0.04)" : "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: plan.setupDiscounted ? "1px solid rgba(42,107,74,0.15)" : "1px solid rgba(28,27,23,0.05)", position: "relative" }}>
-                    {plan.setupDiscounted && (
-                      <div style={{ position: "absolute", top: -10, right: 16, background: "#2A6B4A", color: "#F7F5EF", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", padding: "4px 12px", borderRadius: 100 }}>
-                        SAVE ₹30,000
-                      </div>
-                    )}
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 8 }}>One-Time Setup</div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                      <div className="serif" style={{ fontSize: 40, color: plan.setupDiscounted ? "#2A6B4A" : "#1C1B17", lineHeight: 1, marginBottom: 4 }}>
-                        {fmt(plan.setupDiscounted ?? plan.setup)}
-                      </div>
-                      {plan.setupDiscounted && (
-                        <div className="serif" style={{ fontSize: 18, color: "rgba(28,27,23,0.3)", textDecoration: "line-through" }}>
-                          {fmt(plan.setup)}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, color: "rgba(28,27,23,0.42)" }}>installation + training</div>
-                    <div style={{ marginTop: 10, fontSize: 12, color: plan.setupDiscounted ? "#1B7A45" : "rgba(28,27,23,0.38)", fontWeight: 600 }}>
-                      {plan.setupDiscounted ? "Founding member price" : "Includes 3-day onboarding"}
-                    </div>
-                  </div>
-
-                  <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 14 }}>Always Included</div>
-                    {[["👤", `Up to ${plan.students} students`], ["📷", "2 cameras"], ["🛠️", "3-day setup"], ["🛡️", "7-day guarantee"]].map(([icon, text]) => (
-                      <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "rgba(28,27,23,0.65)" }}>
-                        <span style={{ fontSize: 14 }}>{icon}</span>{text}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.35)", marginBottom: 14 }}>Everything included</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "8px 24px" }}>
                     {plan.features.map((f) => (
                       <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13.5, color: "rgba(28,27,23,0.7)" }}>
-                        <span style={{ color: "#2A6B4A", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
-                        {f}
+                        <span style={{ color: "#2A6B4A", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>{f}
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <div style={{ padding: "22px 36px", background: "rgba(28,27,23,0.015)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
-                <div style={{ fontSize: 13.5, color: "rgba(28,27,23,0.5)", lineHeight: 1.7 }}>
-                  30-day money-back guarantee · No lock-in · Free 7-day trial first
-                </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <a href="https://wa.me/919974724656"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#1C1B17", color: "#F7F5EF", border: "none", borderRadius: 8, padding: "12px 22px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", textDecoration: "none", transition: "all 0.22s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#2A6B4A"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#1C1B17"; e.currentTarget.style.transform = "none"; }}
-                  >
-                    💬 WhatsApp for {plan.name}
-                  </a>
-                  <button onClick={() => scrollTo("demo")}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: "#1C1B17", border: "1.5px solid rgba(28,27,23,0.2)", borderRadius: 8, padding: "11px 20px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.22s" }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = "#1C1B17"}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(28,27,23,0.2)"}
-                  >
-                    Book Free Demo →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </FadeIn>
-
-          <FadeIn delay={0.05}>
-            <div className="plan-strip" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 56 }}>
-              {PLANS.map((p) => (
-                <button key={p.id} onClick={() => setSelectedPlan(p.id)}
-                  style={{ background: selectedPlan === p.id ? "#1C1B17" : "#FFFFFF", border: selectedPlan === p.id ? "2px solid #1C1B17" : "1.5px solid rgba(28,27,23,0.1)", borderRadius: 12, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.22s", fontFamily: "'Instrument Sans', sans-serif" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: selectedPlan === p.id ? "#F7F5EF" : "#1C1B17", marginBottom: 4 }}>{p.name}</div>
-                  <div className="serif" style={{ fontSize: 22, color: selectedPlan === p.id ? "#5AC87A" : "#2A6B4A", marginBottom: 2 }}>
-                    {fmt(p.monthly)}<span style={{ fontSize: 12, fontWeight: 400, fontFamily: "'Instrument Sans', sans-serif", color: selectedPlan === p.id ? "rgba(247,245,239,0.5)" : "rgba(28,27,23,0.4)" }}>/mo</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: selectedPlan === p.id ? "rgba(247,245,239,0.45)" : "rgba(28,27,23,0.4)", marginBottom: 6 }}>Up to {p.students} students</div>
-                  {p.setupDiscounted && (
-                    <div style={{ fontSize: 10, fontWeight: 600, color: selectedPlan === p.id ? "#5AC87A" : "#2A6B4A", letterSpacing: "0.06em" }}>⚡ Setup ₹45K (was ₹75K)</div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </FadeIn>
-
-          <FadeIn>
-            <div style={{ textAlign: "center", marginBottom: 32 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: "#1B5C3A", marginBottom: 10 }}>Optional Add-ons</div>
-              <h3 className="serif" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", letterSpacing: "-0.02em", marginBottom: 8 }}>Extend Your Plan</h3>
-              <p style={{ fontSize: 14, color: "rgba(28,27,23,0.52)", lineHeight: 1.8 }}>Every plan includes 2 cameras. Need more? Add what you need, when you need it.</p>
-            </div>
-          </FadeIn>
-
-          <div className="addon-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 48 }}>
-            {ADDONS.map((addon) => (
-              <FadeIn key={addon.id} delay={0.05}>
-                <div className="addon-card"
-                  style={{ border: activeAddon === addon.id ? "2px solid #2A6B4A" : "1.5px solid rgba(28,27,23,0.08)" }}
-                  onClick={() => setActiveAddon(activeAddon === addon.id ? null : addon.id)}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(42,107,74,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{addon.icon}</div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: "#1C1B17" }}>{addon.name}</div>
-                    </div>
-                    {activeAddon === addon.id && (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#1B5C3A", background: "rgba(42,107,74,0.1)", padding: "3px 10px", borderRadius: 100 }}>Selected</span>
-                    )}
-                  </div>
-                  <p style={{ fontSize: 13.5, color: "rgba(28,27,23,0.58)", lineHeight: 1.75, marginBottom: 16 }}>{addon.desc}</p>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <div className="serif" style={{ fontSize: 16, fontWeight: 700, color: addon.priceSub ? "#2A6B4A" : "#1C1B17" }}>{addon.priceLabel}</div>
-                      {addon.priceSub && <div style={{ fontSize: 11, color: "rgba(28,27,23,0.4)", marginTop: 2 }}>{addon.priceSub}</div>}
-                    </div>
-                    <a href="https://wa.me/919974724656" onClick={e => e.stopPropagation()}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#1C1B17", color: "#F7F5EF", borderRadius: 8, padding: "9px 16px", fontSize: 12, fontWeight: 600, textDecoration: "none", transition: "background 0.2s" }}
+                <div style={{ padding: "22px 36px", background: "rgba(28,27,23,0.015)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+                  <div style={{ fontSize: 13.5, color: "rgba(28,27,23,0.5)", lineHeight: 1.7 }}>7-day money-back guarantee · No lock-in · Free 7-day trial first</div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <a href="https://wa.me/919974724656"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#1C1B17", color: "#F7F5EF", border: "none", borderRadius: 8, padding: "12px 22px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}
                       onMouseEnter={e => e.currentTarget.style.background = "#2A6B4A"}
                       onMouseLeave={e => e.currentTarget.style.background = "#1C1B17"}>
-                      {addon.cta} →
+                      💬 WhatsApp for {plan.name}
                     </a>
+                    <button onClick={() => scrollTo("inquiry")}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: "#1C1B17", border: "1.5px solid rgba(28,27,23,0.2)", borderRadius: 8, padding: "11px 20px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                      Book Free Demo →
+                    </button>
                   </div>
                 </div>
-              </FadeIn>
-            ))}
-          </div>
-
-          <FadeIn>
-            <div style={{ background: "#FFFFFF", border: "2px solid rgba(42,107,74,0.18)", borderRadius: 16, padding: "28px 32px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: 44, lineHeight: 1, flexShrink: 0 }}>🛡️</span>
-              <div style={{ flex: 1 }}>
-                <h3 className="serif" style={{ fontSize: 20, color: "#1C1B17", marginBottom: 6 }}>30-Day Performance Guarantee</h3>
-                <p style={{ fontSize: 14, color: "rgba(28,27,23,0.58)", lineHeight: 1.75, margin: 0 }}>
-                  Use NexaAttend for 7 days. If it doesn't measurably save your staff time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no fine print, no paperwork.
-                </p>
-              </div>
-              <button onClick={() => scrollTo("demo")}
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#2A6B4A", color: "#F7F5EF", border: "none", borderRadius: 8, padding: "13px 22px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.22s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#1B4D3E"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#2A6B4A"; e.currentTarget.style.transform = "none"; }}>
-                Start Free Trial →
-              </button>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          HOW IT WORKS
-         ══════════════════════════════════════ */}
-      <section id="process" className="sec" style={{ background: "#FFFFFF" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <FadeIn>
-            <div className="pill pill-green">How It Works</div>
-            <h2 className="serif" style={{ fontSize: "clamp(1.8rem, 3.8vw, 2.8rem)", letterSpacing: "-0.02em", marginBottom: 10 }}>
-              From demo to live in 3 days.
-            </h2>
-            <p style={{ fontSize: 15, color: "rgba(28,27,23,0.5)", marginBottom: 48, lineHeight: 1.8 }}>We handle everything. You make one decision.</p>
-          </FadeIn>
-
-          <div className="g4" style={{ gap: 24 }}>
-            {[
-              { step: "01", icon: "📞", title: "Book a Free Demo", body: "WhatsApp or call us. We'll visit your school or connect online — no cost, no commitment, no sales pressure." },
-              { step: "02", icon: "🛠️", title: "Free 7-Day Trial", body: "We install NexaAttend and run a live trial with your actual students and staff. You see the numbers yourself." },
-              { step: "03", icon: "✓",  title: "You Decide", body: "Trial convinced you? Great. Not sure? Ask more questions. Our 7-day guarantee backs every decision." },
-              { step: "04", icon: "🚀", title: "Go Live", body: "Staff trained. Reports automated. From day four onwards, NexaAttend runs in the background — and just works." },
-            ].map((s, i) => (
-              <FadeIn key={i} delay={i * 0.08}>
-                <div>
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: i === 3 ? "#2A6B4A" : "rgba(42,107,74,0.07)", border: i === 3 ? "none" : "1px solid rgba(42,107,74,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, fontSize: 20 }}>{s.icon}</div>
-                  <div className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", color: "#2A6B4A", fontWeight: 600, marginBottom: 8 }}>STEP {s.step}</div>
-                  <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, lineHeight: 1.3 }}>{s.title}</h3>
-                  <p style={{ fontSize: 13.5, color: "rgba(28,27,23,0.54)", lineHeight: 1.8 }}>{s.body}</p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          TRUST / WHY US
-         ══════════════════════════════════════ */}
-      <section id="trust" className="sec" style={{ background: "#F7F5EF" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div className="g2" style={{ gap: 60, alignItems: "center" }}>
-            <FadeIn>
-              <div className="pill pill-green">Why Trust Us</div>
-              <h2 className="serif" style={{ fontSize: "clamp(1.7rem, 3.6vw, 2.6rem)", lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 18 }}>
-                Built in Ahmedabad, for Indian schools, by someone who actually visits them.
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(28,27,23,0.58)", lineHeight: 1.85, marginBottom: 24 }}>
-                NexaAttend was designed from the ground up for how Indian institutions actually operate — CBSE and GSEB workflows, mixed connectivity, real classroom constraints.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
-                {[
-                  "Your data never leaves your school premises — ever",
-                  "Direct WhatsApp access to the founding developer",
-                  "7-days money-back guarantee, no conditions",
-                  "India-based support, not a foreign ticket system",
-                  "Every onboarding personally overseen by the founder",
-                  "Works when your internet doesn't — fully offline",
-                ].map(t => (
-                  <div key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span style={{ color: "#2A6B4A", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
-                    <span style={{ fontSize: 14, color: "#1C1B17", lineHeight: 1.65 }}>{t}</span>
-                  </div>
-                ))}
               </div>
             </FadeIn>
 
-            <FadeIn delay={0.1}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <FadeIn>
+              <div style={{ background: "#FFFFFF", border: "2px solid rgba(42,107,74,0.18)", borderRadius: 16, padding: "28px 32px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", marginTop: 32 }}>
+                <span style={{ fontSize: 44, lineHeight: 1, flexShrink: 0 }}>🛡️</span>
+                <div style={{ flex: 1 }}>
+                  <h3 className="serif" style={{ fontSize: 20, color: "#1C1B17", marginBottom: 6 }}>7-Day Performance Guarantee</h3>
+                  <p style={{ fontSize: 14, color: "rgba(28,27,23,0.58)", lineHeight: 1.75, margin: 0 }}>
+                    Use NexaAttend for 7 days. If it doesn't measurably save your staff time, reduce attendance errors, and simplify daily operations — we refund you in full. No conditions, no fine print, no paperwork.
+                  </p>
+                </div>
+                <button onClick={() => scrollTo("inquiry")}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#2A6B4A", color: "#F7F5EF", border: "none", borderRadius: 8, padding: "13px 22px", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#1B4D3E"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#2A6B4A"}>
+                  Start Free Trial →
+                </button>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ── HOW IT WORKS ── */}
+        <section id="process" className="sec" style={{ background: "#FFFFFF" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <FadeIn>
+              <div className="pill pill-green">How It Works</div>
+              <h2 className="serif" style={{ fontSize: "clamp(1.8rem, 3.8vw, 2.8rem)", letterSpacing: "-0.02em", marginBottom: 10 }}>From demo to live in 3 days.</h2>
+              <p style={{ fontSize: 15, color: "rgba(28,27,23,0.5)", marginBottom: 48, lineHeight: 1.8 }}>We handle everything. You make one decision.</p>
+            </FadeIn>
+            <div className="g4" style={{ gap: 24 }}>
+              {[
+                { step:"01",icon:"📞",title:"Book a Free Demo",body:"WhatsApp or call us. We'll visit your school or connect online — no cost, no commitment, no sales pressure." },
+                { step:"02",icon:"🛠️",title:"Free 7-Day Trial",body:"We install NexaAttend and run a live trial with your actual students and staff. You see the numbers yourself." },
+                { step:"03",icon:"✓",title:"You Decide",body:"Trial convinced you? Great. Not sure? Ask more questions. Our 7-day guarantee backs every decision." },
+                { step:"04",icon:"🚀",title:"Go Live",body:"Staff trained. Reports automated. From day four onwards, NexaAttend runs in the background — and just works." },
+              ].map((s, i) => (
+                <FadeIn key={i} delay={i * 0.08}>
+                  <div>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: i === 3 ? "#2A6B4A" : "rgba(42,107,74,0.07)", border: i === 3 ? "none" : "1px solid rgba(42,107,74,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, fontSize: 20 }}>{s.icon}</div>
+                    <div className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", color: "#2A6B4A", fontWeight: 600, marginBottom: 8 }}>STEP {s.step}</div>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, lineHeight: 1.3 }}>{s.title}</h3>
+                    <p style={{ fontSize: 13.5, color: "rgba(28,27,23,0.54)", lineHeight: 1.8 }}>{s.body}</p>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── TRUST ── */}
+        <section id="trust" className="sec" style={{ background: "#F7F5EF" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <div className="g2" style={{ gap: 60, alignItems: "center" }}>
+              <FadeIn>
+                <div className="pill pill-green">Why Trust Us</div>
+                <h2 className="serif" style={{ fontSize: "clamp(1.7rem, 3.6vw, 2.6rem)", lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 18 }}>
+                  Built in Ahmedabad, for Indian schools, by someone who actually visits them.
+                </h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
+                  {["Your data never leaves your school premises — ever","Direct WhatsApp access to the founding developer","7-day money-back guarantee, no conditions","India-based support, not a foreign ticket system","Every onboarding personally overseen by the founder","Works when your internet doesn't — fully offline"].map(t => (
+                    <div key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <span style={{ color: "#2A6B4A", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
+                      <span style={{ fontSize: 14, color: "#1C1B17", lineHeight: 1.65 }}>{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </FadeIn>
+              <FadeIn delay={0.1}>
                 <div className="card" style={{ borderLeft: "4px solid #2A6B4A", borderRadius: "0 12px 12px 0" }}>
                   <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                     <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#2A6B4A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>👤</div>
@@ -1577,7 +1506,7 @@ export default function App() {
                       <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3 }}>Shah Tishya</div>
                       <div className="mono" style={{ fontSize: 9, color: "rgba(28,27,23,0.38)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Founder · Nova Teach Solution · Ahmedabad</div>
                       <p style={{ fontSize: 13.5, color: "rgba(28,27,23,0.6)", lineHeight: 1.8, fontStyle: "italic" }}>
-                        "I built NexaAttend because I was tired of seeing schools run on 5 disconnected systems when one well-made tool could replace all of them. Every feature exists because a real school needed it."
+                        "I built NexaAttend because I was tired of seeing schools run on 5 disconnected systems when one well-made tool could replace all of them."
                       </p>
                       <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                         <a href="https://wa.me/919974724656" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 500, color: "#1B5C3A", textDecoration: "none" }}>💬 WhatsApp directly</a>
@@ -1589,147 +1518,140 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-
-                {[
-                  { icon: "🏙️", title: "Ahmedabad-based team", body: "We are local. Same time zone, same context, same language. When you need us, we're reachable — not a ticket queue." },
-                  { icon: "🔒", title: "Offline-first by design", body: "No vendor lock-in. Your data belongs to your school, on your server. Not a SaaS dependency." },
-                ].map((t, i) => (
-                  <div key={i} className="card" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 20, flexShrink: 0 }}>{t.icon}</span>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>{t.title}</div>
-                      <p style={{ fontSize: 13, color: "rgba(28,27,23,0.52)", lineHeight: 1.75, margin: 0 }}>{t.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </FadeIn>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          FAQ
-         ══════════════════════════════════════ */}
-      <section className="sec" style={{ background: "#FFFFFF" }}>
-        <div style={{ maxWidth: 760, margin: "0 auto" }}>
-          <FadeIn style={{ textAlign: "center", marginBottom: 44 }}>
-            <div className="pill pill-green" style={{ justifyContent: "center" }}>Common Questions</div>
-            <h2 className="serif" style={{ fontSize: "clamp(1.7rem, 3.5vw, 2.4rem)", letterSpacing: "-0.02em" }}>
-              Questions you'd ask before buying.
-            </h2>
-          </FadeIn>
-          <FadeIn>
-            {faqs.map((faq, i) => (
-              <div key={i} className="faq-item">
-                <button className="faq-q" onClick={() => setActiveFaq(activeFaq === i ? null : i)}>
-                  <span>{faq.q}</span>
-                  <span style={{ fontSize: 18, color: "rgba(28,27,23,0.35)", transition: "transform 0.22s", transform: activeFaq === i ? "rotate(45deg)" : "none", flexShrink: 0, lineHeight: 1 }}>+</span>
-                </button>
-                {activeFaq === i && <div className="faq-a">{faq.a}</div>}
-              </div>
-            ))}
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          CTA / DEMO
-         ══════════════════════════════════════ */}
-      <section id="demo" className="sec" style={{ background: "#2A6B4A", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -100, left: -100, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(247,245,239,0.06), transparent 70%)", pointerEvents: "none" }}/>
-        <div style={{ position: "absolute", bottom: -80, right: -80, width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, rgba(247,245,239,0.05), transparent 70%)", pointerEvents: "none" }}/>
-
-        <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center", position: "relative" }}>
-          <FadeIn>
-            <div className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(247,245,239,0.4)", marginBottom: 18 }}>Free Demo — No Obligation</div>
-            <h2 className="serif" style={{ fontSize: "clamp(2rem, 5.5vw, 3.6rem)", lineHeight: 1.06, letterSpacing: "-0.025em", color: "#F7F5EF", marginBottom: 18 }}>
-              Book Your Free<br/>School Demo Today.
-            </h2>
-            <p style={{ fontSize: 15, color: "rgba(247,245,239,0.58)", lineHeight: 1.9, marginBottom: 36, maxWidth: 460, margin: "0 auto 36px" }}>
-              We visit your school (or connect online), show you the complete system live, and answer every question — completely free. No contract. No pressure. Just the system working.
-            </p>
-
-            <div className="flex-cta" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
-              <a href="https://wa.me/919974724656" className="btn-cta">
-                <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5"/><path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff"/></svg>
-                WhatsApp Us Now
-              </a>
-              <a href="tel:+919974724656" className="btn-cta-outline">📞 Call +91 99747 24656</a>
+              </FadeIn>
             </div>
+          </div>
+        </section>
 
-            <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-              {["Response within 24 hours","Demo at your school or online","Gujarat schools prioritised"].map(t => (
-                <div key={t} style={{ fontSize: 12, color: "rgba(247,245,239,0.4)", display: "flex", gap: 5, alignItems: "center" }}>
-                  <span style={{ color: "rgba(247,245,239,0.25)", fontSize: 10 }}>◆</span>{t}
+        {/* ── FAQ ── */}
+        <section className="sec" style={{ background: "#FFFFFF" }}>
+          <div style={{ maxWidth: 760, margin: "0 auto" }}>
+            <FadeIn style={{ textAlign: "center", marginBottom: 44 }}>
+              <div className="pill pill-green" style={{ justifyContent: "center" }}>Common Questions</div>
+              <h2 className="serif" style={{ fontSize: "clamp(1.7rem, 3.5vw, 2.4rem)", letterSpacing: "-0.02em" }}>Questions you'd ask before buying.</h2>
+            </FadeIn>
+            <FadeIn>
+              {faqs.map((faq, i) => (
+                <div key={i} className="faq-item">
+                  <button className="faq-q" onClick={() => setActiveFaq(activeFaq === i ? null : i)}>
+                    <span>{faq.q}</span>
+                    <span style={{ fontSize: 18, color: "rgba(28,27,23,0.35)", transition: "transform 0.22s", transform: activeFaq === i ? "rotate(45deg)" : "none", flexShrink: 0, lineHeight: 1 }}>+</span>
+                  </button>
+                  {activeFaq === i && <div className="faq-a">{faq.a}</div>}
                 </div>
               ))}
-            </div>
+            </FadeIn>
+          </div>
+        </section>
 
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "rgba(247,245,239,0.08)", border: "1px solid rgba(247,245,239,0.12)", borderRadius: 10, padding: "11px 18px", flexWrap: "wrap", justifyContent: "center" }}>
-              <span style={{ color: "rgba(247,245,239,0.5)", lineHeight: 1 }}><LiIcon/></span>
-              <span style={{ fontSize: 13, color: "rgba(247,245,239,0.65)" }}>Follow updates —</span>
-              <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "#F7F5EF", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                Nova Teach on LinkedIn
-              </a>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
+        {/* ── INQUIRY / DEMO SECTION ── */}
+        <section id="inquiry" className="sec" style={{ background: "#F7F5EF" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <FadeIn style={{ textAlign: "center", marginBottom: 44 }}>
+              <div className="pill pill-green" style={{ justifyContent: "center" }}>Free Demo — No Obligation</div>
+              <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4vw, 3rem)", lineHeight: 1.08, letterSpacing: "-0.022em", marginBottom: 12 }}>
+                Book Your Free School Demo Today.
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(28,27,23,0.52)", maxWidth: 500, margin: "0 auto", lineHeight: 1.85 }}>
+                We visit your school (or connect online), show you the complete system live, and answer every question — completely free. No contract. No pressure.
+              </p>
+            </FadeIn>
 
-      {/* ── FOOTER ── */}
-      <footer style={{ background: "#111110", padding: "48px 6% 28px", color: "#F7F5EF" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div className="g2" style={{ gap: 48, paddingBottom: 36, borderBottom: "1px solid rgba(247,245,239,0.07)" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <div style={{ width: 28, height: 28, background: "#2A6B4A", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/><path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <div className="g2 inquiry-grid" style={{ gap: 48, alignItems: "flex-start" }}>
+              <FadeIn>
+                <InquiryForm />
+              </FadeIn>
+              <FadeIn delay={0.1}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {[
+                    { icon:"⚡", title:"Response within 24 hours", body:"We reply to every inquiry personally — by WhatsApp or phone — within one business day." },
+                    { icon:"🏫", title:"Demo at your school or online", body:"We visit Ahmedabad schools in person. For other Gujarat cities and beyond, we connect live via video call." },
+                    { icon:"🛡️", title:"No contract, no commitment", body:"The demo is completely free. The 7-day trial is free. You only pay if you're happy to continue." },
+                    { icon:"🔒", title:"Your data stays with you", body:"Even during the trial, all student data is stored locally on your premises. Nothing goes to any cloud." },
+                  ].map((t, i) => (
+                    <div key={i} style={{ background: "#FFFFFF", border: "1px solid rgba(28,27,23,0.07)", borderRadius: 12, padding: "20px 22px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>{t.icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: "#1C1B17", marginBottom: 5 }}>{t.title}</div>
+                        <p style={{ fontSize: 13, color: "rgba(28,27,23,0.52)", lineHeight: 1.75, margin: 0 }}>{t.body}</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div style={{ background: "#2A6B4A", borderRadius: 12, padding: "22px 24px" }}>
+                    <div style={{ fontSize: 13, color: "rgba(247,245,239,0.55)", marginBottom: 6, fontWeight: 500 }}>Prefer to message directly?</div>
+                    <a href="https://wa.me/919974724656" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", marginBottom: 12 }}>
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5"/>
+                        <path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff"/>
+                      </svg>
+                      <span style={{ fontSize: 15, fontWeight: 600, color: "#F7F5EF" }}>WhatsApp +91 99747 24656</span>
+                    </a>
+                    <a href="tel:+919974724656" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+                      <span style={{ fontSize: 16 }}>📞</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: "rgba(247,245,239,0.75)" }}>+91 99747 24656</span>
+                    </a>
+                  </div>
+                </div>
+              </FadeIn>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FOOTER ── */}
+        <footer style={{ background: "#111110", padding: "48px 6% 28px", color: "#F7F5EF" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+            <div className="g2" style={{ gap: 48, paddingBottom: 36, borderBottom: "1px solid rgba(247,245,239,0.07)" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 28, height: 28, background: "#2A6B4A", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/><path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </div>
+                  <div>
+                    <div className="serif" style={{ fontSize: 16 }}>NexaAttend</div>
+                    <div style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "#2A6B4A" }}>by Nova Teach Solution</div>
+                  </div>
+                </div>
+                <p style={{ fontSize: 13, color: "rgba(247,245,239,0.35)", lineHeight: 1.85, maxWidth: 300 }}>
+                  Complete School ERP with AI face recognition. Offline-first. Flat pricing. 7-day guarantee.
+                </p>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+                <div>
+                  <div className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.25)", marginBottom: 14 }}>Product</div>
+                  {[["Platform","solution"],["Pricing","pricing"],["How It Works","process"],["Book Demo","inquiry"]].map(([l, id]) => (
+                    <div key={l} style={{ marginBottom: 10 }}>
+                      <button style={{ background: "none", border: "none", color: "rgba(247,245,239,0.45)", fontSize: 13, cursor: "pointer", padding: 0, fontFamily: "'Instrument Sans',sans-serif" }}
+                        onMouseEnter={e => e.target.style.color = "#F7F5EF"}
+                        onMouseLeave={e => e.target.style.color = "rgba(247,245,239,0.45)"}
+                        onClick={() => scrollTo(id)}>{l}
+                      </button>
+                    </div>
+                  ))}
                 </div>
                 <div>
-                  <div className="serif" style={{ fontSize: 16 }}>NexaAttend</div>
-                  <div style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "#2A6B4A" }}>by Nova Teach Solution</div>
-                </div>
-              </div>
-              <p style={{ fontSize: 13, color: "rgba(247,245,239,0.35)", lineHeight: 1.85, maxWidth: 300 }}>
-                Complete School ERP with AI face recognition. Offline-first. Flat pricing. 7-day guarantee.
-              </p>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
-              <div>
-                <div className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.25)", marginBottom: 14 }}>Product</div>
-                {[["Platform","solution"],["Pricing","pricing"],["How It Works","process"],["Book Demo","demo"]].map(([l, id]) => (
-                  <div key={l} style={{ marginBottom: 10 }}>
-                    <button style={{ background: "none", border: "none", color: "rgba(247,245,239,0.45)", fontSize: 13, cursor: "pointer", padding: 0, fontFamily: "'Instrument Sans',sans-serif", transition: "color 0.2s" }}
-                      onMouseEnter={e => e.target.style.color = "#F7F5EF"}
-                      onMouseLeave={e => e.target.style.color = "rgba(247,245,239,0.45)"}
-                      onClick={() => scrollTo(id)}>{l}
-                    </button>
+                  <div className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.25)", marginBottom: 14 }}>Contact</div>
+                  <div style={{ fontSize: 13, color: "rgba(247,245,239,0.45)", lineHeight: 2.1 }}>
+                    <div>+91 99747 24656</div>
+                    <div>WhatsApp available</div>
+                    <div>Ahmedabad, Gujarat</div>
                   </div>
-                ))}
-              </div>
-              <div>
-                <div className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.25)", marginBottom: 14 }}>Contact</div>
-                <div style={{ fontSize: 13, color: "rgba(247,245,239,0.45)", lineHeight: 2.1 }}>
-                  <div>+91 99747 24656</div>
-                  <div>WhatsApp available</div>
-                  <div>Ahmedabad, Gujarat</div>
+                  <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer"
+                    style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "rgba(247,245,239,0.45)", textDecoration: "none" }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#F7F5EF"}
+                    onMouseLeave={e => e.currentTarget.style.color = "rgba(247,245,239,0.45)"}>
+                    <LiIcon/> LinkedIn
+                  </a>
                 </div>
-                <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer"
-                  style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "rgba(247,245,239,0.45)", textDecoration: "none", transition: "color 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#F7F5EF"}
-                  onMouseLeave={e => e.currentTarget.style.color = "rgba(247,245,239,0.45)"}>
-                  <LiIcon/> LinkedIn
-                </a>
               </div>
             </div>
+            <div style={{ paddingTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>© {new Date().getFullYear()} Nova Teach Solution. Founded by Shah Tishya.</div>
+              <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>Ahmedabad, Gujarat, India</div>
+            </div>
           </div>
-          <div style={{ paddingTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>© {new Date().getFullYear()} Nova Teach Solution. Founded by Shah Tishya.</div>
-            <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>Ahmedabad, Gujarat, India</div>
-          </div>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </>
   );
 }
