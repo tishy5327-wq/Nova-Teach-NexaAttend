@@ -888,7 +888,7 @@ export default function App() {
               </div>
 
               <div className="hero-badges-anim" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                {[["🔒","100% offline"], ["⚡","3-day setup"], ["🛡️","30-day guarantee"], ["🏫","Made for India"]].map(([icon, text]) => (
+                {[["🔒","100% offline"], ["⚡","3-day setup"], ["🛡️","7-day guarantee"], ["🏫","Made for India"]].map(([icon, text]) => (
                   <div key={text} style={{
                     display: "flex", alignItems: "center", gap: 7,
                     fontSize: 12.5, fontWeight: 500,
@@ -1380,7 +1380,7 @@ export default function App() {
 
                   <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 14 }}>Always Included</div>
-                    {[["👤", `Up to ${plan.students} students`], ["📷", "2 cameras"], ["🛠️", "3-day setup"], ["🛡️", "30-day guarantee"]].map(([icon, text]) => (
+                    {[["👤", `Up to ${plan.students} students`], ["📷", "2 cameras"], ["🛠️", "3-day setup"], ["🛡️", "7-day guarantee"]].map(([icon, text]) => (
                       <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "rgba(28,27,23,0.65)" }}>
                         <span style={{ fontSize: 14 }}>{icon}</span>{text}
                       </div>
@@ -1521,7 +1521,7 @@ export default function App() {
             {[
               { step: "01", icon: "📞", title: "Book a Free Demo", body: "WhatsApp or call us. We'll visit your school or connect online — no cost, no commitment, no sales pressure." },
               { step: "02", icon: "🛠️", title: "Free 7-Day Trial", body: "We install NexaAttend and run a live trial with your actual students and staff. You see the numbers yourself." },
-              { step: "03", icon: "✓",  title: "You Decide", body: "Trial convinced you? Great. Not sure? Ask more questions. Our 30-day guarantee backs every decision." },
+              { step: "03", icon: "✓",  title: "You Decide", body: "Trial convinced you? Great. Not sure? Ask more questions. Our 7-day guarantee backs every decision." },
               { step: "04", icon: "🚀", title: "Go Live", body: "Staff trained. Reports automated. From day four onwards, NexaAttend runs in the background — and just works." },
             ].map((s, i) => (
               <FadeIn key={i} delay={i * 0.08}>
@@ -1692,7 +1692,7 @@ export default function App() {
                 </div>
               </div>
               <p style={{ fontSize: 13, color: "rgba(247,245,239,0.35)", lineHeight: 1.85, maxWidth: 300 }}>
-                Complete School ERP with AI face recognition. Offline-first. Flat pricing. 30-day guarantee.
+                Complete School ERP with AI face recognition. Offline-first. Flat pricing. 7-day guarantee.
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
