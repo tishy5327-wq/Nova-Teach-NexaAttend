@@ -1,11 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 
-/* ─── Intersection Observer Hook ─── */
+/* ─── Google Apps Script Web App URL (replace with your own if needed) ─── */
+const SHEET_URL =
+  "https://script.google.com/macros/s/AKfycbxgViYSKbN1zFyISMS2l9xgDQGFE8QQAY7IlWjkEmAouzeO5GZwrLg8HZJevvF3SX4uyQ/exec";
+
+/* ─── Intersection Observer Hook (for fade-in animations) ─── */
 const useInView = (threshold = 0.1) => {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) setInView(true);
+      },
+      { threshold }
+    );
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
@@ -15,26 +24,30 @@ const useInView = (threshold = 0.1) => {
 const FadeIn = ({ children, delay = 0, className = "", style = {} }) => {
   const [ref, inView] = useInView();
   return (
-    <div ref={ref} className={className} style={{
-      opacity: inView ? 1 : 0,
-      transform: inView ? "translateY(0)" : "translateY(28px)",
-      transition: `opacity 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
-      ...style
-    }}>
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: inView ? 1 : 0,
+        transform: inView ? "translateY(0)" : "translateY(28px)",
+        transition: `opacity 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
 };
 
-/* ─── Live Attendance Terminal Data ─── */
+/* ─── Live Attendance Terminal Data (demo only) ─── */
 const logs = [
-  { time: "08:01:03", name: "Arjun Mehta",    cls: "X-A",   status: "present" },
-  { time: "08:01:07", name: "Priya Sharma",   cls: "X-A",   status: "present" },
-  { time: "08:01:14", name: "Rohan Patel",    cls: "IX-B",  status: "present" },
-  { time: "08:01:21", name: "Sneha Verma",    cls: "X-A",   status: "late"    },
-  { time: "08:01:28", name: "Dev Agarwal",    cls: "XI-C",  status: "present" },
-  { time: "08:01:35", name: "Kavya Joshi",    cls: "IX-B",  status: "present" },
-  { time: "08:01:40", name: "Ishaan Nair",    cls: "XII-A", status: "absent"  },
+  { time: "08:01:03", name: "Arjun Mehta", cls: "X-A", status: "present" },
+  { time: "08:01:07", name: "Priya Sharma", cls: "X-A", status: "present" },
+  { time: "08:01:14", name: "Rohan Patel", cls: "IX-B", status: "present" },
+  { time: "08:01:21", name: "Sneha Verma", cls: "X-A", status: "late" },
+  { time: "08:01:28", name: "Dev Agarwal", cls: "XI-C", status: "present" },
+  { time: "08:01:35", name: "Kavya Joshi", cls: "IX-B", status: "present" },
+  { time: "08:01:40", name: "Ishaan Nair", cls: "XII-A", status: "absent" },
 ];
 
 /* ─── ERP Modules Data ─── */
@@ -43,25 +56,25 @@ const modules = [
     icon: "◉",
     title: "Smart Attendance",
     features: ["AI face recognition — zero ID cards", "Works fully offline", "Marks 30 students in under 60 seconds", "Proxy attendance becomes impossible"],
-    color: "#1B4D3E"
+    color: "#1B4D3E",
   },
   {
     icon: "◈",
     title: "Student Management",
     features: ["Complete student profiles & history", "Batch and class management", "Fee tracking and dues", "Parent notification hub"],
-    color: "#1A2B4A"
+    color: "#1A2B4A",
   },
   {
     icon: "◇",
     title: "Staff & HR",
     features: ["Staff attendance via face recognition", "Payroll auto-calculated from attendance", "Leave management & approvals", "Department & role management"],
-    color: "#3D1A4A"
+    color: "#3D1A4A",
   },
   {
     icon: "▣",
     title: "Reports & Analytics",
     features: ["One-click daily / weekly / monthly reports", "Class-wise attendance trends", "Payroll & fee collection reports", "Admin dashboard — always live"],
-    color: "#4A2B0A"
+    color: "#4A2B0A",
   },
 ];
 
@@ -144,13 +157,12 @@ const fmt = (n) =>
   n >= 100000
     ? `₹${(n / 100000).toFixed(n % 100000 === 0 ? 0 : 1)}L`
     : `₹${n.toLocaleString("en-IN")}`;
-
 const fmtFull = (n) => `₹${n.toLocaleString("en-IN")}`;
 
 /* ─── LinkedIn Icon ─── */
 const LiIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-label="LinkedIn">
-    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
   </svg>
 );
 
@@ -284,7 +296,7 @@ const DemoVideoPlayer = () => {
             onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="#1C1B17" style={{ marginLeft: 4 }} aria-label="Play">
-              <path d="M8 5v14l11-7z"/>
+              <path d="M8 5v14l11-7z" />
             </svg>
           </div>
           <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: "clamp(1rem, 2.5vw, 1.4rem)", color: "#F7F5EF", marginBottom: 6 }}>
@@ -325,14 +337,14 @@ const DemoVideoPlayer = () => {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={togglePlay} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#F7F5EF", display: "flex", alignItems: "center" }} aria-label={playing ? "Pause" : "Play"}>
             {playing
-              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-              : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
             }
           </button>
           <button onClick={() => setMuted(m => !m)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }} aria-label={muted ? "Unmute" : "Mute"}>
             {muted
-              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" /></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>
             }
           </button>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "rgba(247,245,239,0.55)", marginLeft: 2 }}>
@@ -342,8 +354,8 @@ const DemoVideoPlayer = () => {
           <button onClick={toggleFS} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(247,245,239,0.7)", display: "flex", alignItems: "center" }} aria-label="Fullscreen">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               {fullscreen
-                ? <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
-                : <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                ? <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+                : <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
               }
             </svg>
           </button>
@@ -358,11 +370,8 @@ const DemoVideoPlayer = () => {
 };
 
 /* ══════════════════════════════════════
-   INQUIRY FORM COMPONENT
+   INQUIRY FORM COMPONENT (Google Sheet Integration)
    ══════════════════════════════════════ */
-const SHEET_URL =
-  "https://script.google.com/macros/s/AKfycbxgViYSKbN1zFyISMS2l9xgDQGFE8QQAY7IlWjkEmAouzeO5GZwrLg8HZJevvF3SX4uyQ/exec";
-
 const InquiryForm = () => {
   const [form, setForm] = useState({
     name: "", role: "", school: "", city: "",
@@ -374,7 +383,7 @@ const InquiryForm = () => {
   const [status, setStatus] = useState("idle");
   const [focusedField, setFocusedField] = useState(null);
 
-  const set = (k) => (e) => {
+  const setField = (k) => (e) => {
     setForm((f) => ({ ...f, [k]: e.target.value }));
     if (errors[k]) setErrors((prev) => { const n = { ...prev }; delete n[k]; return n; });
   };
@@ -394,13 +403,14 @@ const InquiryForm = () => {
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setStatus("sending");
+
     const params = new URLSearchParams({
       timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
       name:      form.name,
@@ -416,9 +426,15 @@ const InquiryForm = () => {
       message:   form.message  || "—",
     });
 
-    fetch(`${SHEET_URL}?${params.toString()}`, { method: "GET", mode: "no-cors" })
-      .then(() => setStatus("success"))
-      .catch(() => setStatus("error"));
+    try {
+      // mode: 'no-cors' allows the request to be sent even if the script doesn't have CORS headers.
+      // However, you won't be able to read the response. For a simple contact form, this is acceptable.
+      await fetch(`${SHEET_URL}?${params.toString()}`, { method: "GET", mode: "no-cors" });
+      setStatus("success");
+    } catch (error) {
+      console.error("Submission error:", error);
+      setStatus("error");
+    }
   };
 
   const inputStyle = (field) => ({
@@ -481,7 +497,7 @@ const InquiryForm = () => {
           margin: "0 auto 20px",
         }}>
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-            <path d="M5 13l4 4L19 7" stroke="#2A6B4A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M5 13l4 4L19 7" stroke="#2A6B4A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
         <h3 style={{ fontSize: 22, fontWeight: 600, color: "#1C1B17", marginBottom: 10 }}>
@@ -501,8 +517,8 @@ const InquiryForm = () => {
           }}
         >
           <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-            <path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5"/>
-            <path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff"/>
+            <path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5" />
+            <path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff" />
           </svg>
           Message us on WhatsApp
         </a>
@@ -532,21 +548,19 @@ const InquiryForm = () => {
 
   const FieldError = ({ field }) => errors[field] ? (
     <span style={errStyle}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#C0392B" strokeWidth="2"/><path d="M12 8v4M12 16h.01" stroke="#C0392B" strokeWidth="2" strokeLinecap="round"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#C0392B" strokeWidth="2" /><path d="M12 8v4M12 16h.01" stroke="#C0392B" strokeWidth="2" strokeLinecap="round" /></svg>
       {errors[field]}
     </span>
   ) : null;
 
   return (
     <div style={{ background: "#FFFFFF", borderRadius: 16, border: "1px solid rgba(28,27,23,0.08)", overflow: "hidden", boxShadow: "0 4px 24px rgba(28,27,23,0.06)" }}>
-
-      {/* Form Header */}
       <div style={{ padding: "28px 32px 24px", borderBottom: "1px solid rgba(28,27,23,0.07)", background: "linear-gradient(135deg, #FAFAF8 0%, #F7F5EF 100%)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, background: "#2A6B4A", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/>
-              <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5" />
+              <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
           <div>
@@ -563,49 +577,23 @@ const InquiryForm = () => {
         </p>
       </div>
 
-      {/* Form Body */}
       <div style={{ padding: "28px 32px 32px" }}>
         <form onSubmit={handleSubmit} noValidate>
-
-          {/* Section: About You */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.3)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ flex: 1, height: 1, background: "rgba(28,27,23,0.08)" }} />
               About You
               <span style={{ flex: 1, height: 1, background: "rgba(28,27,23,0.08)" }} />
             </div>
-
-            {/* Row: Name + Role */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
               <div>
-                <label style={labelStyle} htmlFor="name">
-                  Full Name <span style={{ color: "#C0392B" }}>*</span>
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  placeholder="e.g. Rajesh Sharma"
-                  value={form.name}
-                  onChange={set("name")}
-                  onFocus={() => setFocusedField("name")}
-                  onBlur={() => setFocusedField(null)}
-                  style={inputStyle("name")}
-                  autoComplete="name"
-                />
+                <label style={labelStyle} htmlFor="name">Full Name <span style={{ color: "#C0392B" }}>*</span></label>
+                <input id="name" type="text" placeholder="e.g. Rajesh Sharma" value={form.name} onChange={setField("name")} onFocus={() => setFocusedField("name")} onBlur={() => setFocusedField(null)} style={inputStyle("name")} autoComplete="name" />
                 <FieldError field="name" />
               </div>
               <div>
-                <label style={labelStyle} htmlFor="role">
-                  Your Role <span style={{ color: "#C0392B" }}>*</span>
-                </label>
-                <select
-                  id="role"
-                  value={form.role}
-                  onChange={set("role")}
-                  onFocus={() => setFocusedField("role")}
-                  onBlur={() => setFocusedField(null)}
-                  style={selectStyle("role")}
-                >
+                <label style={labelStyle} htmlFor="role">Your Role <span style={{ color: "#C0392B" }}>*</span></label>
+                <select id="role" value={form.role} onChange={setField("role")} onFocus={() => setFocusedField("role")} onBlur={() => setFocusedField(null)} style={selectStyle("role")}>
                   <option value="">Select your role…</option>
                   <option value="Principal / Headmaster">Principal / Headmaster</option>
                   <option value="School Owner / Trustee">School Owner / Trustee</option>
@@ -618,108 +606,45 @@ const InquiryForm = () => {
                 <FieldError field="role" />
               </div>
             </div>
-
-            {/* Phone + Email */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
-                <label style={labelStyle} htmlFor="phone">
-                  Mobile Number <span style={{ color: "#C0392B" }}>*</span>
-                </label>
+                <label style={labelStyle} htmlFor="phone">Mobile Number <span style={{ color: "#C0392B" }}>*</span></label>
                 <div style={{ position: "relative" }}>
                   <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "rgba(28,27,23,0.45)", fontWeight: 500, pointerEvents: "none" }}>+91</span>
-                  <input
-                    id="phone"
-                    type="tel"
-                    placeholder="99747 24656"
-                    value={form.phone}
-                    onChange={set("phone")}
-                    onFocus={() => setFocusedField("phone")}
-                    onBlur={() => setFocusedField(null)}
-                    style={{ ...inputStyle("phone"), paddingLeft: 44 }}
-                    autoComplete="tel"
-                    inputMode="numeric"
-                  />
+                  <input id="phone" type="tel" placeholder="99747 24656" value={form.phone} onChange={setField("phone")} onFocus={() => setFocusedField("phone")} onBlur={() => setFocusedField(null)} style={{ ...inputStyle("phone"), paddingLeft: 44 }} autoComplete="tel" inputMode="numeric" />
                 </div>
                 <FieldError field="phone" />
               </div>
               <div>
-                <label style={labelStyle} htmlFor="email">
-                  Email Address <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span>
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="you@school.edu.in"
-                  value={form.email}
-                  onChange={set("email")}
-                  onFocus={() => setFocusedField("email")}
-                  onBlur={() => setFocusedField(null)}
-                  style={inputStyle("email")}
-                  autoComplete="email"
-                />
+                <label style={labelStyle} htmlFor="email">Email Address <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span></label>
+                <input id="email" type="email" placeholder="you@school.edu.in" value={form.email} onChange={setField("email")} onFocus={() => setFocusedField("email")} onBlur={() => setFocusedField(null)} style={inputStyle("email")} autoComplete="email" />
                 <FieldError field="email" />
               </div>
             </div>
           </div>
 
-          {/* Section: About Your School */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.3)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ flex: 1, height: 1, background: "rgba(28,27,23,0.08)" }} />
               About Your School
               <span style={{ flex: 1, height: 1, background: "rgba(28,27,23,0.08)" }} />
             </div>
-
-            {/* School Name + City */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
               <div>
-                <label style={labelStyle} htmlFor="school">
-                  School / Institute Name <span style={{ color: "#C0392B" }}>*</span>
-                </label>
-                <input
-                  id="school"
-                  type="text"
-                  placeholder="e.g. Sunrise International School"
-                  value={form.school}
-                  onChange={set("school")}
-                  onFocus={() => setFocusedField("school")}
-                  onBlur={() => setFocusedField(null)}
-                  style={inputStyle("school")}
-                />
+                <label style={labelStyle} htmlFor="school">School / Institute Name <span style={{ color: "#C0392B" }}>*</span></label>
+                <input id="school" type="text" placeholder="e.g. Sunrise International School" value={form.school} onChange={setField("school")} onFocus={() => setFocusedField("school")} onBlur={() => setFocusedField(null)} style={inputStyle("school")} />
                 <FieldError field="school" />
               </div>
               <div>
-                <label style={labelStyle} htmlFor="city">
-                  City / District <span style={{ color: "#C0392B" }}>*</span>
-                </label>
-                <input
-                  id="city"
-                  type="text"
-                  placeholder="e.g. Ahmedabad"
-                  value={form.city}
-                  onChange={set("city")}
-                  onFocus={() => setFocusedField("city")}
-                  onBlur={() => setFocusedField(null)}
-                  style={inputStyle("city")}
-                />
+                <label style={labelStyle} htmlFor="city">City / District <span style={{ color: "#C0392B" }}>*</span></label>
+                <input id="city" type="text" placeholder="e.g. Ahmedabad" value={form.city} onChange={setField("city")} onFocus={() => setFocusedField("city")} onBlur={() => setFocusedField(null)} style={inputStyle("city")} />
                 <FieldError field="city" />
               </div>
             </div>
-
-            {/* Students + Board */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
-                <label style={labelStyle} htmlFor="students">
-                  Total Students <span style={{ color: "#C0392B" }}>*</span>
-                </label>
-                <select
-                  id="students"
-                  value={form.students}
-                  onChange={set("students")}
-                  onFocus={() => setFocusedField("students")}
-                  onBlur={() => setFocusedField(null)}
-                  style={selectStyle("students")}
-                >
+                <label style={labelStyle} htmlFor="students">Total Students <span style={{ color: "#C0392B" }}>*</span></label>
+                <select id="students" value={form.students} onChange={setField("students")} onFocus={() => setFocusedField("students")} onBlur={() => setFocusedField(null)} style={selectStyle("students")}>
                   <option value="">Select approximate count…</option>
                   <option value="Under 100">Under 100</option>
                   <option value="100–200">100 – 200</option>
@@ -733,17 +658,8 @@ const InquiryForm = () => {
                 <FieldError field="students" />
               </div>
               <div>
-                <label style={labelStyle} htmlFor="board">
-                  School Board <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span>
-                </label>
-                <select
-                  id="board"
-                  value={form.board}
-                  onChange={set("board")}
-                  onFocus={() => setFocusedField("board")}
-                  onBlur={() => setFocusedField(null)}
-                  style={selectStyle("board")}
-                >
+                <label style={labelStyle} htmlFor="board">School Board <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span></label>
+                <select id="board" value={form.board} onChange={setField("board")} onFocus={() => setFocusedField("board")} onBlur={() => setFocusedField(null)} style={selectStyle("board")}>
                   <option value="">Select board…</option>
                   <option value="CBSE">CBSE</option>
                   <option value="GSEB (Gujarat Board)">GSEB (Gujarat Board)</option>
@@ -758,7 +674,6 @@ const InquiryForm = () => {
             </div>
           </div>
 
-          {/* Section: Plan Selection */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.3)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ flex: 1, height: 1, background: "rgba(28,27,23,0.08)" }} />
@@ -792,7 +707,7 @@ const InquiryForm = () => {
                         display: "flex", alignItems: "center", justifyContent: "center"
                       }}>
                         <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
                     )}
@@ -808,26 +723,15 @@ const InquiryForm = () => {
             </p>
           </div>
 
-          {/* Section: Additional */}
           <div style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.3)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ flex: 1, height: 1, background: "rgba(28,27,23,0.08)" }} />
               A Little More
               <span style={{ flex: 1, height: 1, background: "rgba(28,27,23,0.08)" }} />
             </div>
-
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle} htmlFor="hear">
-                How did you hear about NexaAttend? <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span>
-              </label>
-              <select
-                id="hear"
-                value={form.hear}
-                onChange={set("hear")}
-                onFocus={() => setFocusedField("hear")}
-                onBlur={() => setFocusedField(null)}
-                style={selectStyle("hear")}
-              >
+              <label style={labelStyle} htmlFor="hear">How did you hear about NexaAttend? <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span></label>
+              <select id="hear" value={form.hear} onChange={setField("hear")} onFocus={() => setFocusedField("hear")} onBlur={() => setFocusedField(null)} style={selectStyle("hear")}>
                 <option value="">Select source…</option>
                 <option value="Google Search">Google Search</option>
                 <option value="WhatsApp / Word of Mouth">WhatsApp / Word of Mouth</option>
@@ -839,30 +743,12 @@ const InquiryForm = () => {
                 <option value="Other">Other</option>
               </select>
             </div>
-
             <div>
-              <label style={labelStyle} htmlFor="message">
-                Anything you'd like us to know? <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span>
-              </label>
-              <textarea
-                id="message"
-                placeholder="Tell us about your current attendance system, any specific pain points, or questions you have…"
-                value={form.message}
-                onChange={set("message")}
-                onFocus={() => setFocusedField("message")}
-                onBlur={() => setFocusedField(null)}
-                rows={3}
-                style={{
-                  ...inputStyle("message"),
-                  resize: "vertical",
-                  minHeight: 80,
-                  lineHeight: 1.65,
-                }}
-              />
+              <label style={labelStyle} htmlFor="message">Anything you'd like us to know? <span style={{ fontSize: 11, color: "rgba(28,27,23,0.35)", fontWeight: 400 }}>(optional)</span></label>
+              <textarea id="message" placeholder="Tell us about your current attendance system, any specific pain points, or questions you have…" value={form.message} onChange={setField("message")} onFocus={() => setFocusedField("message")} onBlur={() => setFocusedField(null)} rows={3} style={{ ...inputStyle("message"), resize: "vertical", minHeight: 80, lineHeight: 1.65 }} />
             </div>
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={status === "sending"}
@@ -890,8 +776,8 @@ const InquiryForm = () => {
             {status === "sending" ? (
               <>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
-                  <circle cx="12" cy="12" r="10" stroke="rgba(247,245,239,0.3)" strokeWidth="2.5"/>
-                  <path d="M12 2a10 10 0 0110 10" stroke="#F7F5EF" strokeWidth="2.5" strokeLinecap="round"/>
+                  <circle cx="12" cy="12" r="10" stroke="rgba(247,245,239,0.3)" strokeWidth="2.5" />
+                  <path d="M12 2a10 10 0 0110 10" stroke="#F7F5EF" strokeWidth="2.5" strokeLinecap="round" />
                 </svg>
                 Sending your inquiry…
               </>
@@ -899,16 +785,13 @@ const InquiryForm = () => {
               <>
                 Book My Free Demo
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </>
             )}
           </button>
-
-          {/* Footer note */}
           <p style={{ fontSize: 12, color: "rgba(28,27,23,0.38)", textAlign: "center", marginTop: 14, lineHeight: 1.7 }}>
-            🔒 Your information is never shared with third parties.
-            We'll only use it to schedule your demo and follow up.
+            🔒 Your information is never shared with third parties. We'll only use it to schedule your demo and follow up.
           </p>
         </form>
       </div>
@@ -916,6 +799,7 @@ const InquiryForm = () => {
   );
 };
 
+/* ─── Main App Component ─── */
 export default function App() {
   const [navScrolled, setNavScrolled] = useState(false);
   const [logIndex, setLogIndex] = useState(3);
@@ -1157,9 +1041,9 @@ export default function App() {
         }
       `}</style>
 
-      {/* ── Mobile Menu ── */}
+      {/* Mobile Menu */}
       <div className={`mmenu ${menuOpen ? "open" : ""}`}>
-        {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["solution","Platform"],["pricing","Pricing"],["process","How It Works"],["trust","Trust & Guarantee"],["inquiry","Book Demo"]].map(([id, label]) => (
+        {[["problem","Why NexaAttend"], ["demo-video","Watch Demo"], ["solution","Platform"], ["pricing","Pricing"], ["process","How It Works"], ["trust","Trust & Guarantee"], ["inquiry","Book Demo"]].map(([id, label]) => (
           <button key={id} className="mlink" onClick={() => scrollTo(id)}>{label}</button>
         ))}
         <div style={{ marginTop: "auto", paddingTop: 28 }}>
@@ -1174,7 +1058,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── NAV ── */}
+      {/* Navbar */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         padding: navScrolled ? "11px 6%" : "18px 6%",
@@ -1187,9 +1071,9 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => scrollTo("hero")}>
           <div style={{ width: 32, height: 32, background: "#2A6B4A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="15" height="15" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/>
-              <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M13 5l2-2M13.5 9l2.5.5" stroke="#F7F5EF" strokeWidth="1.2" strokeLinecap="round" opacity="0.55"/>
+              <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5" />
+              <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M13 5l2-2M13.5 9l2.5.5" stroke="#F7F5EF" strokeWidth="1.2" strokeLinecap="round" opacity="0.55" />
             </svg>
           </div>
           <div>
@@ -1198,21 +1082,23 @@ export default function App() {
           </div>
         </div>
         <div className="hide-mob" style={{ display: "flex", gap: 24, alignItems: "center" }}>
-          {[["problem","Why NexaAttend"],["demo-video","Watch Demo"],["pricing","Pricing"],["process","How It Works"],["trust","Guarantee"]].map(([id, label]) => (
+          {[["problem","Why NexaAttend"], ["demo-video","Watch Demo"], ["pricing","Pricing"], ["process","How It Works"], ["trust","Guarantee"]].map(([id, label]) => (
             <button key={id} className="nav-link" onClick={() => scrollTo(id)}
               style={{ color: navScrolled ? "rgba(28,27,23,0.55)" : "rgba(247,245,239,0.7)" }}>{label}</button>
           ))}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <a href="tel:+919974724656" className="btn-secondary hide-mob"
-            style={{ padding: "8px 14px", fontSize: 13,
+            style={{
+              padding: "8px 14px", fontSize: 13,
               background: navScrolled ? "transparent" : "rgba(247,245,239,0.1)",
               color: navScrolled ? "#1C1B17" : "rgba(247,245,239,0.85)",
               border: navScrolled ? "1.5px solid rgba(28,27,23,0.2)" : "1.5px solid rgba(247,245,239,0.24)",
               backdropFilter: navScrolled ? "none" : "blur(8px)"
             }}>+91 99747 24656</a>
           <button className="btn-primary" onClick={() => scrollTo("inquiry")}
-            style={{ padding: "9px 17px", fontSize: 13,
+            style={{
+              padding: "9px 17px", fontSize: 13,
               background: navScrolled ? "#1C1B17" : "#F7F5EF",
               color: navScrolled ? "#F7F5EF" : "#1C1B17"
             }}>Book Free Demo</button>
@@ -1223,14 +1109,14 @@ export default function App() {
             alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)"
           }}>
             {menuOpen
-              ? <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round"/></svg>
+              ? <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round" /></svg>
+              : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke={navScrolled ? "#1C1B17" : "#F7F5EF"} strokeWidth="1.8" strokeLinecap="round" /></svg>
             }
           </button>
         </div>
       </nav>
 
-      {/* ── HERO ── */}
+      {/* Hero Section */}
       <main id="hero" className="hero-pad" style={{ minHeight: "100vh", padding: "130px 6% 80px", position: "relative", overflow: "hidden" }}>
         <div className="hero-bg" />
         <div className="hero-grid" />
@@ -1240,12 +1126,12 @@ export default function App() {
             <div>
               <div className="hero-pill-anim">
                 <div className="pill pill-hero" style={{ marginBottom: 22 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A", flexShrink: 0 }} className="pdot"/>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5AC87A", flexShrink: 0 }} className="pdot" />
                   Complete School ERP · AI-Powered
                 </div>
               </div>
               <h1 className="serif hero-h hero-h1-anim" style={{ fontSize: "clamp(2.6rem, 4.8vw, 4rem)", lineHeight: 1.05, letterSpacing: "-0.025em", marginBottom: 22, color: "#F7F5EF", textShadow: "0 2px 32px rgba(10,9,8,0.35)" }}>
-                Your Entire School,<br/>Managed From<br/><em style={{ color: "#5AC87A", fontStyle: "italic" }}>One System.</em>
+                Your Entire School,<br />Managed From<br /><em style={{ color: "#5AC87A", fontStyle: "italic" }}>One System.</em>
               </h1>
               <p className="hero-sub-anim" style={{ fontSize: 16, lineHeight: 1.85, color: "rgba(247,245,239,0.72)", maxWidth: 460, marginBottom: 30, textShadow: "0 1px 8px rgba(10,9,8,0.3)" }}>
                 NexaAttend is a complete School ERP — attendance, staff, payroll, reports, and parent communication — powered by AI face recognition that works 100% offline.
@@ -1253,14 +1139,14 @@ export default function App() {
               <div className="flex-cta hero-cta-anim" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36 }}>
                 <button className="btn-hero-primary" onClick={() => scrollTo("inquiry")} style={{ fontSize: 15, padding: "14px 26px" }}>
                   Get Free Trial
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </button>
                 <button className="btn-hero-secondary" onClick={() => scrollTo("solution")} style={{ fontSize: 15, padding: "13px 22px" }}>
                   See the Platform
                 </button>
               </div>
               <div className="hero-badges-anim" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                {[["🔒","100% offline"],["⚡","3-day setup"],["🛡️","7-day guarantee"],["🏫","Made for India"]].map(([icon, text]) => (
+                {[["🔒","100% offline"], ["⚡","3-day setup"], ["🛡️","7-day guarantee"], ["🏫","Made for India"]].map(([icon, text]) => (
                   <div key={text} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 500, color: "rgba(247,245,239,0.62)", background: "rgba(247,245,239,0.08)", border: "1px solid rgba(247,245,239,0.14)", backdropFilter: "blur(8px)", borderRadius: 100, padding: "5px 12px" }}>
                     <span style={{ fontSize: 13 }}>{icon}</span>{text}
                   </div>
@@ -1270,17 +1156,17 @@ export default function App() {
             <div className="hide-mob hero-card-anim">
               <div className="glass-card">
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "11px 16px", borderBottom: "1px solid rgba(28,27,23,0.07)", background: "rgba(250,250,248,0.85)" }}>
-                  {[["#F05A5A"],["#F0B45A"],["#5AF07A"]].map(([c], i) => (
-                    <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }}/>
+                  {[["#F05A5A"], ["#F0B45A"], ["#5AF07A"]].map(([c], i) => (
+                    <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />
                   ))}
                   <span className="mono" style={{ fontSize: 10, color: "rgba(28,27,23,0.32)", marginLeft: 8 }}>nexaattend — live dashboard</span>
                   <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3DC87A" }} className="pdot"/>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3DC87A" }} className="pdot" />
                     <span className="mono" style={{ fontSize: 9, color: "#1B7A45", fontWeight: 600, letterSpacing: "0.08em" }}>LIVE</span>
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "rgba(250,250,248,0.7)", borderBottom: "1px solid rgba(28,27,23,0.06)" }}>
-                  {[{ l:"Present",v:"284",c:"#1B7A45" },{ l:"Late",v:"12",c:"#9A6B0A" },{ l:"Absent",v:"8",c:"#8A2A1A" }].map(s => (
+                  {[{ l: "Present", v: "284", c: "#1B7A45" }, { l: "Late", v: "12", c: "#9A6B0A" }, { l: "Absent", v: "8", c: "#8A2A1A" }].map(s => (
                     <div key={s.l} style={{ padding: "14px 10px", textAlign: "center", borderRight: "1px solid rgba(28,27,23,0.06)" }}>
                       <div className="serif" style={{ fontSize: 28, color: s.c, lineHeight: 1 }}>{s.v}</div>
                       <div className="mono" style={{ fontSize: 9, color: "rgba(28,27,23,0.38)", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.l}</div>
@@ -1309,11 +1195,11 @@ export default function App() {
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, zIndex: 3, background: "linear-gradient(to bottom, transparent, #1C1B17)", pointerEvents: "none" }} />
       </main>
 
-      {/* ── TICKER ── */}
+      {/* Ticker */}
       <div style={{ background: "#1C1B17", padding: "13px 0", overflow: "hidden" }}>
         <div style={{ overflow: "hidden" }}>
           <div className="ticker-inner">
-            {[...Array(2)].flatMap(() => ["◆ Works 100% Offline","◆ AI Face Recognition","◆ 3-Day Setup","◆ Student + Staff + Payroll","◆ 7-Day Money-Back Guarantee","◆ No ID Cards Needed","◆ Built for Indian Schools","◆ Data Never Leaves Your Premises","◆ Free Lifetime Updates","◆ Ahmedabad-Based Team"])
+            {[...Array(2)].flatMap(() => ["◆ Works 100% Offline", "◆ AI Face Recognition", "◆ 3-Day Setup", "◆ Student + Staff + Payroll", "◆ 7-Day Money-Back Guarantee", "◆ No ID Cards Needed", "◆ Built for Indian Schools", "◆ Data Never Leaves Your Premises", "◆ Free Lifetime Updates", "◆ Ahmedabad-Based Team"])
               .map((item, i) => (
                 <span key={i} className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", color: "rgba(247,245,239,0.55)", whiteSpace: "nowrap", textTransform: "uppercase" }}>{item}</span>
               ))}
@@ -1321,7 +1207,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── DEMO VIDEO ── */}
+      {/* Demo Video */}
       <section id="demo-video" style={{ background: "#1C1B17", padding: "80px 6% 88px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(42,107,74,0.13) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
@@ -1331,7 +1217,7 @@ export default function App() {
               Live Product Demo
             </div>
             <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4vw, 3rem)", lineHeight: 1.08, letterSpacing: "-0.022em", color: "#F7F5EF", marginBottom: 14 }}>
-              See NexaAttend<br/><em style={{ color: "#5AC87A", fontStyle: "italic" }}>in action.</em>
+              See NexaAttend<br /><em style={{ color: "#5AC87A", fontStyle: "italic" }}>in action.</em>
             </h2>
             <p style={{ fontSize: 15, color: "rgba(247,245,239,0.5)", maxWidth: 480, margin: "0 auto", lineHeight: 1.85 }}>
               A real walkthrough of the portal — login, dashboard, attendance marking, and reports.
@@ -1340,7 +1226,7 @@ export default function App() {
           <FadeIn delay={0.1}><DemoVideoPlayer /></FadeIn>
           <FadeIn delay={0.2}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginTop: 36 }}>
-              {[{ icon:"🎯",label:"Portal Login",desc:"Secure role-based access" },{ icon:"📊",label:"Live Dashboard",desc:"Real-time attendance data" },{ icon:"🤳",label:"Face Recognition",desc:"AI marks students in seconds" },{ icon:"📋",label:"Instant Reports",desc:"One-click PDF exports" }].map((f, i) => (
+              {[{ icon: "🎯", label: "Portal Login", desc: "Secure role-based access" }, { icon: "📊", label: "Live Dashboard", desc: "Real-time attendance data" }, { icon: "🤳", label: "Face Recognition", desc: "AI marks students in seconds" }, { icon: "📋", label: "Instant Reports", desc: "One-click PDF exports" }].map((f, i) => (
                 <div key={i} style={{ background: "rgba(247,245,239,0.04)", border: "1px solid rgba(247,245,239,0.08)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ fontSize: 20, flexShrink: 0 }}>{f.icon}</span>
                   <div>
@@ -1354,7 +1240,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── PROBLEM ── */}
+      {/* Problem Section */}
       <section id="problem" className="sec" style={{ background: "#F7F5EF" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <FadeIn>
@@ -1368,11 +1254,11 @@ export default function App() {
           </FadeIn>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
             {[
-              { n:"01", h:"2–3 hours lost every day", b:"Teachers spend 15–20 minutes per class calling out names. Multiply that across every class, every day — that's teaching time permanently gone.", accent:"#8A2A1A" },
-              { n:"02", h:"Proxy attendance goes undetected", b:"Students mark absent friends 'present'. Registers can't verify faces. Face recognition stops this completely — the first day it's installed.", accent:"#9A6B0A" },
-              { n:"03", h:"Five disconnected systems", b:"Attendance register, WhatsApp groups, Excel payroll, manual fee tracking, printed reports. The data never lines up.", accent:"#1B5C3A" },
-              { n:"04", h:"₹3+ Lakh lost annually due to fee leakage", b:"Late payments, reconciliation errors, and uncollected fees go unnoticed for months. Schools lose an average of ₹3–5 lakh every year.", accent:"#B85C1A" },
-              { n:"05", h:"Lost child during transportation – no accountability", b:"No real-time tracking, no handover verification. Every year, children are dropped at wrong stops or left in vehicles.", accent:"#A93226" }
+              { n: "01", h: "2–3 hours lost every day", b: "Teachers spend 15–20 minutes per class calling out names. Multiply that across every class, every day — that's teaching time permanently gone.", accent: "#8A2A1A" },
+              { n: "02", h: "Proxy attendance goes undetected", b: "Students mark absent friends 'present'. Registers can't verify faces. Face recognition stops this completely — the first day it's installed.", accent: "#9A6B0A" },
+              { n: "03", h: "Five disconnected systems", b: "Attendance register, WhatsApp groups, Excel payroll, manual fee tracking, printed reports. The data never lines up.", accent: "#1B5C3A" },
+              { n: "04", h: "₹3+ Lakh lost annually due to fee leakage", b: "Late payments, reconciliation errors, and uncollected fees go unnoticed for months. Schools lose an average of ₹3–5 lakh every year.", accent: "#B85C1A" },
+              { n: "05", h: "Lost child during transportation – no accountability", b: "No real-time tracking, no handover verification. Every year, children are dropped at wrong stops or left in vehicles.", accent: "#A93226" }
             ].map((p, i) => (
               <FadeIn key={i} delay={i * 0.08}>
                 <div className="card" style={{ borderTop: `3px solid ${p.accent}` }}>
@@ -1386,14 +1272,14 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── SOLUTION ── */}
+      {/* Solution Section */}
       <section id="solution" className="sec" style={{ background: "#1C1B17", color: "#F7F5EF", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -120, right: -120, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.12), transparent 70%)", pointerEvents: "none" }}/>
+        <div style={{ position: "absolute", top: -120, right: -120, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(42,107,74,0.12), transparent 70%)", pointerEvents: "none" }} />
         <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
           <FadeIn>
             <div className="pill pill-dark">The Platform</div>
             <h2 className="serif" style={{ fontSize: "clamp(1.9rem, 4.5vw, 3.4rem)", lineHeight: 1.06, letterSpacing: "-0.022em", marginBottom: 20, color: "#F7F5EF" }}>
-              One System That Runs<br/><em style={{ color: "#5AC87A", fontStyle: "italic" }}>Your Entire Institute.</em>
+              One System That Runs<br /><em style={{ color: "#5AC87A", fontStyle: "italic" }}>Your Entire Institute.</em>
             </h2>
             <p style={{ fontSize: 16, color: "rgba(247,245,239,0.55)", maxWidth: 540, marginBottom: 52, lineHeight: 1.85 }}>
               Attendance is just one piece. NexaAttend is a complete ERP — students, staff, payroll, and operations, all in one system.
@@ -1424,7 +1310,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {/* Pricing Section */}
       <section id="pricing" className="sec" style={{ background: "#F7F5EF", position: "relative", overflow: "hidden" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
           <FadeIn style={{ textAlign: "center", marginBottom: 56 }}>
@@ -1480,7 +1366,7 @@ export default function App() {
                   </div>
                   <div style={{ background: "rgba(28,27,23,0.02)", borderRadius: 12, padding: "20px 22px", border: "1px solid rgba(28,27,23,0.05)" }}>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(28,27,23,0.38)", marginBottom: 14 }}>Always Included</div>
-                    {[["👤",`Up to ${plan.students} students`],["📷","2 cameras"],["🛠️","3-day setup"],["🛡️","7-day guarantee"]].map(([icon, text]) => (
+                    {[["👤", `Up to ${plan.students} students`], ["📷", "2 cameras"], ["🛠️", "3-day setup"], ["🛡️", "7-day guarantee"]].map(([icon, text]) => (
                       <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "rgba(28,27,23,0.65)" }}>
                         <span style={{ fontSize: 14 }}>{icon}</span>{text}
                       </div>
@@ -1532,7 +1418,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
+      {/* How It Works */}
       <section id="process" className="sec" style={{ background: "#FFFFFF" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
@@ -1542,10 +1428,10 @@ export default function App() {
           </FadeIn>
           <div className="g4" style={{ gap: 24 }}>
             {[
-              { step:"01",icon:"📞",title:"Book a Free Demo",body:"WhatsApp or call us. We'll visit your school or connect online — no cost, no commitment, no sales pressure." },
-              { step:"02",icon:"🛠️",title:"Free 7-Day Trial",body:"We install NexaAttend and run a live trial with your actual students and staff. You see the numbers yourself." },
-              { step:"03",icon:"✓",title:"You Decide",body:"Trial convinced you? Great. Not sure? Ask more questions. Our 7-day guarantee backs every decision." },
-              { step:"04",icon:"🚀",title:"Go Live",body:"Staff trained. Reports automated. From day four onwards, NexaAttend runs in the background — and just works." },
+              { step: "01", icon: "📞", title: "Book a Free Demo", body: "WhatsApp or call us. We'll visit your school or connect online — no cost, no commitment, no sales pressure." },
+              { step: "02", icon: "🛠️", title: "Free 7-Day Trial", body: "We install NexaAttend and run a live trial with your actual students and staff. You see the numbers yourself." },
+              { step: "03", icon: "✓", title: "You Decide", body: "Trial convinced you? Great. Not sure? Ask more questions. Our 7-day guarantee backs every decision." },
+              { step: "04", icon: "🚀", title: "Go Live", body: "Staff trained. Reports automated. From day four onwards, NexaAttend runs in the background — and just works." },
             ].map((s, i) => (
               <FadeIn key={i} delay={i * 0.08}>
                 <div>
@@ -1560,7 +1446,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── TRUST ── */}
+      {/* Trust Section */}
       <section id="trust" className="sec" style={{ background: "#F7F5EF" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="g2" style={{ gap: 60, alignItems: "center" }}>
@@ -1570,7 +1456,7 @@ export default function App() {
                 Built in Ahmedabad, for Indian schools, by someone who actually visits them.
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
-                {["Your data never leaves your school premises — ever","Direct WhatsApp access to the founding developer","7-day money-back guarantee, no conditions","India-based support, not a foreign ticket system","Every onboarding personally overseen by the founder","Works when your internet doesn't — fully offline"].map(t => (
+                {["Your data never leaves your school premises — ever", "Direct WhatsApp access to the founding developer", "7-day money-back guarantee, no conditions", "India-based support, not a foreign ticket system", "Every onboarding personally overseen by the founder", "Works when your internet doesn't — fully offline"].map(t => (
                   <div key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                     <span style={{ color: "#2A6B4A", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
                     <span style={{ fontSize: 14, color: "#1C1B17", lineHeight: 1.65 }}>{t}</span>
@@ -1592,7 +1478,7 @@ export default function App() {
                       <a href="https://wa.me/919974724656" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 500, color: "#1B5C3A", textDecoration: "none" }}>💬 WhatsApp directly</a>
                       <span style={{ color: "rgba(28,27,23,0.2)" }}>·</span>
                       <a href="https://linkedin.com/company/nova-teach-solutions" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 500, color: "#1B5C3A", textDecoration: "none" }}>
-                        <LiIcon/> LinkedIn
+                        <LiIcon /> LinkedIn
                       </a>
                     </div>
                   </div>
@@ -1603,7 +1489,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
+      {/* FAQ */}
       <section className="sec" style={{ background: "#FFFFFF" }}>
         <div style={{ maxWidth: 760, margin: "0 auto" }}>
           <FadeIn style={{ textAlign: "center", marginBottom: 44 }}>
@@ -1624,7 +1510,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── INQUIRY ── */}
+      {/* Inquiry Form Section */}
       <section id="inquiry" className="sec" style={{ background: "#F7F5EF" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn style={{ textAlign: "center", marginBottom: 44 }}>
@@ -1643,10 +1529,10 @@ export default function App() {
             <FadeIn delay={0.1}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {[
-                  { icon:"⚡", title:"Response within 24 hours", body:"We reply to every inquiry personally — by WhatsApp or phone — within one business day." },
-                  { icon:"🏫", title:"Demo at your school or online", body:"We visit Ahmedabad schools in person. For other Gujarat cities and beyond, we connect live via video call." },
-                  { icon:"🛡️", title:"No contract, no commitment", body:"The demo is completely free. The 7-day trial is free. You only pay if you're happy to continue." },
-                  { icon:"🔒", title:"Your data stays with you", body:"Even during the trial, all student data is stored locally on your premises. Nothing goes to any cloud." },
+                  { icon: "⚡", title: "Response within 24 hours", body: "We reply to every inquiry personally — by WhatsApp or phone — within one business day." },
+                  { icon: "🏫", title: "Demo at your school or online", body: "We visit Ahmedabad schools in person. For other Gujarat cities and beyond, we connect live via video call." },
+                  { icon: "🛡️", title: "No contract, no commitment", body: "The demo is completely free. The 7-day trial is free. You only pay if you're happy to continue." },
+                  { icon: "🔒", title: "Your data stays with you", body: "Even during the trial, all student data is stored locally on your premises. Nothing goes to any cloud." },
                 ].map((t, i) => (
                   <div key={i} style={{ background: "#FFFFFF", border: "1px solid rgba(28,27,23,0.07)", borderRadius: 12, padding: "20px 22px", display: "flex", gap: 14, alignItems: "flex-start" }}>
                     <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>{t.icon}</span>
@@ -1660,8 +1546,8 @@ export default function App() {
                   <div style={{ fontSize: 13, color: "rgba(247,245,239,0.55)", marginBottom: 6, fontWeight: 500 }}>Prefer to message directly?</div>
                   <a href="https://wa.me/919974724656" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", marginBottom: 12 }}>
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                      <path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5"/>
-                      <path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff"/>
+                      <path d="M9 1.5C4.858 1.5 1.5 4.858 1.5 9c0 1.32.337 2.56.928 3.638L1.5 16.5l3.987-.9A7.46 7.46 0 009 16.5c4.142 0 7.5-3.358 7.5-7.5S13.142 1.5 9 1.5z" fill="#25D366" stroke="#25D366" strokeWidth="0.5" />
+                      <path d="M12.5 10.9c-.2-.1-1.15-.57-1.33-.63-.18-.06-.31-.1-.44.1-.13.2-.5.63-.62.76-.11.13-.22.14-.42.05a5.3 5.3 0 01-2.6-2.28c-.2-.33.2-.31.56-1.04.06-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.44-.16-.38-.33-.32-.44-.33h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.62.7 1.88.79 2.01c.1.13 1.36 2.08 3.3 2.92 1.22.53 1.7.57 2.31.48.37-.06 1.15-.47 1.31-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.38-.22z" fill="#fff" />
                     </svg>
                     <span style={{ fontSize: 15, fontWeight: 600, color: "#F7F5EF" }}>WhatsApp +91 99747 24656</span>
                   </a>
@@ -1676,14 +1562,14 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* Footer */}
       <footer style={{ background: "#111110", padding: "48px 6% 28px", color: "#F7F5EF" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div className="g2" style={{ gap: 48, paddingBottom: 36, borderBottom: "1px solid rgba(247,245,239,0.07)" }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                 <div style={{ width: 28, height: 28, background: "#2A6B4A", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/><path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5" /><path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round" /></svg>
                 </div>
                 <div>
                   <div className="serif" style={{ fontSize: 16 }}>NexaAttend</div>
@@ -1697,7 +1583,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
               <div>
                 <div className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(247,245,239,0.25)", marginBottom: 14 }}>Product</div>
-                {[["Platform","solution"],["Pricing","pricing"],["How It Works","process"],["Book Demo","inquiry"]].map(([l, id]) => (
+                {[["Platform", "solution"], ["Pricing", "pricing"], ["How It Works", "process"], ["Book Demo", "inquiry"]].map(([l, id]) => (
                   <div key={l} style={{ marginBottom: 10 }}>
                     <button style={{ background: "none", border: "none", color: "rgba(247,245,239,0.45)", fontSize: 13, cursor: "pointer", padding: 0, fontFamily: "'Instrument Sans',sans-serif" }}
                       onMouseEnter={e => e.target.style.color = "#F7F5EF"}
@@ -1718,7 +1604,7 @@ export default function App() {
                   style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "rgba(247,245,239,0.45)", textDecoration: "none" }}
                   onMouseEnter={e => e.currentTarget.style.color = "#F7F5EF"}
                   onMouseLeave={e => e.currentTarget.style.color = "rgba(247,245,239,0.45)"}>
-                  <LiIcon/> LinkedIn
+                  <LiIcon /> LinkedIn
                 </a>
               </div>
             </div>
