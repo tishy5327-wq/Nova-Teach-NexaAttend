@@ -1,38 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
-import Script from "next/script";
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  addDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
-
-/* ─── Firebase Config (from env) ─── */
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
 
 /* ─── Google Apps Script Web App URL (for sheet backup) ─── */
 const SHEET_URL =
@@ -89,45 +56,25 @@ const modules = [
   {
     icon: "◉",
     title: "Smart Attendance",
-    features: [
-      "AI face recognition — zero ID cards",
-      "Works fully offline",
-      "Marks 30 students in under 60 seconds",
-      "Proxy attendance becomes impossible",
-    ],
+    features: ["AI face recognition — zero ID cards", "Works fully offline", "Marks 30 students in under 60 seconds", "Proxy attendance becomes impossible"],
     color: "#1B4D3E",
   },
   {
     icon: "◈",
     title: "Student Management",
-    features: [
-      "Complete student profiles & history",
-      "Batch and class management",
-      "Fee tracking and dues",
-      "Parent notification hub",
-    ],
+    features: ["Complete student profiles & history", "Batch and class management", "Fee tracking and dues", "Parent notification hub"],
     color: "#1A2B4A",
   },
   {
     icon: "◇",
     title: "Staff & HR",
-    features: [
-      "Staff attendance via face recognition",
-      "Payroll auto-calculated from attendance",
-      "Leave management & approvals",
-      "Department & role management",
-    ],
+    features: ["Staff attendance via face recognition", "Payroll auto-calculated from attendance", "Leave management & approvals", "Department & role management"],
     color: "#3D1A4A",
   },
   {
     icon: "▣",
     title: "Reports & Analytics",
-    features: [
-      "One-click daily / weekly / monthly reports",
-      "Class-wise attendance trends",
-      "Payroll & fee collection reports",
-      "Admin dashboard — always live",
-    ],
+    features: ["One-click daily / weekly / monthly reports", "Class-wise attendance trends", "Payroll & fee collection reports", "Admin dashboard — always live"],
     color: "#4A2B0A",
   },
 ];
@@ -220,7 +167,7 @@ const LiIcon = () => (
   </svg>
 );
 
-/* ─── Demo Video Player Component (lazy loaded) ─── */
+/* ─── Demo Video Player Component ─── */
 const DemoVideoPlayer = () => {
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -423,7 +370,7 @@ const DemoVideoPlayer = () => {
   );
 };
 
-/* ─── Demo Dashboard Modal ─── */
+/* ─── Demo Dashboard (self‑contained, no Firebase) ─── */
 const DemoSampleData = {
   students: [
     { id: 1, name: "Arjun Mehta", class: "X-A", rollNo: 24, status: "Active" },
@@ -455,10 +402,11 @@ const DemoSampleData = {
 const DemoDashboard = ({ user, trialExpiryDate, onClose }) => {
   const [expiryMessage, setExpiryMessage] = useState("");
   const [showContactSales, setShowContactSales] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (trialExpiryDate) {
-      const expiry = trialExpiryDate.toDate ? trialExpiryDate.toDate() : new Date(trialExpiryDate);
+      const expiry = new Date(trialExpiryDate);
       const now = new Date();
       const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
       if (daysLeft <= 0) {
@@ -470,7 +418,7 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose }) => {
     }
   }, [trialExpiryDate]);
 
-  const handleContactSalesSubmit = async (e) => {
+  const handleContactSalesSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const lead = {
@@ -481,19 +429,25 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose }) => {
       students: formData.get("students"),
       message: formData.get("message"),
       source: "demo_expired",
-      createdAt: serverTimestamp(),
+      timestamp: new Date().toISOString(),
     };
-    try {
-      await addDoc(collection(db, "salesLeads"), lead);
-      alert("Thank you! Our team will contact you within 24 hours.");
-      onClose();
-    } catch (err) {
-      console.error(err);
-      alert("Error submitting. Please try again or WhatsApp us.");
-    }
+    // Save to localStorage for demo (or you can send to your sheet)
+    const existing = JSON.parse(localStorage.getItem("salesLeads") || "[]");
+    existing.push(lead);
+    localStorage.setItem("salesLeads", JSON.stringify(existing));
+    setSubmitted(true);
+    setTimeout(() => onClose(), 2000);
   };
 
   if (showContactSales) {
+    if (submitted) {
+      return (
+        <div style={{ padding: "32px", textAlign: "center" }}>
+          <h3>Thank you!</h3>
+          <p>Our team will contact you within 24 hours.</p>
+        </div>
+      );
+    }
     return (
       <div style={{ padding: "32px", maxWidth: "600px", margin: "0 auto" }}>
         <h3 style={{ fontSize: "24px", marginBottom: "16px" }}>Contact Sales</h3>
@@ -574,7 +528,7 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose }) => {
   );
 };
 
-/* ─── Inquiry Form Component (Google Sheet + Firestore) ─── */
+/* ─── Inquiry Form Component (Google Sheet + localStorage fallback) ─── */
 const InquiryForm = () => {
   const [form, setForm] = useState({
     name: "", role: "", school: "", city: "",
@@ -630,24 +584,12 @@ const InquiryForm = () => {
     });
 
     try {
-      // Save to Firestore salesLeads
-      await addDoc(collection(db, "salesLeads"), {
-        name: form.name,
-        role: form.role,
-        school: form.school,
-        city: form.city,
-        phone: form.phone,
-        email: form.email || null,
-        students: form.students,
-        board: form.board || null,
-        plan: form.plan,
-        source: form.hear || null,
-        message: form.message || null,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Also send to Google Sheet (no-cors)
+      // Send to Google Sheet (no-cors)
       await fetch(`${SHEET_URL}?${params.toString()}`, { method: "GET", mode: "no-cors" });
+      // Also store in localStorage for demo
+      const leads = JSON.parse(localStorage.getItem("inquiryLeads") || "[]");
+      leads.push({ ...form, timestamp: new Date().toISOString() });
+      localStorage.setItem("inquiryLeads", JSON.stringify(leads));
       setStatus("success");
     } catch (error) {
       console.error("Submission error:", error);
@@ -1017,62 +959,50 @@ const InquiryForm = () => {
   );
 };
 
-/* ─── Main App Component ─── */
+/* ─── Main App Component (with self‑contained demo) ─── */
 export default function App() {
   const [navScrolled, setNavScrolled] = useState(false);
   const [logIndex, setLogIndex] = useState(3);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState("standard");
-  // Demo state
-  const [user, setUser] = useState(null);
+  // Demo state (no Firebase)
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [demoUser, setDemoUser] = useState(null);
   const [trialExpiry, setTrialExpiry] = useState(null);
 
-  // Auth & trial check
+  // Load or create demo user from localStorage
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          const trialExpiryDate = new Date();
-          trialExpiryDate.setDate(trialExpiryDate.getDate() + 7);
-          await setDoc(userRef, {
-            uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName,
-            email: firebaseUser.email,
-            photoURL: firebaseUser.photoURL,
-            firstLoginDate: new Date().toISOString(),
-            trialExpiryDate: trialExpiryDate.toISOString(),
-            lastLogin: new Date().toISOString(),
-          });
-          setTrialExpiry(trialExpiryDate);
-        } else {
-          setTrialExpiry(new Date(userSnap.data().trialExpiryDate));
-        }
-      } else {
-        setUser(null);
-        setTrialExpiry(null);
-        setShowDemoModal(false);
-      }
-    });
-    return () => unsubscribe();
+    const storedUser = localStorage.getItem("demoUser");
+    const storedExpiry = localStorage.getItem("demoExpiry");
+    if (storedUser && storedExpiry) {
+      setDemoUser(JSON.parse(storedUser));
+      setTrialExpiry(new Date(storedExpiry));
+    }
   }, []);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-      setShowDemoModal(true);
-    } catch (err) {
-      console.error(err);
-      alert("Sign in failed. Please try again.");
-    }
+  const startDemo = () => {
+    // Create a mock user
+    const mockUser = {
+      uid: "demo_" + Date.now(),
+      displayName: "Demo School Admin",
+      email: "demo@school.edu.in",
+      photoURL: null,
+    };
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 7); // 7-day trial
+    localStorage.setItem("demoUser", JSON.stringify(mockUser));
+    localStorage.setItem("demoExpiry", expiry.toISOString());
+    setDemoUser(mockUser);
+    setTrialExpiry(expiry);
+    setShowDemoModal(true);
   };
 
-  const handleSignOut = async () => {
-    await signOut(auth);
+  const endDemo = () => {
+    localStorage.removeItem("demoUser");
+    localStorage.removeItem("demoExpiry");
+    setDemoUser(null);
+    setTrialExpiry(null);
     setShowDemoModal(false);
   };
 
@@ -1109,7 +1039,7 @@ export default function App() {
     { q: "What does the setup fee cover?", a: "The one-time setup fee covers on-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support. After that, you only pay the monthly fee." },
   ];
 
-  // Schema data
+  // Schema data (unchanged)
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -1122,9 +1052,7 @@ export default function App() {
       contactType: "sales",
       availableLanguage: "English",
     },
-    sameAs: [
-      "https://linkedin.com/company/nova-teach-solutions",
-    ],
+    sameAs: ["https://linkedin.com/company/nova-teach-solutions"],
   };
 
   const softwareSchema = {
@@ -1504,7 +1432,8 @@ export default function App() {
                   <button className="btn-hero-secondary" onClick={() => scrollTo("solution")} style={{ fontSize: 15, padding: "13px 22px" }}>
                     See the Platform
                   </button>
-                  <button className="btn-hero-primary" onClick={handleGoogleSignIn} style={{ background: "#5AC87A", color: "#1C1B17" }}>
+                  {/* ✅ Experience Demo button added here */}
+                  <button className="btn-hero-primary" onClick={startDemo} style={{ background: "#5AC87A", color: "#1C1B17" }}>
                     🚀 Experience Demo
                   </button>
                 </div>
@@ -1991,8 +1920,8 @@ export default function App() {
         </section>
 
         {/* Sticky Demo CTA (optional) */}
-        {!showDemoModal && (
-          <button onClick={handleGoogleSignIn} style={{
+        {!showDemoModal && !demoUser && (
+          <button onClick={startDemo} style={{
             position: "fixed", bottom: "24px", right: "24px", zIndex: 99,
             background: "#2A6B4A", color: "#F7F5EF", border: "none", borderRadius: "60px",
             padding: "12px 20px", fontSize: "14px", fontWeight: "bold", cursor: "pointer",
@@ -2013,9 +1942,9 @@ export default function App() {
               background: "#F7F5EF", borderRadius: "24px", width: "90%", maxWidth: "1200px", maxHeight: "90vh",
               overflow: "auto", position: "relative"
             }}>
-              <DemoDashboard user={user} trialExpiryDate={trialExpiry} onClose={() => setShowDemoModal(false)} />
+              <DemoDashboard user={demoUser} trialExpiryDate={trialExpiry} onClose={() => setShowDemoModal(false)} />
               <div style={{ padding: "16px 24px", borderTop: "1px solid rgba(28,27,23,0.08)", display: "flex", justifyContent: "flex-end" }}>
-                <button onClick={handleSignOut} style={{ background: "none", border: "none", color: "#C0392B", cursor: "pointer", fontSize: "13px" }}>Sign out</button>
+                <button onClick={endDemo} style={{ background: "none", border: "none", color: "#C0392B", cursor: "pointer", fontSize: "13px" }}>Reset Demo</button>
               </div>
             </div>
           </div>
