@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import Head from "next/head";
+import { Helmet } from "react-helmet-async";
+import { Analytics } from '@vercel/analytics/react';
 
 /* ─── Google Apps Script Web App URL (for sheet backup) ─── */
 const SHEET_URL =
@@ -1091,7 +1092,7 @@ export default function App() {
 
   return (
     <>
-      <Head>
+      <Helmet>
         <title>School ERP Software in India | Attendance, Exams, Fees & AI Analytics | Nova Teach</title>
         <meta name="description" content="Nova Teach helps schools manage attendance, exams, assignments, fees, communication and AI-powered analytics from one platform. Book a free demo today." />
         <meta name="keywords" content="School ERP Software, School Management Software, Attendance Management System, Exam Management Software, Fee Management Software, AI School Management Platform, School ERP India" />
@@ -1122,7 +1123,7 @@ export default function App() {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      </Head>
+      </Helmet>
 
       <div style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif", background: "#F7F5EF", color: "#1C1B17", overflowX: "hidden" }}>
         <style>{`
@@ -2004,6 +2005,7 @@ export default function App() {
           </div>
         </footer>
       </div>
+      <Analytics />
     </>
   );
 }
