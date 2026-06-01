@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { Helmet } from "react-helmet-async";
+import { Analytics } from '@vercel/analytics/react';
 
 /* ─── Google Apps Script Web App URL (for sheet backup) ─── */
 const SHEET_URL =
@@ -1194,6 +1196,260 @@ export default function App() {
 
   // ----- JSX (full UI) -----
   return (
+    <>
+      <Helmet>
+        <title>School ERP Software in India | Attendance, Exams, Fees & AI Analytics | Nova Teach</title>
+        <meta name="description" content="Nova Teach helps schools manage attendance, exams, assignments, fees, communication and AI-powered analytics from one platform. Book a free demo today." />
+        <meta name="keywords" content="School ERP Software, School Management Software, Attendance Management System, Exam Management Software, Fee Management Software, AI School Management Platform, School ERP India" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta charSet="UTF-8" />
+        <link rel="canonical" href="https://nova-teach-nexa-attend.vercel.app" />
+
+        {/* Open Graph / Social Media */}
+        <meta property="og:title" content="School ERP Software in India | Attendance, Exams, Fees & AI Analytics" />
+        <meta property="og:description" content="Nova Teach helps schools manage attendance, exams, assignments, fees, communication and AI-powered analytics from one platform. Book a free demo today." />
+        <meta property="og:image" content="https://nova-teach-nexa-attend.vercel.app/og-image.jpg" />
+        <meta property="og:url" content="https://nova-teach-nexa-attend.vercel.app" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Nova Teach" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="School ERP Software in India | Attendance, Exams, Fees & AI Analytics" />
+        <meta name="twitter:description" content="Nova Teach helps schools manage attendance, exams, assignments, fees, communication and AI-powered analytics from one platform." />
+        <meta name="twitter:image" content="https://nova-teach-nexa-attend.vercel.app/twitter-image.jpg" />
+
+        {/* Preconnect & Font optimization */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        
+        {/* Schema JSON-LD */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      </Helmet>
+
+      <div style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif", background: "#F7F5EF", color: "#1C1B17", overflowX: "hidden" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          html { scroll-behavior: smooth; }
+          ::-webkit-scrollbar { width: 3px; }
+          ::-webkit-scrollbar-thumb { background: #2A6B4A; border-radius: 2px; }
+          .serif { font-family: 'Instrument Serif', Georgia, serif; }
+          .mono  { font-family: 'JetBrains Mono', monospace; }
+          .sec { padding: 88px 6%; }
+          .pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;
+            padding: 5px 13px; border-radius: 100px; margin-bottom: 20px;
+          }
+          .pill-green { color: #1B5C3A; background: rgba(42,107,74,0.1); }
+          .pill-dark  { color: rgba(247,245,239,0.5); background: rgba(247,245,239,0.08); }
+          .pill-hero {
+            color: rgba(247,245,239,0.9);
+            background: rgba(247,245,239,0.12);
+            border: 1px solid rgba(247,245,239,0.18);
+            backdrop-filter: blur(8px);
+          }
+          .btn-primary {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #1C1B17; color: #F7F5EF;
+            border: none; border-radius: 6px; padding: 13px 22px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.22s; text-decoration: none;
+          }
+          .btn-primary:hover { background: #2A6B4A; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(42,107,74,0.28); }
+          .btn-secondary {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: transparent; color: #1C1B17;
+            border: 1.5px solid rgba(28,27,23,0.2); border-radius: 6px; padding: 12px 20px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.22s; text-decoration: none;
+          }
+          .btn-secondary:hover { border-color: #1C1B17; background: rgba(28,27,23,0.04); }
+          .btn-hero-primary {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: #F7F5EF; color: #1C1B17;
+            border: none; border-radius: 8px; padding: 14px 26px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all 0.25s cubic-bezier(0.16,1,0.3,1); text-decoration: none;
+            box-shadow: 0 2px 24px rgba(28,27,23,0.18), 0 1px 4px rgba(28,27,23,0.12);
+          }
+          .btn-hero-primary:hover {
+            background: #fff; transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(28,27,23,0.22), 0 2px 8px rgba(28,27,23,0.1);
+          }
+          .btn-hero-secondary {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: rgba(247,245,239,0.1); color: rgba(247,245,239,0.9);
+            border: 1.5px solid rgba(247,245,239,0.28); border-radius: 8px; padding: 13px 24px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500;
+            cursor: pointer; transition: all 0.25s; text-decoration: none;
+            backdrop-filter: blur(12px);
+          }
+          .btn-hero-secondary:hover {
+            background: rgba(247,245,239,0.18); border-color: rgba(247,245,239,0.5);
+            transform: translateY(-1px);
+          }
+          .card {
+            background: #FFFFFF; border: 1px solid rgba(28,27,23,0.07);
+            border-radius: 12px; padding: 24px;
+            transition: box-shadow 0.3s, transform 0.3s;
+          }
+          .card:hover { box-shadow: 0 6px 32px rgba(28,27,23,0.07); transform: translateY(-2px); }
+          .nav-link {
+            font-size: 13px; font-weight: 500; color: rgba(28,27,23,0.55);
+            cursor: pointer; border: none; background: none;
+            font-family: 'Instrument Sans', sans-serif; transition: color 0.2s; padding: 0;
+          }
+          .nav-link:hover { color: #1C1B17; }
+          .status-present { color: #22c55e; font-weight: 700; }
+          .status-late    { color: #f59e0b; font-weight: 700; }
+          .status-absent  { color: #ef4444; font-weight: 700; }
+          @keyframes floatCard {
+            0%   { transform: translateY(0px) rotate(0.2deg); }
+            33%  { transform: translateY(-10px) rotate(-0.15deg); }
+            66%  { transform: translateY(-5px) rotate(0.1deg); }
+            100% { transform: translateY(0px) rotate(0.2deg); }
+          }
+          @keyframes heroFadeUp {
+            from { opacity: 0; transform: translateY(32px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes heroPillIn {
+            from { opacity: 0; transform: translateY(16px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes spin { to { transform: rotate(360deg); } }
+          .hero-pill-anim  { opacity: 0; animation: heroPillIn 0.7s cubic-bezier(0.16,1,0.3,1) 0.1s forwards; }
+          .hero-h1-anim    { opacity: 0; animation: heroFadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.22s forwards; }
+          .hero-sub-anim   { opacity: 0; animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.38s forwards; }
+          .hero-cta-anim   { opacity: 0; animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.52s forwards; }
+          .hero-badges-anim{ opacity: 0; animation: heroFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.66s forwards; }
+          .hero-card-anim  { opacity: 0; animation: heroFadeUp 1s cubic-bezier(0.16,1,0.3,1) 0.48s forwards; }
+          .glass-card {
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            border: 1px solid rgba(255,255,255,0.6);
+            border-radius: 18px;
+            box-shadow: 0 32px 80px rgba(10,9,8,0.28), 0 8px 24px rgba(10,9,8,0.14), 0 1px 0 rgba(255,255,255,0.9) inset;
+            overflow: hidden;
+            animation: floatCard 7s ease-in-out infinite;
+            will-change: transform;
+          }
+          @keyframes fsi    { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+          @keyframes pdot   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
+          @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+          .pdot        { animation: pdot 2s ease-in-out infinite; }
+          .log-row     { animation: fsi 0.4s ease forwards; }
+          .ticker-inner{ display: flex; gap: 52px; animation: ticker 26s linear infinite; width: max-content; }
+          @keyframes heroGradientShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .hero-bg {
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg,#0f1f18 0%,#152b20 20%,#0e1e17 40%,#122518 60%,#0b1a13 80%,#0f1f18 100%);
+            background-size: 300% 300%;
+            animation: heroGradientShift 14s ease infinite;
+            z-index: 0;
+          }
+          .hero-grid {
+            position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background-image: linear-gradient(rgba(90,200,122,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(90,200,122,0.04) 1px,transparent 1px);
+            background-size: 52px 52px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%);
+          }
+          .hero-glow {
+            position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background:
+              radial-gradient(ellipse 55% 45% at 28% 55%,rgba(42,107,74,0.22) 0%,transparent 65%),
+              radial-gradient(ellipse 35% 35% at 75% 30%,rgba(90,200,122,0.09) 0%,transparent 60%),
+              radial-gradient(ellipse 40% 30% at 15% 85%,rgba(27,77,62,0.15) 0%,transparent 55%);
+          }
+          .hero-content { position: relative; z-index: 3; }
+          .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+          .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+          .g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+          .mmenu {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 90;
+            background: rgba(247,245,239,0.98); backdrop-filter: blur(24px);
+            padding: 80px 6% 32px; overflow-y: auto;
+            transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+            display: flex; flex-direction: column;
+          }
+          .mmenu.open { transform: translateX(0); }
+          .mlink {
+            font-size: 22px; font-weight: 500; color: #1C1B17;
+            padding: 18px 0; border-bottom: 1px solid rgba(28,27,23,0.07);
+            background: none; border-left: none; border-right: none; border-top: none;
+            cursor: pointer; text-align: left; font-family: 'Instrument Sans', sans-serif;
+            transition: color 0.2s;
+          }
+          .mlink:hover { color: #2A6B4A; }
+          .faq-item { border-bottom: 1px solid rgba(28,27,23,0.08); }
+          .faq-q {
+            width: 100%; text-align: left; padding: 20px 0; background: none; border: none;
+            cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 500; color: #1C1B17;
+          }
+          .faq-a { padding: 0 0 20px; font-size: 14px; line-height: 1.85; color: rgba(28,27,23,0.6); }
+          .plan-btn {
+            padding: 10px 28px; border-radius: 100px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.22s;
+            font-family: 'Instrument Sans', sans-serif;
+            display: inline-flex; align-items: center; gap: 8px;
+          }
+          .plan-btn-active   { background: #2A6B4A; color: #F7F5EF; border: 2px solid #2A6B4A; }
+          .plan-btn-inactive { background: #FFFFFF; color: rgba(28,27,23,0.6); border: 1.5px solid rgba(28,27,23,0.14); }
+          .plan-btn-inactive:hover { border-color: rgba(28,27,23,0.3); color: #1C1B17; }
+          @media (max-width: 900px) {
+            .g3 { grid-template-columns: 1fr 1fr !important; }
+            .g4 { grid-template-columns: 1fr 1fr !important; }
+          }
+          @media (max-width: 640px) {
+            .sec { padding: 56px 5% !important; }
+            .g2  { grid-template-columns: 1fr !important; }
+            .g3  { grid-template-columns: 1fr !important; }
+            .g4  { grid-template-columns: 1fr 1fr !important; }
+            .hero-h { font-size: clamp(2.2rem, 9vw, 2.8rem) !important; }
+            .hero-pad { padding: 110px 5% 64px !important; min-height: auto !important; }
+            .hide-mob { display: none !important; }
+            .flex-cta { flex-direction: column !important; }
+            .flex-cta a, .flex-cta button { width: 100% !important; justify-content: center !important; }
+            .hbg { display: flex !important; }
+            .mob-show { display: block !important; }
+            .inquiry-grid { grid-template-columns: 1fr !important; }
+            .form-row-2 { grid-template-columns: 1fr !important; }
+            .plan-picker { grid-template-columns: 1fr !important; }
+            .form-inner { padding: 20px 18px 24px !important; }
+            .form-header { padding: 20px 18px 16px !important; }
+          }
+          @media (min-width: 641px) {
+            .hbg { display: none !important; }
+            .mob-show { display: none !important; }
+          }
+        `}</style>
+
+        {/* Mobile Menu */}
+        <div className={`mmenu ${menuOpen ? "open" : ""}`}>
+          {[["problem","Why NexaAttend"], ["demo-video","Watch Demo"], ["solution","Platform"], ["pricing","Pricing"], ["process","How It Works"], ["trust","Trust & Guarantee"], ["inquiry","Book Demo"]].map(([id, label]) => (
+            <button key={id} className="mlink" onClick={() => scrollTo(id)}>{label}</button>
+          ))}
+          <div style={{ marginTop: "auto", paddingTop: 28 }}>
+            <a href="https://wa.me/919974724656" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600, color: "#1C1B17", textDecoration: "none", marginBottom: 14 }}>
+              <span style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(37,211,102,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>💬</span>
+              WhatsApp Us
+            </a>
+            <a href="tel:+919974724656" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600, color: "#1C1B17", textDecoration: "none" }}>
+              <span style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(28,27,23,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>📞</span>
+              +91 99747 24656
+            </a>
+          </div>
     <div style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif", background: "#F7F5EF", color: "#1C1B17", overflowX: "hidden" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -2066,6 +2322,10 @@ export default function App() {
               </div>
             </div>
           </div>
+        </footer>
+      </div>
+      <Analytics />
+    </>
           <div style={{ paddingTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>© {new Date().getFullYear()} Nova Teach Solution. Founded by Shah Tishya.</div>
             <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>Ahmedabad, Gujarat, India</div>
