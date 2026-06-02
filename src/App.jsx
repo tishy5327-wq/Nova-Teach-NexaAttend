@@ -646,7 +646,6 @@ const InquiryForm = () => {
     }
   };
 
-  // Styles (same as original)
   const inputStyle = (field) => ({
     width: "100%",
     padding: "11px 14px",
@@ -799,7 +798,7 @@ const InquiryForm = () => {
   );
 };
 
-/* ─── Privacy Policy Page ─── */
+/* ─── Privacy Policy Page (short version) ─── */
 const PrivacyPolicy = ({ onBack }) => {
   useEffect(() => { document.title = "Privacy Policy | Nova Teach"; }, []);
   return (
@@ -807,24 +806,31 @@ const PrivacyPolicy = ({ onBack }) => {
       <button onClick={onBack} style={{ background: "none", border: "none", color: "#2A6B4A", cursor: "pointer", marginBottom: "24px", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px" }}>← Back to Home</button>
       <h1 className="serif" style={{ fontSize: "2.8rem", marginBottom: "24px", color: "#1C1B17" }}>Privacy Policy</h1>
       <div style={{ background: "#FFFFFF", borderRadius: "16px", padding: "32px", boxShadow: "0 4px 24px rgba(28,27,23,0.06)" }}>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Last updated: June 1, 2026</p>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Nova Teach Solution ("we", "our", "us") respects your privacy. This Privacy Policy explains how we collect, use, and protect your information when you use our website and services.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>Information We Collect</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>We collect information you provide directly to us, such as your name, email, phone number, school name, and any other information you choose to provide when filling out our inquiry form or using our demo.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>How We Use Your Information</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>We use the information to contact you about our services, schedule demos, improve our platform, and comply with legal obligations. We do not sell your personal data to third parties.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>Data Security</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Your data never leaves your school premises when using our offline ERP. For inquiries and demo data, we use industry-standard encryption and security practices.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>Cookies</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>We use essential cookies to operate the site. You can disable cookies in your browser, but some features may not work correctly.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>Contact Us</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>If you have questions about this Privacy Policy, contact us at: <a href="tel:+919974724656" style={{ color: "#2A6B4A" }}>+91 99747 24656</a> or <a href="https://wa.me/919974724656" style={{ color: "#2A6B4A" }}>WhatsApp</a>.</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Last Updated: June 1, 2026</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Nova Teach ERP respects your privacy.</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>When you sign in using Google OAuth, we may collect:</p>
+        <ul style={{ marginBottom: "20px", marginLeft: "24px", lineHeight: "1.7" }}>
+          <li>Name</li>
+          <li>Email address</li>
+          <li>Profile picture</li>
+        </ul>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>This information is used only for:</p>
+        <ul style={{ marginBottom: "20px", marginLeft: "24px", lineHeight: "1.7" }}>
+          <li>User authentication</li>
+          <li>Demo account creation</li>
+          <li>Platform access management</li>
+          <li>Customer support</li>
+        </ul>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>We do not sell, rent, or share your personal information with third parties.</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Your information is stored securely and used only for providing services within Nova Teach ERP.</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>If you have any questions regarding this Privacy Policy, contact: <a href="mailto:tishy5327@gmail.com" style={{ color: "#2A6B4A" }}>tishy5327@gmail.com</a></p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>By using Nova Teach ERP, you agree to this Privacy Policy.</p>
       </div>
     </div>
   );
 };
 
-/* ─── Terms of Service Page ─── */
+/* ─── Terms of Service Page (short version) ─── */
 const TermsOfService = ({ onBack }) => {
   useEffect(() => { document.title = "Terms of Service | Nova Teach"; }, []);
   return (
@@ -832,47 +838,44 @@ const TermsOfService = ({ onBack }) => {
       <button onClick={onBack} style={{ background: "none", border: "none", color: "#2A6B4A", cursor: "pointer", marginBottom: "24px", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px" }}>← Back to Home</button>
       <h1 className="serif" style={{ fontSize: "2.8rem", marginBottom: "24px", color: "#1C1B17" }}>Terms of Service</h1>
       <div style={{ background: "#FFFFFF", borderRadius: "16px", padding: "32px", boxShadow: "0 4px 24px rgba(28,27,23,0.06)" }}>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Last updated: June 1, 2026</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>1. Acceptance of Terms</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>By accessing or using NexaAttend (the "Service"), you agree to be bound by these Terms of Service. If you disagree, please do not use the Service.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>2. Demo Trial</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>We offer a 7-day free trial of the ERP system. After the trial, you must purchase a subscription to continue using the Service. Trial data is for demonstration purposes only.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>3. Payments and Refunds</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>All prices are in Indian Rupees (₹). We offer a 7-day money-back guarantee. Refund requests must be made within 7 days of the first payment.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>4. Data Ownership</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>You retain full ownership of all student, staff, and school data entered into the system. We do not access or use your data except to provide the Service.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>5. Offline Use</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>NexaAttend works fully offline. You are responsible for maintaining your own backups. We are not liable for data loss due to hardware failure.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>6. Limitation of Liability</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>To the maximum extent permitted by law, Nova Teach Solution shall not be liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>7. Changes to Terms</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>We may update these Terms from time to time. Continued use of the Service after changes constitutes acceptance of the new Terms.</p>
-        <h2 style={{ fontSize: "1.5rem", margin: "24px 0 12px", fontWeight: 600 }}>8. Contact</h2>
-        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>For any questions about these Terms, contact us at <a href="tel:+919974724656" style={{ color: "#2A6B4A" }}>+91 99747 24656</a>.</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Last Updated: June 1, 2026</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>Welcome to Nova Teach ERP.</p>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>By accessing or using this platform, you agree to the following terms:</p>
+        <ol style={{ marginBottom: "20px", marginLeft: "24px", lineHeight: "1.7" }}>
+          <li>The platform is provided for demonstration, educational, and management purposes.</li>
+          <li>Users must not misuse, disrupt, copy, or attempt unauthorized access to the system.</li>
+          <li>Demo access may be limited, modified, or revoked at any time.</li>
+          <li>All software, branding, content, and intellectual property belong to Nova Teach ERP.</li>
+          <li>We are not responsible for any losses resulting from service interruptions or technical issues.</li>
+          <li>Continued use of the platform indicates acceptance of these terms.</li>
+        </ol>
+        <p style={{ marginBottom: "20px", lineHeight: "1.7" }}>For support or inquiries: <a href="mailto:tishy5327@gmail.com" style={{ color: "#2A6B4A" }}>tishy5327@gmail.com</a></p>
       </div>
     </div>
   );
 };
 
-/* ─── Main App Component with Routing ─── */
+/* ─── Main App Component with Hash Routing ─── */
 export default function App() {
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [currentHash, setCurrentHash] = useState(window.location.hash.slice(1) || "/");
+  
   useEffect(() => {
-    const handlePopState = () => setCurrentPath(window.location.pathname);
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    const handleHashChange = () => {
+      setCurrentHash(window.location.hash.slice(1) || "/");
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
   const navigateTo = (path) => {
-    window.history.pushState({}, "", path);
-    setCurrentPath(path);
-    window.scrollTo(0, 0);
+    window.location.hash = path;
   };
-  const goBack = () => navigateTo("/");
 
-  if (currentPath === "/privacy-policy") return <PrivacyPolicy onBack={goBack} />;
-  if (currentPath === "/terms") return <TermsOfService onBack={goBack} />;
+  // If hash is /privacy-policy or /terms, show those pages
+  if (currentHash === "/privacy-policy") return <PrivacyPolicy onBack={() => navigateTo("/")} />;
+  if (currentHash === "/terms") return <TermsOfService onBack={() => navigateTo("/")} />;
 
-  // --- Main website state and logic ---
+  // --- Main website state and logic (full original site) ---
   const [navScrolled, setNavScrolled] = useState(false);
   const [logIndex, setLogIndex] = useState(3);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -943,7 +946,6 @@ export default function App() {
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute("content", "Nova Teach helps schools manage attendance, exams, assignments, fees, communication and AI-powered analytics from one platform. Book a free demo today.");
     else { const newMeta = document.createElement("meta"); newMeta.name = "description"; newMeta.content = "Nova Teach helps schools manage attendance, exams, assignments, fees, communication and AI-powered analytics from one platform. Book a free demo today."; document.head.appendChild(newMeta); }
-    // (additional meta tags omitted for brevity but same as original)
   }, []);
 
   const scrollTo = (id) => {
@@ -967,7 +969,7 @@ export default function App() {
     { q: "What does the setup fee cover?", a: "The one-time setup fee covers on-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support. After that, you only pay the monthly fee." },
   ];
 
-  // JSX for the main site – includes all sections (hero, ticker, video, problem, solution, pricing, how it works, trust, features, testimonials, FAQ, inquiry, footer)
+  // --- Full main website JSX (all sections) ---
   return (
     <div style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif", background: "#F7F5EF", color: "#1C1B17", overflowX: "hidden" }}>
       <style>{`
