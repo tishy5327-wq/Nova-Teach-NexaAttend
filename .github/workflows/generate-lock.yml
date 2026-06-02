@@ -1,0 +1,26 @@
+name: Generate package-lock.json
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install and generate lock file
+        run: npm install
+
+      - name: Commit package-lock.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add package-lock.json
+          git commit -m "fix: add package-lock.json"
+          git push
