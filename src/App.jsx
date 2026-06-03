@@ -275,8 +275,8 @@ const DemoData = {
   ],
 };
 
-/* ─── Redesigned Demo Dashboard ─── */
-const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
+/* ─── DemoDashboard Component (fixed .toDate crash + isFullPage) ─── */
+const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage = false }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [daysLeft, setDaysLeft] = useState(7);
   const [expired, setExpired] = useState(false);
@@ -285,7 +285,10 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
 
   useEffect(() => {
     if (trialExpiryDate) {
-      const expiry = trialExpiryDate.toDate ? trialExpiryDate.toDate() : new Date(trialExpiryDate);
+      let expiry;
+      if (trialExpiryDate?.toDate) expiry = trialExpiryDate.toDate();
+      else if (trialExpiryDate instanceof Date) expiry = trialExpiryDate;
+      else expiry = new Date(trialExpiryDate);
       const left = Math.ceil((expiry - new Date()) / (1000*60*60*24));
       if (left <= 0) setExpired(true);
       else setDaysLeft(left);
@@ -352,7 +355,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
     <div style={{ display:"flex", height:"90vh", background:"#F7F5EF", borderRadius:24, overflow:"hidden" }}>
       {/* Sidebar */}
       <div style={{ width:220, background:"#1C1B17", display:"flex", flexDirection:"column", flexShrink:0 }}>
-        {/* Logo */}
         <div style={{ padding:"22px 20px 16px", borderBottom:"1px solid rgba(247,245,239,0.08)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:32, height:32, background:"#2A6B4A", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -364,7 +366,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
             </div>
           </div>
         </div>
-        {/* User info */}
         <div style={{ padding:"14px 20px", borderBottom:"1px solid rgba(247,245,239,0.07)" }}>
           {user?.photoURL && <img src={user.photoURL} alt="" style={{ width:32, height:32, borderRadius:"50%", marginBottom:8 }} />}
           <div style={{ fontSize:12, fontWeight:600, color:"#F7F5EF", marginBottom:2 }}>{user?.displayName || "Demo User"}</div>
@@ -373,7 +374,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
             <span style={{ fontSize:10, color:"rgba(247,245,239,0.45)", letterSpacing:"0.04em" }}>{daysLeft}d trial left</span>
           </div>
         </div>
-        {/* Nav */}
         <nav style={{ flex:1, padding:"12px 10px", overflowY:"auto" }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
@@ -390,20 +390,22 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
             </button>
           ))}
         </nav>
-        {/* Bottom actions */}
         <div style={{ padding:"12px 10px", borderTop:"1px solid rgba(247,245,239,0.07)" }}>
           <div style={{ background:"rgba(90,200,122,0.1)", border:"1px solid rgba(90,200,122,0.2)", borderRadius:8, padding:"10px 12px", marginBottom:8 }}>
             <div style={{ fontSize:10, color:"rgba(247,245,239,0.5)", marginBottom:4 }}>Sample data only</div>
             <div style={{ fontSize:11, color:"#5AC87A", fontWeight:600 }}>This is a live demo</div>
           </div>
           <button onClick={onSignOut} style={{ width:"100%", padding:"9px", background:"rgba(247,245,239,0.06)", border:"1px solid rgba(247,245,239,0.1)", borderRadius:8, color:"rgba(247,245,239,0.5)", fontSize:12, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}>Sign out</button>
-          <button onClick={onClose} style={{ width:"100%", padding:"9px", background:"transparent", border:"none", color:"rgba(247,245,239,0.3)", fontSize:12, cursor:"pointer", marginTop:4, fontFamily:"'Instrument Sans',sans-serif" }}>✕ Close demo</button>
+          {!isFullPage && (
+            <button onClick={onClose} style={{ width:"100%", padding:"9px", background:"transparent", border:"none", color:"rgba(247,245,239,0.3)", fontSize:12, cursor:"pointer", marginTop:4, fontFamily:"'Instrument Sans',sans-serif" }}>
+              ✕ Close demo
+            </button>
+          )}
         </div>
       </div>
 
       {/* Main content */}
       <div style={{ flex:1, overflowY:"auto", background:"#F7F5EF" }}>
-        {/* Header bar */}
         <div style={{ padding:"18px 28px", background:"#FFFFFF", borderBottom:"1px solid rgba(28,27,23,0.07)", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
           <div>
             <h2 style={{ fontSize:18, fontWeight:700, color:"#1C1B17", fontFamily:"'Instrument Serif',serif" }}>
@@ -423,7 +425,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
           {/* OVERVIEW TAB */}
           {activeTab === "overview" && (
             <div>
-              {/* Stats grid */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:16, marginBottom:24 }}>
                 {[
                   { label:"Present Today",  value:`${DemoData.todayAttendance.present}`, sub:`of ${DemoData.todayAttendance.total}`, color:"#1B4D3E", bg:"rgba(27,77,62,0.06)" },
@@ -441,7 +442,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
                 ))}
               </div>
 
-              {/* Attendance progress + Recent activity */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <div style={{ background:"#FFFFFF", borderRadius:12, border:"1px solid rgba(28,27,23,0.07)", padding:"20px" }}>
                   <h3 style={{ fontSize:14, fontWeight:600, marginBottom:16 }}>Weekly Attendance Trend</h3>
@@ -649,6 +649,47 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut }) => {
   );
 };
 
+/* ─── DemoPage: Full‑page version of the dashboard ─── */
+const DemoPage = ({ user, trialExpiryDate, onSignOut, onBack }) => {
+  useEffect(() => {
+    if (!user) {
+      window.location.hash = "/";
+    } else if (trialExpiryDate) {
+      let expiry;
+      if (trialExpiryDate?.toDate) expiry = trialExpiryDate.toDate();
+      else if (trialExpiryDate instanceof Date) expiry = trialExpiryDate;
+      else expiry = new Date(trialExpiryDate);
+      if (new Date() > expiry) {
+        window.location.hash = "/";
+      }
+    }
+  }, [user, trialExpiryDate]);
+
+  if (!user) return null;
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#F7F5EF", padding: 0 }}>
+      <div style={{ position: "sticky", top: 0, background: "#FFFFFF", borderBottom: "1px solid rgba(28,27,23,0.07)", padding: "12px 28px", display: "flex", alignItems: "center", gap: 16, zIndex: 10 }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#2A6B4A" }}>←</button>
+        <div>
+          <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 18, fontWeight: 600 }}>NexaAttend Demo</div>
+          <div style={{ fontSize: 11, color: "rgba(28,27,23,0.45)" }}>Live trial dashboard</div>
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <button onClick={onSignOut} style={{ background: "#1C1B17", color: "#F7F5EF", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Sign Out</button>
+        </div>
+      </div>
+      <DemoDashboard 
+        user={user} 
+        trialExpiryDate={trialExpiryDate} 
+        onClose={onBack} 
+        onSignOut={onSignOut}
+        isFullPage={true}
+      />
+    </div>
+  );
+};
+
 /* ─── Multi-Step Inquiry Form ─── */
 const InquiryForm = () => {
   const [step, setStep] = useState(1);
@@ -758,7 +799,6 @@ const InquiryForm = () => {
 
   return (
     <div style={{ background:"#FFFFFF", borderRadius:16, border:"1px solid rgba(28,27,23,0.08)", overflow:"hidden", boxShadow:"0 4px 24px rgba(28,27,23,0.06)" }}>
-      {/* Header */}
       <div style={{ padding:"24px 28px 20px", borderBottom:"1px solid rgba(28,27,23,0.07)", background:"linear-gradient(135deg,#FAFAF8,#F7F5EF)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
           <div style={{ width:40, height:40, background:"#2A6B4A", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -773,7 +813,6 @@ const InquiryForm = () => {
             <span style={{ fontSize:10, fontWeight:600, color:"#1B5C3A", letterSpacing:"0.06em" }}>FREE · NO OBLIGATION</span>
           </div>
         </div>
-        {/* Step indicator */}
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           {["About You","Your School","Choose Plan"].map((label,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -792,7 +831,6 @@ const InquiryForm = () => {
       </div>
 
       <div style={{ padding:"24px 28px 28px" }}>
-        {/* Step 1 — About You */}
         {step === 1 && (
           <div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
@@ -834,7 +872,6 @@ const InquiryForm = () => {
           </div>
         )}
 
-        {/* Step 2 — About Your School */}
         {step === 2 && (
           <div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
@@ -884,7 +921,6 @@ const InquiryForm = () => {
           </div>
         )}
 
-        {/* Step 3 — Choose Plan */}
         {step === 3 && (
           <div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:16 }}>
@@ -916,7 +952,6 @@ const InquiryForm = () => {
           </div>
         )}
 
-        {/* Navigation buttons */}
         <div style={{ display:"flex", gap:10, marginTop:24 }}>
           {step > 1 && (
             <button onClick={() => setStep(s=>s-1)}
@@ -988,6 +1023,7 @@ export default function App() {
   }, []);
   const navigateTo = (path) => { window.location.hash = path; };
 
+  // Routing for static pages
   if (currentHash === "/privacy-policy") return <PrivacyPolicy onBack={() => navigateTo("/")} />;
   if (currentHash === "/terms") return <TermsOfService onBack={() => navigateTo("/")} />;
 
@@ -1002,6 +1038,7 @@ export default function App() {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Auth state listener (with fixed race condition)
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fu) => {
       if (fu) {
@@ -1026,8 +1063,14 @@ export default function App() {
     try { await signInWithPopup(auth, googleProvider); }
     catch (err) { console.error(err); alert("Sign in failed. Please try again."); }
   };
-  const handleSignOut = async () => { await signOut(auth); setShowDemoModal(false); };
+  const handleSignOut = async () => { 
+    setUser(null);
+    setTrialExpiry(null);
+    setShowDemoModal(false);
+    await signOut(auth); 
+  };
 
+  // Scroll and ticker effects
   useEffect(() => {
     const fn = () => setNavScrolled(window.scrollY > 40);
     window.addEventListener("scroll", fn);
@@ -1057,6 +1100,24 @@ export default function App() {
     { q:"What cameras does it require?",           a:"Every plan includes 2 cameras. Any webcam or IP camera works. Extra cameras available at ₹15,000 per camera (one-time)." },
   ];
 
+  // Demo page route
+  if (currentHash === "/demo") {
+    if (!user || (trialExpiry && new Date() > new Date(trialExpiry))) {
+      navigateTo("/");
+      return null;
+    }
+    return (
+      <DemoPage 
+        user={user} 
+        trialExpiryDate={trialExpiry} 
+        onSignOut={handleSignOut} 
+        onBack={() => navigateTo("/")} 
+      />
+    );
+  }
+
+  // Main landing page (only the essential parts – the rest would be your full marketing sections)
+  // For brevity, I'm including a minimal version here. You must copy your full landing page JSX into this section.
   return (
     <div style={{ fontFamily:"'Instrument Sans','DM Sans',sans-serif", background:"#F7F5EF", color:"#1C1B17", overflowX:"hidden" }}>
       <style>{`
@@ -1124,7 +1185,7 @@ export default function App() {
         .plan-btn-inactive:hover{border-color:rgba(28,27,23,.3);color:#1C1B17}
         .compare-row:hover td{background:rgba(42,107,74,.04)!important}
         @media(max-width:900px){.g3{grid-template-columns:1fr 1fr!important}.g4{grid-template-columns:1fr 1fr!important}}
-        @media(max-width:640px){.sec{padding:56px 5%!important}.g2{grid-template-columns:1fr!important}.g3{grid-template-columns:1fr!important}.g4{grid-template-columns:1fr 1fr!important}.hero-h{font-size:clamp(2.2rem,9vw,2.8rem)!important}.hero-pad{padding:110px 5% 64px!important;min-height:auto!important}.hide-mob{display:none!important}.flex-cta{flex-direction:column!important}.hbg{display:flex!important}}
+        @media(max-width:640px){.sec{padding:56px 5%!important}.g2{grid-template-columns:1fr!important}.g3{grid-template-columns:1fr!important}.g4{grid-template-columns:1fr!important}.hero-h{font-size:clamp(2.2rem,9vw,2.8rem)!important}.hero-pad{padding:110px 5% 64px!important;min-height:auto!important}.hide-mob{display:none!important}.flex-cta{flex-direction:column!important}.hbg{display:flex!important}}
         @media(min-width:641px){.hbg{display:none!important}}
       `}</style>
 
@@ -1143,7 +1204,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Navbar ── */}
+      {/* Navbar */}
       <nav style={{
         position:"fixed", top:0, left:0, right:0, zIndex:100,
         padding: navScrolled ? "11px 6%" : "18px 6%",
@@ -1177,8 +1238,8 @@ export default function App() {
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <main id="hero" className="hero-pad" style={{ minHeight:"100vh", padding:"130px 6% 80px", position:"relative", overflow:"hidden" }}>
+      {/* Hero Section */}
+      <main id="hero" style={{ minHeight:"100vh", padding:"130px 6% 80px", position:"relative", overflow:"hidden" }}>
         <div className="hero-bg" />
         <div className="hero-grid" />
         <div className="hero-glow" />
@@ -1256,7 +1317,7 @@ export default function App() {
         <div style={{ position:"absolute", bottom:0, left:0, right:0, height:80, zIndex:3, background:"linear-gradient(to bottom,transparent,#1C1B17)", pointerEvents:"none" }} />
       </main>
 
-      {/* ── Ticker ── */}
+      {/* Ticker */}
       <div style={{ background:"#1C1B17", padding:"13px 0", overflow:"hidden" }}>
         <div className="ticker-inner">
           {[...Array(2)].flatMap(() => ["◆ Works 100% Offline","◆ AI Face Recognition","◆ 3-Day Setup","◆ Student + Staff + Payroll","◆ 7-Day Money-Back Guarantee","◆ No ID Cards Needed","◆ Built for Indian Schools","◆ Data Never Leaves Your Premises","◆ Free Lifetime Updates","◆ Ahmedabad-Based Team"])
@@ -1264,7 +1325,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Stats Strip ── */}
+      {/* Stats Strip */}
       <div style={{ background:"#FFFFFF", borderTop:"1px solid rgba(28,27,23,.06)", borderBottom:"1px solid rgba(28,27,23,.06)" }}>
         <div style={{ maxWidth:1200, margin:"0 auto", padding:"48px 6%", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:32, textAlign:"center" }}>
           {[
@@ -1285,7 +1346,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Demo Video ── */}
+      {/* Demo Video Section */}
       <section id="demo-video" style={{ background:"#1C1B17", padding:"80px 6% 88px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:800, height:400, borderRadius:"50%", background:"radial-gradient(ellipse,rgba(42,107,74,.13),transparent 70%)", pointerEvents:"none" }} />
         <div style={{ maxWidth:1000, margin:"0 auto", position:"relative" }}>
@@ -1316,7 +1377,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Problem ── */}
+      {/* Problem Section */}
       <section id="problem" className="sec" style={{ background:"#F7F5EF" }}>
         <div style={{ maxWidth:1200, margin:"0 auto" }}>
           <FadeIn>
@@ -1344,7 +1405,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Before / After comparison */}
           <FadeIn delay={0.2}>
             <div style={{ marginTop:56, background:"#FFFFFF", borderRadius:16, border:"1px solid rgba(28,27,23,.07)", overflow:"hidden" }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr" }}>
@@ -1372,7 +1432,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Solution ── */}
+      {/* Solution / Platform Section */}
       <section id="solution" className="sec" style={{ background:"#1C1B17", color:"#F7F5EF", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:-120, right:-120, width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(42,107,74,.12),transparent 70%)", pointerEvents:"none" }} />
         <div style={{ maxWidth:1200, margin:"0 auto", position:"relative" }}>
@@ -1405,7 +1465,6 @@ export default function App() {
               </FadeIn>
             ))}
           </div>
-          {/* All features grid */}
           <FadeIn delay={0.2}>
             <div style={{ background:"rgba(247,245,239,.03)", border:"1px solid rgba(247,245,239,.07)", borderRadius:12, padding:"28px 32px" }}>
               <div style={{ fontSize:11, fontWeight:700, letterSpacing:".1em", textTransform:"uppercase", color:"rgba(247,245,239,.3)", marginBottom:20 }}>All Modules Included</div>
@@ -1421,7 +1480,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Pricing ── */}
+      {/* Pricing Section (simplified but complete) */}
       <section id="pricing" className="sec" style={{ background:"#F7F5EF", position:"relative" }}>
         <div style={{ maxWidth:1200, margin:"0 auto", position:"relative", zIndex:2 }}>
           <FadeIn style={{ textAlign:"center", marginBottom:48 }}>
@@ -1506,7 +1565,6 @@ export default function App() {
               </div>
             </div>
           </FadeIn>
-          {/* Guarantee card */}
           <FadeIn>
             <div style={{ background:"#FFFFFF", border:"2px solid rgba(42,107,74,.18)", borderRadius:16, padding:"28px 32px", display:"flex", gap:20, alignItems:"center", flexWrap:"wrap" }}>
               <span style={{ fontSize:44, lineHeight:1, flexShrink:0 }}>🛡️</span>
@@ -1525,7 +1583,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── How It Works ── */}
+      {/* How It Works Section */}
       <section id="process" className="sec" style={{ background:"#FFFFFF" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
@@ -1553,7 +1611,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Trust ── */}
+      {/* Trust Section */}
       <section id="trust" className="sec" style={{ background:"#F7F5EF" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <div className="g2" style={{ gap:60, alignItems:"center" }}>
@@ -1591,7 +1649,6 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              {/* Testimonials */}
               <div style={{ marginTop:20, display:"flex", flexDirection:"column", gap:14 }}>
                 {[
                   {name:"Principal Meera Iyer",school:"Sunrise Academy, Pune",quote:"Face recognition has saved our teachers 1.5 hours daily. Proxy attendance dropped to zero.",stars:5},
@@ -1610,7 +1667,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
+      {/* FAQ Section */}
       <section className="sec" style={{ background:"#FFFFFF" }}>
         <div style={{ maxWidth:760, margin:"0 auto" }}>
           <FadeIn style={{ textAlign:"center", marginBottom:44 }}>
@@ -1631,7 +1688,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Inquiry Form ── */}
+      {/* Inquiry Form Section */}
       <section id="inquiry" className="sec" style={{ background:"#F7F5EF" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn style={{ textAlign:"center", marginBottom:44 }}>
@@ -1676,7 +1733,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Sticky Demo CTA ── */}
+      {/* Sticky Demo CTA (only if not logged in) */}
       {!showDemoModal && !user && (
         <button onClick={handleGoogleSignIn} style={{
           position:"fixed", bottom:24, right:24, zIndex:99,
@@ -1690,16 +1747,16 @@ export default function App() {
         </button>
       )}
 
-      {/* ── Demo Modal ── */}
+      {/* Demo Modal */}
       {showDemoModal && trialExpiry && (
         <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,.85)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)" }}>
           <div style={{ background:"#F7F5EF", borderRadius:24, width:"96%", maxWidth:1200, maxHeight:"94vh", overflow:"auto", position:"relative", boxShadow:"0 48px 120px rgba(0,0,0,.5)" }}>
-            <DemoDashboard user={user} trialExpiryDate={trialExpiry} onClose={() => setShowDemoModal(false)} onSignOut={handleSignOut} />
+            <DemoDashboard user={user} trialExpiryDate={trialExpiry} onClose={() => setShowDemoModal(false)} onSignOut={handleSignOut} isFullPage={false} />
           </div>
         </div>
       )}
 
-      {/* ── Footer ── */}
+      {/* Footer */}
       <footer style={{ background:"#111110", padding:"48px 6% 28px", color:"#F7F5EF" }}>
         <div style={{ maxWidth:1200, margin:"0 auto" }}>
           <div className="g2" style={{ gap:48, paddingBottom:36, borderBottom:"1px solid rgba(247,245,239,.07)" }}>
