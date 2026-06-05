@@ -24,9 +24,17 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-/* ─── Google Apps Script Web App URL ─── */
 const SHEET_URL =
   "https://script.google.com/macros/s/AKfycbxgViYSKbN1zFyISMS2l9xgDQGFE8QQAY7IlWjkEmAouzeO5GZwrLg8HZJevvF3SX4uyQ/exec";
+
+/* ─── Normalize any date format to JS Date ─── */
+const toDate = (value) => {
+  if (!value) return null;
+  if (value?.toDate) return value.toDate();          // Firestore Timestamp
+  if (value instanceof Date) return value;           // already a Date
+  const d = new Date(value);                         // ISO string or number
+  return isNaN(d.getTime()) ? null : d;
+};
 
 /* ─── Intersection Observer Hook ─── */
 const useInView = (threshold = 0.08) => {
@@ -135,111 +143,6 @@ const PLANS = [
 const fmt = (n) =>
   n >= 100000 ? `₹${(n / 100000).toFixed(n % 100000 === 0 ? 0 : 1)}L` : `₹${n.toLocaleString("en-IN")}`;
 
-/* ─── LinkedIn Icon ─── */
-const LiIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-  </svg>
-);
-
-/* ─── Demo Video Player ─── */
-const DemoVideoPlayer = () => {
-  const videoRef = useRef(null);
-  const containerRef = useRef(null);
-  const controlsTimer = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [muted, setMuted] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
-
-  const formatTime = (s) => {
-    const m = Math.floor(s / 60);
-    return `${m}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
-  };
-  const togglePlay = () => {
-    if (!videoRef.current) return;
-    if (videoRef.current.paused) { videoRef.current.play(); setPlaying(true); setHasStarted(true); }
-    else { videoRef.current.pause(); setPlaying(false); }
-  };
-  const handleMouseMove = () => {
-    setShowControls(true);
-    clearTimeout(controlsTimer.current);
-    if (playing) controlsTimer.current = setTimeout(() => setShowControls(false), 2800);
-  };
-  const toggleFS = () => {
-    if (!document.fullscreenElement) { containerRef.current?.requestFullscreen?.(); setFullscreen(true); }
-    else { document.exitFullscreen?.(); setFullscreen(false); }
-  };
-
-  return (
-    <div ref={containerRef} onMouseMove={handleMouseMove} onMouseLeave={() => playing && setShowControls(false)}
-      style={{ position:"relative", borderRadius:16, overflow:"hidden", background:"#0a0a0a",
-        boxShadow:"0 40px 120px rgba(0,0,0,0.7), 0 0 0 1px rgba(247,245,239,0.08)",
-        cursor: playing && !showControls ? "none" : "default", aspectRatio:"16/9" }}>
-      <video ref={videoRef} src="/2026-05-09_11-48-06.mp4"
-        style={{ width:"100%", height:"100%", display:"block", objectFit:"contain", background:"#0a0a0a" }}
-        onTimeUpdate={() => { if (!videoRef.current) return; setCurrentTime(videoRef.current.currentTime); setProgress((videoRef.current.currentTime / videoRef.current.duration) * 100); }}
-        onLoadedMetadata={() => { if (videoRef.current) setDuration(videoRef.current.duration); }}
-        onEnded={() => { setPlaying(false); setShowControls(true); }}
-        muted={muted} playsInline preload="metadata" />
-      {!hasStarted && (
-        <div onClick={togglePlay} style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column",
-          alignItems:"center", justifyContent:"center", cursor:"pointer",
-          background:"linear-gradient(135deg,rgba(10,9,8,0.55),rgba(10,9,8,0.3))", backdropFilter:"blur(2px)" }}>
-          <div style={{ position:"absolute", top:16, left:16, display:"flex", alignItems:"center", gap:8,
-            background:"rgba(10,9,8,0.6)", borderRadius:8, padding:"6px 14px", border:"1px solid rgba(247,245,239,0.12)" }}>
-            <span style={{ width:8, height:8, borderRadius:"50%", background:"#5AC87A" }} />
-            <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"rgba(247,245,239,0.5)", letterSpacing:"0.08em" }}>
-              nexaattend — live portal walkthrough
-            </span>
-          </div>
-          <div style={{ width:76, height:76, borderRadius:"50%", background:"rgba(247,245,239,0.95)",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            boxShadow:"0 8px 40px rgba(0,0,0,0.5), 0 0 0 12px rgba(247,245,239,0.12)", marginBottom:16 }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="#1C1B17" style={{ marginLeft:4 }}><path d="M8 5v14l11-7z"/></svg>
-          </div>
-          <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(1rem,2.5vw,1.4rem)", color:"#F7F5EF", marginBottom:6 }}>Watch Product Demo</div>
-          <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:"rgba(247,245,239,0.4)", letterSpacing:"0.1em" }}>{formatTime(duration)} · Full walkthrough</div>
-        </div>
-      )}
-      <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"32px 18px 14px",
-        background:"linear-gradient(to top,rgba(0,0,0,0.85),transparent)",
-        opacity:(showControls || !playing) && hasStarted ? 1 : 0, transition:"opacity 0.3s",
-        pointerEvents:(showControls || !playing) && hasStarted ? "auto" : "none" }}>
-        <div onClick={(e) => { const pct=(e.clientX-e.currentTarget.getBoundingClientRect().left)/e.currentTarget.getBoundingClientRect().width; if(videoRef.current) videoRef.current.currentTime=pct*videoRef.current.duration; }}
-          style={{ width:"100%", height:3, background:"rgba(247,245,239,0.2)", borderRadius:2, marginBottom:10, cursor:"pointer", position:"relative" }}>
-          <div style={{ height:"100%", width:`${progress}%`, background:"#5AC87A", borderRadius:2, position:"relative" }}>
-            <div style={{ position:"absolute", right:-5, top:"50%", transform:"translateY(-50%)", width:11, height:11, borderRadius:"50%", background:"#5AC87A", boxShadow:"0 0 6px rgba(90,200,122,0.6)" }} />
-          </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <button onClick={togglePlay} style={{ background:"none", border:"none", cursor:"pointer", padding:4, color:"#F7F5EF", display:"flex" }}>
-            {playing ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                     : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
-          </button>
-          <button onClick={() => setMuted(m => !m)} style={{ background:"none", border:"none", cursor:"pointer", padding:4, color:"rgba(247,245,239,0.7)", display:"flex" }}>
-            {muted ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>}
-          </button>
-          <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:"rgba(247,245,239,0.55)" }}>{formatTime(currentTime)} / {formatTime(duration)}</span>
-          <div style={{ flex:1 }} />
-          <button onClick={toggleFS} style={{ background:"none", border:"none", cursor:"pointer", padding:4, color:"rgba(247,245,239,0.7)", display:"flex" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              {fullscreen ? <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
-                          : <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>}
-            </svg>
-          </button>
-        </div>
-      </div>
-      {hasStarted && <div onClick={togglePlay} style={{ position:"absolute", inset:0, cursor:"pointer", zIndex:1 }} />}
-    </div>
-  );
-};
-
 /* ─── Demo Dashboard Sample Data ─── */
 const DemoData = {
   students: [
@@ -275,31 +178,31 @@ const DemoData = {
   ],
 };
 
-/* ─── DemoDashboard Component (fixed .toDate crash + isFullPage) ─── */
+/* ─── DemoDashboard ─── */
 const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage = false }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [daysLeft, setDaysLeft] = useState(7);
   const [expired, setExpired] = useState(false);
   const [contactStatus, setContactStatus] = useState("idle");
-  const [contactForm, setContactForm] = useState({ schoolName:"", contactPerson:"", mobile:"", email:"", students:"", message:"" });
+  const [contactForm, setContactForm] = useState({
+    schoolName:"", contactPerson:"", mobile:"", email:"", students:"", message:""
+  });
 
   useEffect(() => {
-    if (trialExpiryDate) {
-      let expiry;
-      if (trialExpiryDate?.toDate) expiry = trialExpiryDate.toDate();
-      else if (trialExpiryDate instanceof Date) expiry = trialExpiryDate;
-      else expiry = new Date(trialExpiryDate);
-      const left = Math.ceil((expiry - new Date()) / (1000*60*60*24));
-      if (left <= 0) setExpired(true);
-      else setDaysLeft(left);
-    }
+    const expiry = toDate(trialExpiryDate);
+    if (!expiry) return;
+    const left = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
+    if (left <= 0) setExpired(true);
+    else setDaysLeft(left);
   }, [trialExpiryDate]);
 
   const handleContactSubmit = async (e) => {
     e.preventDefault();
     setContactStatus("sending");
     try {
-      await addDoc(collection(db, "salesLeads"), { ...contactForm, source:"demo_expired", uid:user?.uid, createdAt:serverTimestamp() });
+      await addDoc(collection(db, "salesLeads"), {
+        ...contactForm, source:"demo_expired", uid:user?.uid, createdAt:serverTimestamp()
+      });
       const p = new URLSearchParams({ ...contactForm, source:"demo_expired", timestamp:new Date().toISOString() });
       await fetch(`${SHEET_URL}?${p.toString()}`, { method:"GET", mode:"no-cors" });
       setContactStatus("success");
@@ -323,15 +226,20 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
       <div style={{ padding:"40px", maxWidth:520, margin:"0 auto", textAlign:"center" }}>
         <div style={{ fontSize:56, marginBottom:16 }}>⏰</div>
         <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:28, marginBottom:8 }}>Your trial has ended</h2>
-        <p style={{ color:"rgba(28,27,23,0.55)", marginBottom:28, lineHeight:1.7 }}>Contact our team to continue using NexaAttend at your school.</p>
+        <p style={{ color:"rgba(28,27,23,0.55)", marginBottom:28, lineHeight:1.7 }}>
+          Contact our team to continue using NexaAttend at your school.
+        </p>
         <form onSubmit={handleContactSubmit} style={{ display:"flex", flexDirection:"column", gap:12, textAlign:"left" }}>
           {[["schoolName","School Name"],["contactPerson","Your Name"],["mobile","Mobile Number"],["email","Email"],["students","No. of Students"]].map(([k,p]) => (
-            <input key={k} placeholder={p} required value={contactForm[k]} onChange={e => setContactForm(f=>({...f,[k]:e.target.value}))}
+            <input key={k} placeholder={p} required value={contactForm[k]}
+              onChange={e => setContactForm(f=>({...f,[k]:e.target.value}))}
               style={{ padding:"11px 14px", borderRadius:8, border:"1.5px solid rgba(28,27,23,0.15)", fontSize:14, outline:"none", fontFamily:"'Instrument Sans',sans-serif" }} />
           ))}
-          <textarea placeholder="Message (optional)" rows={3} value={contactForm.message} onChange={e => setContactForm(f=>({...f,message:e.target.value}))}
+          <textarea placeholder="Message (optional)" rows={3} value={contactForm.message}
+            onChange={e => setContactForm(f=>({...f,message:e.target.value}))}
             style={{ padding:"11px 14px", borderRadius:8, border:"1.5px solid rgba(28,27,23,0.15)", fontSize:14, resize:"vertical", fontFamily:"'Instrument Sans',sans-serif" }} />
-          <button type="submit" disabled={contactStatus==="sending"} style={{ padding:"13px", background:"#1C1B17", color:"#F7F5EF", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", fontSize:14 }}>
+          <button type="submit" disabled={contactStatus==="sending"}
+            style={{ padding:"13px", background:"#1C1B17", color:"#F7F5EF", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", fontSize:14 }}>
             {contactStatus==="sending" ? "Sending…" : "Contact Sales Team"}
           </button>
         </form>
@@ -343,7 +251,9 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
     return (
       <div style={{ padding:"60px 40px", textAlign:"center" }}>
         <div style={{ width:72, height:72, borderRadius:"50%", background:"rgba(42,107,74,0.1)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#2A6B4A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M5 13l4 4L19 7" stroke="#2A6B4A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
         <h3 style={{ fontFamily:"'Instrument Serif',serif", fontSize:24, marginBottom:8 }}>We'll be in touch!</h3>
         <p style={{ color:"rgba(28,27,23,0.55)" }}>Our team will call you within 24 hours.</p>
@@ -352,13 +262,16 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
   }
 
   return (
-    <div style={{ display:"flex", height:"90vh", background:"#F7F5EF", borderRadius:24, overflow:"hidden" }}>
+    <div style={{ display:"flex", height: isFullPage ? "calc(100vh - 62px)" : "90vh", background:"#F7F5EF", borderRadius: isFullPage ? 0 : 24, overflow:"hidden" }}>
       {/* Sidebar */}
       <div style={{ width:220, background:"#1C1B17", display:"flex", flexDirection:"column", flexShrink:0 }}>
         <div style={{ padding:"22px 20px 16px", borderBottom:"1px solid rgba(247,245,239,0.08)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:32, height:32, background:"#2A6B4A", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="15" height="15" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/><path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <svg width="15" height="15" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/>
+                <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
             </div>
             <div>
               <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:15, color:"#F7F5EF" }}>NexaAttend</div>
@@ -367,7 +280,9 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
           </div>
         </div>
         <div style={{ padding:"14px 20px", borderBottom:"1px solid rgba(247,245,239,0.07)" }}>
-          {user?.photoURL && <img src={user.photoURL} alt="" style={{ width:32, height:32, borderRadius:"50%", marginBottom:8 }} />}
+          {user?.photoURL && (
+            <img src={user.photoURL} alt="" style={{ width:32, height:32, borderRadius:"50%", marginBottom:8 }} />
+          )}
           <div style={{ fontSize:12, fontWeight:600, color:"#F7F5EF", marginBottom:2 }}>{user?.displayName || "Demo User"}</div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
             <span style={{ width:6, height:6, borderRadius:"50%", background: daysLeft > 3 ? "#5AC87A" : "#F59E0B" }} />
@@ -395,7 +310,9 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
             <div style={{ fontSize:10, color:"rgba(247,245,239,0.5)", marginBottom:4 }}>Sample data only</div>
             <div style={{ fontSize:11, color:"#5AC87A", fontWeight:600 }}>This is a live demo</div>
           </div>
-          <button onClick={onSignOut} style={{ width:"100%", padding:"9px", background:"rgba(247,245,239,0.06)", border:"1px solid rgba(247,245,239,0.1)", borderRadius:8, color:"rgba(247,245,239,0.5)", fontSize:12, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}>Sign out</button>
+          <button onClick={onSignOut} style={{ width:"100%", padding:"9px", background:"rgba(247,245,239,0.06)", border:"1px solid rgba(247,245,239,0.1)", borderRadius:8, color:"rgba(247,245,239,0.5)", fontSize:12, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}>
+            Sign out
+          </button>
           {!isFullPage && (
             <button onClick={onClose} style={{ width:"100%", padding:"9px", background:"transparent", border:"none", color:"rgba(247,245,239,0.3)", fontSize:12, cursor:"pointer", marginTop:4, fontFamily:"'Instrument Sans',sans-serif" }}>
               ✕ Close demo
@@ -422,17 +339,18 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
         </div>
 
         <div style={{ padding:"24px 28px" }}>
+
           {/* OVERVIEW TAB */}
           {activeTab === "overview" && (
             <div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:16, marginBottom:24 }}>
                 {[
-                  { label:"Present Today",  value:`${DemoData.todayAttendance.present}`, sub:`of ${DemoData.todayAttendance.total}`, color:"#1B4D3E", bg:"rgba(27,77,62,0.06)" },
-                  { label:"Late Today",     value:`${DemoData.todayAttendance.late}`,    sub:"students",  color:"#7A5000", bg:"rgba(122,80,0,0.06)" },
-                  { label:"Absent Today",   value:`${DemoData.todayAttendance.absent}`,  sub:"students",  color:"#7A1A1A", bg:"rgba(122,26,26,0.06)" },
-                  { label:"Attendance Rate",value:`${attPct}%`,                          sub:"today",     color:"#1A2B6A", bg:"rgba(26,43,106,0.06)" },
-                  { label:"Fee Collected",  value:`₹${(DemoData.fees.collected/100000).toFixed(1)}L`, sub:"this month", color:"#1B4D3E", bg:"rgba(27,77,62,0.06)" },
-                  { label:"Fee Pending",    value:`₹${(DemoData.fees.pending/100000).toFixed(1)}L`, sub:"outstanding", color:"#7A3A00", bg:"rgba(122,58,0,0.06)" },
+                  { label:"Present Today",   value:`${DemoData.todayAttendance.present}`, sub:`of ${DemoData.todayAttendance.total}`, color:"#1B4D3E" },
+                  { label:"Late Today",      value:`${DemoData.todayAttendance.late}`,    sub:"students",   color:"#7A5000" },
+                  { label:"Absent Today",    value:`${DemoData.todayAttendance.absent}`,  sub:"students",   color:"#7A1A1A" },
+                  { label:"Attendance Rate", value:`${attPct}%`,                          sub:"today",      color:"#1A2B6A" },
+                  { label:"Fee Collected",   value:`₹${(DemoData.fees.collected/100000).toFixed(1)}L`, sub:"this month", color:"#1B4D3E" },
+                  { label:"Fee Pending",     value:`₹${(DemoData.fees.pending/100000).toFixed(1)}L`,  sub:"outstanding",color:"#7A3A00" },
                 ].map((s,i) => (
                   <div key={i} style={{ background:"#FFFFFF", border:"1px solid rgba(28,27,23,0.07)", borderRadius:12, padding:"18px 16px", borderTop:`3px solid ${s.color}` }}>
                     <div style={{ fontSize:11, fontWeight:600, color:"rgba(28,27,23,0.45)", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:8 }}>{s.label}</div>
@@ -441,7 +359,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
                   </div>
                 ))}
               </div>
-
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <div style={{ background:"#FFFFFF", borderRadius:12, border:"1px solid rgba(28,27,23,0.07)", padding:"20px" }}>
                   <h3 style={{ fontSize:14, fontWeight:600, marginBottom:16 }}>Weekly Attendance Trend</h3>
@@ -457,7 +374,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
                     ))}
                   </div>
                 </div>
-
                 <div style={{ background:"#FFFFFF", borderRadius:12, border:"1px solid rgba(28,27,23,0.07)", padding:"20px" }}>
                   <h3 style={{ fontSize:14, fontWeight:600, marginBottom:16 }}>Recent Activity</h3>
                   <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -494,7 +410,6 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
                   </div>
                 ))}
               </div>
-
               <div style={{ background:"#FFFFFF", borderRadius:12, border:"1px solid rgba(28,27,23,0.07)", overflow:"hidden" }}>
                 <div style={{ padding:"16px 20px", borderBottom:"1px solid rgba(28,27,23,0.07)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <h3 style={{ fontSize:14, fontWeight:600 }}>Today's Recognition Log</h3>
@@ -512,7 +427,7 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
                   </thead>
                   <tbody>
                     {logs.map((l,i) => (
-                      <tr key={i} style={{ borderTop:"1px solid rgba(28,27,23,0.04)", transition:"background 0.15s" }}>
+                      <tr key={i} style={{ borderTop:"1px solid rgba(28,27,23,0.04)" }}>
                         <td style={{ padding:"11px 20px", fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:"rgba(28,27,23,0.4)" }}>{l.time}</td>
                         <td style={{ padding:"11px 20px", fontSize:13, fontWeight:500 }}>{l.name}</td>
                         <td style={{ padding:"11px 20px", fontSize:12, color:"rgba(28,27,23,0.55)" }}>{l.cls}</td>
@@ -547,7 +462,7 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
                   </tr>
                 </thead>
                 <tbody>
-                  {DemoData.students.map((s,i) => (
+                  {DemoData.students.map((s) => (
                     <tr key={s.id} style={{ borderTop:"1px solid rgba(28,27,23,0.04)" }}>
                       <td style={{ padding:"13px 20px", fontSize:13, fontWeight:500 }}>{s.name}</td>
                       <td style={{ padding:"13px 20px", fontSize:12, color:"rgba(28,27,23,0.55)" }}>{s.class}</td>
@@ -637,52 +552,39 @@ const DemoDashboard = ({ user, trialExpiryDate, onClose, onSignOut, isFullPage =
               </div>
               <div style={{ background:"rgba(42,107,74,0.06)", border:"1px solid rgba(42,107,74,0.15)", borderRadius:12, padding:"16px 20px" }}>
                 <p style={{ fontSize:13.5, color:"#1B4D3E", lineHeight:1.7 }}>
-                  💡 <strong>AI Insight:</strong> Fee collection rate is <strong>{feesPct}%</strong> this month. 
+                  💡 <strong>AI Insight:</strong> Fee collection rate is <strong>{feesPct}%</strong> this month.
                   8 students have pending dues above ₹5,000. Automated WhatsApp reminders sent to parents on June 1.
                 </p>
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>
   );
 };
 
-/* ─── DemoPage: Full‑page version of the dashboard ─── */
+/* ─── DemoPage: Full-page wrapper ─── */
 const DemoPage = ({ user, trialExpiryDate, onSignOut, onBack }) => {
-  useEffect(() => {
-    if (!user) {
-      window.location.hash = "/";
-    } else if (trialExpiryDate) {
-      let expiry;
-      if (trialExpiryDate?.toDate) expiry = trialExpiryDate.toDate();
-      else if (trialExpiryDate instanceof Date) expiry = trialExpiryDate;
-      else expiry = new Date(trialExpiryDate);
-      if (new Date() > expiry) {
-        window.location.hash = "/";
-      }
-    }
-  }, [user, trialExpiryDate]);
-
-  if (!user) return null;
-
   return (
-    <div style={{ minHeight: "100vh", background: "#F7F5EF", padding: 0 }}>
-      <div style={{ position: "sticky", top: 0, background: "#FFFFFF", borderBottom: "1px solid rgba(28,27,23,0.07)", padding: "12px 28px", display: "flex", alignItems: "center", gap: 16, zIndex: 10 }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#2A6B4A" }}>←</button>
+    <div style={{ minHeight:"100vh", background:"#F7F5EF" }}>
+      <div style={{ position:"sticky", top:0, background:"#FFFFFF", borderBottom:"1px solid rgba(28,27,23,0.07)", padding:"12px 28px", display:"flex", alignItems:"center", gap:16, zIndex:20, height:62, boxSizing:"border-box" }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#2A6B4A", lineHeight:1 }}>←</button>
         <div>
-          <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 18, fontWeight: 600 }}>NexaAttend Demo</div>
-          <div style={{ fontSize: 11, color: "rgba(28,27,23,0.45)" }}>Live trial dashboard</div>
+          <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:18, fontWeight:600 }}>NexaAttend Demo</div>
+          <div style={{ fontSize:11, color:"rgba(28,27,23,0.45)" }}>Live trial dashboard</div>
         </div>
-        <div style={{ marginLeft: "auto" }}>
-          <button onClick={onSignOut} style={{ background: "#1C1B17", color: "#F7F5EF", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Sign Out</button>
+        <div style={{ marginLeft:"auto" }}>
+          <button onClick={onSignOut} style={{ background:"#1C1B17", color:"#F7F5EF", border:"none", borderRadius:6, padding:"8px 16px", fontSize:13, fontWeight:500, cursor:"pointer" }}>
+            Sign Out
+          </button>
         </div>
       </div>
-      <DemoDashboard 
-        user={user} 
-        trialExpiryDate={trialExpiryDate} 
-        onClose={onBack} 
+      <DemoDashboard
+        user={user}
+        trialExpiryDate={trialExpiryDate}
+        onClose={onBack}
         onSignOut={onSignOut}
         isFullPage={true}
       />
@@ -710,8 +612,8 @@ const InquiryForm = () => {
 
   const validateStep1 = () => {
     const errs = {};
-    if (!form.name.trim())  errs.name = "Required";
-    if (!form.role)         errs.role = "Required";
+    if (!form.name.trim()) errs.name = "Required";
+    if (!form.role) errs.role = "Required";
     if (!form.phone.trim() || !/^\+?[\d\s\-]{10,15}$/.test(form.phone.replace(/\s/g,""))) errs.phone = "Valid 10-digit number";
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Invalid email";
     return errs;
@@ -719,15 +621,15 @@ const InquiryForm = () => {
   const validateStep2 = () => {
     const errs = {};
     if (!form.school.trim()) errs.school = "Required";
-    if (!form.city.trim())   errs.city = "Required";
-    if (!form.students)      errs.students = "Required";
+    if (!form.city.trim()) errs.city = "Required";
+    if (!form.students) errs.students = "Required";
     return errs;
   };
 
   const nextStep = () => {
     const errs = step===1 ? validateStep1() : validateStep2();
     setErrors(errs);
-    if (Object.keys(errs).length===0) setStep(s => s+1);
+    if (Object.keys(errs).length === 0) setStep(s => s+1);
   };
 
   const handleSubmit = async () => {
@@ -835,21 +737,17 @@ const InquiryForm = () => {
           <div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
               <div>
-                <label style={lStyle} htmlFor="name">Full Name <span style={{ color:"#C0392B" }}>*</span></label>
-                <input id="name" type="text" placeholder="e.g. Rajesh Sharma" value={form.name} onChange={setField("name")} onFocus={()=>setFocusedField("name")} onBlur={()=>setFocusedField(null)} style={iStyle("name")} autoComplete="name" />
+                <label style={lStyle}>Full Name <span style={{ color:"#C0392B" }}>*</span></label>
+                <input type="text" placeholder="e.g. Rajesh Sharma" value={form.name} onChange={setField("name")} onFocus={()=>setFocusedField("name")} onBlur={()=>setFocusedField(null)} style={iStyle("name")} autoComplete="name" />
                 {errors.name && <span style={eStyle}>{errors.name}</span>}
               </div>
               <div>
-                <label style={lStyle} htmlFor="role">Your Role <span style={{ color:"#C0392B" }}>*</span></label>
-                <select id="role" value={form.role} onChange={setField("role")} onFocus={()=>setFocusedField("role")} onBlur={()=>setFocusedField(null)} style={sStyle("role")}>
+                <label style={lStyle}>Your Role <span style={{ color:"#C0392B" }}>*</span></label>
+                <select value={form.role} onChange={setField("role")} onFocus={()=>setFocusedField("role")} onBlur={()=>setFocusedField(null)} style={sStyle("role")}>
                   <option value="">Select role…</option>
-                  <option>Principal / Headmaster</option>
-                  <option>School Owner / Trustee</option>
-                  <option>Administrator</option>
-                  <option>IT Coordinator</option>
-                  <option>Teacher / HOD</option>
-                  <option>Finance Manager</option>
-                  <option>Other</option>
+                  <option>Principal / Headmaster</option><option>School Owner / Trustee</option>
+                  <option>Administrator</option><option>IT Coordinator</option>
+                  <option>Teacher / HOD</option><option>Finance Manager</option><option>Other</option>
                 </select>
                 {errors.role && <span style={eStyle}>{errors.role}</span>}
               </div>
@@ -901,10 +799,9 @@ const InquiryForm = () => {
                 <label style={lStyle}>School Board <span style={{ fontSize:11, color:"rgba(28,27,23,0.35)", fontWeight:400 }}>(optional)</span></label>
                 <select value={form.board} onChange={setField("board")} onFocus={()=>setFocusedField("board")} onBlur={()=>setFocusedField(null)} style={sStyle("board")}>
                   <option value="">Select board…</option>
-                  <option>CBSE</option><option>GSEB (Gujarat Board)</option>
-                  <option>ICSE / ISC</option><option>IB (International Baccalaureate)</option>
-                  <option>Cambridge (IGCSE)</option><option>State Board (Other)</option>
-                  <option>Private / Autonomous</option><option>Other</option>
+                  <option>CBSE</option><option>GSEB (Gujarat Board)</option><option>ICSE / ISC</option>
+                  <option>IB (International Baccalaureate)</option><option>Cambridge (IGCSE)</option>
+                  <option>State Board (Other)</option><option>Private / Autonomous</option><option>Other</option>
                 </select>
               </div>
             </div>
@@ -931,9 +828,11 @@ const InquiryForm = () => {
                     style={{ padding:"14px 10px", borderRadius:10, border:`2px solid ${isSelected ? opt.color : "rgba(28,27,23,0.12)"}`,
                       background: isSelected ? `${opt.color}10` : "#FAFAF8", cursor:"pointer", textAlign:"left",
                       transition:"all 0.18s", position:"relative", fontFamily:"'Instrument Sans',sans-serif" }}>
-                    {isSelected && <div style={{ position:"absolute", top:-8, right:-8, width:20, height:20, borderRadius:"50%", background:opt.color, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>}
+                    {isSelected && (
+                      <div style={{ position:"absolute", top:-8, right:-8, width:20, height:20, borderRadius:"50%", background:opt.color, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                    )}
                     <div style={{ fontSize:14, fontWeight:700, color:isSelected ? opt.color : "#1C1B17", marginBottom:2 }}>{opt.label}</div>
                     <div style={{ fontSize:11, color:"rgba(28,27,23,0.45)", marginBottom:4 }}>{opt.sub}</div>
                     <div style={{ fontSize:13, fontWeight:600, color:isSelected ? opt.color : "rgba(28,27,23,0.6)" }}>{opt.price}</div>
@@ -1003,7 +902,9 @@ const TermsOfService = ({ onBack }) => {
       <div style={{ background:"#FFFFFF", borderRadius:16, padding:32, boxShadow:"0 4px 24px rgba(28,27,23,0.06)", lineHeight:1.8, color:"rgba(28,27,23,0.7)" }}>
         <p style={{ marginBottom:16 }}><strong>Last Updated:</strong> June 1, 2026</p>
         <ol style={{ marginLeft:24 }}>
-          {["Platform is for demonstration, educational, and management purposes.","Users must not misuse, disrupt, copy, or gain unauthorized access.","Demo access may be limited or revoked at any time.","All IP belongs to Nova Teach ERP.","We are not liable for service interruptions.","Continued use indicates acceptance."].map((t,i) => <li key={i} style={{ marginBottom:8 }}>{t}</li>)}
+          {["Platform is for demonstration, educational, and management purposes.","Users must not misuse, disrupt, copy, or gain unauthorized access.","Demo access may be limited or revoked at any time.","All IP belongs to Nova Teach ERP.","We are not liable for service interruptions.","Continued use indicates acceptance."].map((t,i) => (
+            <li key={i} style={{ marginBottom:8 }}>{t}</li>
+          ))}
         </ol>
         <p style={{ marginTop:16 }}>Contact: <a href="mailto:tishy5327@gmail.com" style={{ color:"#2A6B4A" }}>tishy5327@gmail.com</a></p>
       </div>
@@ -1015,6 +916,7 @@ const TermsOfService = ({ onBack }) => {
    MAIN APP
 ══════════════════════════════════════════════════════════════ */
 export default function App() {
+  /* ─── Hash-based routing ─── */
   const [currentHash, setCurrentHash] = useState(window.location.hash.slice(1) || "/");
   useEffect(() => {
     const fn = () => setCurrentHash(window.location.hash.slice(1) || "/");
@@ -1023,85 +925,102 @@ export default function App() {
   }, []);
   const navigateTo = (path) => { window.location.hash = path; };
 
-  // Routing for static pages
-  if (currentHash === "/privacy-policy") return <PrivacyPolicy onBack={() => navigateTo("/")} />;
-  if (currentHash === "/terms") return <TermsOfService onBack={() => navigateTo("/")} />;
+  /* ── Auth + trial state ──
+     authReady: true once onAuthStateChanged fires AND Firestore data is loaded
+     We hold the /demo route behind authReady to prevent flicker / race conditions.
+  */
+  const [user, setUser] = useState(null);
+  const [trialExpiry, setTrialExpiry] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
-  /* ── State ── */
+  /* ─── UI state ─── */
   const [navScrolled, setNavScrolled] = useState(false);
   const [logIndex, setLogIndex] = useState(3);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState("standard");
-  const [user, setUser] = useState(null);
-  const [trialExpiry, setTrialExpiry] = useState(null);
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
 
-  // Handle redirect result from Firebase (replaces popup)
+  /* ─── Handle redirect result from Firebase ─── */
   useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("Redirect sign-in successful:", result.user);
-          // The onAuthStateChanged listener will pick up the user automatically
-        }
-      } catch (error) {
-        console.error("Redirect sign-in error:", error);
-        alert("Sign in failed. Please try again.");
-      }
-    };
-    handleRedirectResult();
+    getRedirectResult(auth).catch((err) => {
+      console.error("Redirect sign-in error:", err);
+    });
   }, []);
 
-  // Auth state listener (with fixed race condition)
+  /* ─── Auth state listener ───
+     FIX: We load Firestore data inside the listener and only set authReady AFTER
+     all data is available. This eliminates the race condition.
+  ─── */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fu) => {
-      if (fu) {
-        setUser(fu);
-        const ref = doc(db, "users", fu.uid);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) {
-          const exp = new Date(); exp.setDate(exp.getDate() + 7);
-          await setDoc(ref, { uid:fu.uid, displayName:fu.displayName, email:fu.email, photoURL:fu.photoURL, firstLoginDate:new Date().toISOString(), trialExpiryDate:exp.toISOString(), lastLogin:new Date().toISOString() });
-          setTrialExpiry(exp);
-        } else {
-          setTrialExpiry(new Date(snap.data().trialExpiryDate));
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const ref = doc(db, "users", firebaseUser.uid);
+          const snap = await getDoc(ref);
+          let expiry;
+          if (!snap.exists()) {
+            expiry = new Date();
+            expiry.setDate(expiry.getDate() + 7);
+            await setDoc(ref, {
+              uid: firebaseUser.uid,
+              displayName: firebaseUser.displayName,
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL,
+              firstLoginDate: new Date().toISOString(),
+              trialExpiryDate: expiry.toISOString(),
+              lastLogin: new Date().toISOString(),
+            });
+          } else {
+            expiry = toDate(snap.data().trialExpiryDate);
+          }
+          // Set user and expiry atomically before marking auth as ready
+          setUser(firebaseUser);
+          setTrialExpiry(expiry);
+        } catch (err) {
+          console.error("Firestore error:", err);
+          setUser(firebaseUser);
+          setTrialExpiry(null);
         }
-        setShowDemoModal(true);
-      } else { setUser(null); setTrialExpiry(null); setShowDemoModal(false); }
-      setAuthLoading(false);
+      } else {
+        // FIX: Clear state synchronously on sign-out to prevent stale data
+        setUser(null);
+        setTrialExpiry(null);
+      }
+      setAuthReady(true);
     });
     return () => unsub();
   }, []);
 
+  /* ─── Sign in ─── */
   const handleGoogleSignIn = async () => {
     try {
       await signInWithRedirect(auth, googleProvider);
     } catch (err) {
-      console.error(err);
+      console.error("Sign-in error:", err);
       alert("Sign in failed. Please try again.");
     }
   };
-  
-  const handleSignOut = async () => { 
+
+  /* ─── Sign out — FIX: clear local state first, then Firebase ─── */
+  const handleSignOut = async () => {
     setUser(null);
     setTrialExpiry(null);
-    setShowDemoModal(false);
-    await signOut(auth); 
+    navigateTo("/");
+    await signOut(auth);
   };
 
-  // Scroll and ticker effects
+  /* ─── Scroll & ticker effects ─── */
   useEffect(() => {
     const fn = () => setNavScrolled(window.scrollY > 40);
     window.addEventListener("scroll", fn);
     return () => window.removeEventListener("scroll", fn);
   }, []);
+
   useEffect(() => {
     const t = setInterval(() => setLogIndex(i => (i >= logs.length ? 1 : i + 1)), 1800);
     return () => clearInterval(t);
   }, []);
+
   useEffect(() => {
     document.title = "School ERP Software in India | AI Attendance, Fees & Analytics | Nova Teach";
   }, []);
@@ -1109,52 +1028,515 @@ export default function App() {
   const scrollTo = (id) => { document.getElementById(id)?.scrollIntoView({ behavior:"smooth" }); setMenuOpen(false); };
   const plan = PLANS.find(p => p.id === selectedPlan);
 
-  const faqs = [
-    { q:"What is School ERP Software?",            a:"School ERP integrates all school operations — attendance, exams, fees, assignments, communication, and analytics — into one system. NexaAttend is a complete ERP built for Indian schools, working offline-first with AI face recognition." },
-    { q:"How does attendance management work?",    a:"AI face recognition marks 30 students in under 60 seconds, works 100% offline, eliminates proxy attendance, and auto-syncs to parent WhatsApp and reports." },
-    { q:"How does fee management work?",           a:"Track collections, dues, and payment history in real time. Send automated WhatsApp reminders. Reduce fee leakage by up to 95%." },
-    { q:"Does it work without internet?",          a:"Yes — NexaAttend is offline-first. All recognition and data storage happen on your own computer. Internet is optional, only for cloud backups." },
-    { q:"How long does setup take?",               a:"Our team completes full installation, camera setup, and staff training in 3 days. No IT department needed." },
-    { q:"How accurate is face recognition?",       a:"99%+ accuracy under normal lighting. Handles glasses, hair changes, and varying conditions. Rigorously tested before handover." },
-    { q:"What does the setup fee cover?",          a:"On-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support." },
-    { q:"What is the 7-day guarantee?",            a:"Use NexaAttend for 7 days. If it doesn't save time and reduce errors — full refund, no conditions." },
-    { q:"What happens to student data?",           a:"Your data never leaves your premises. Stored on your own computer — not on any cloud. Complete ownership." },
-    { q:"What cameras does it require?",           a:"Every plan includes 2 cameras. Any webcam or IP camera works. Extra cameras available at ₹15,000 per camera (one-time)." },
-  ];
+  /* ─── Static page routes ─── */
+  if (currentHash === "/privacy-policy") return <PrivacyPolicy onBack={() => navigateTo("/")} />;
+  if (currentHash === "/terms") return <TermsOfService onBack={() => navigateTo("/")} />;
 
-  // Demo page route
+  /* ─── /demo route ───
+     FIX: Show loading spinner until authReady. Only then decide whether user
+     is authenticated and trial is valid. This prevents any flash of the wrong page.
+  ─── */
   if (currentHash === "/demo") {
-    if (!user || (trialExpiry && new Date() > new Date(trialExpiry))) {
+    if (!authReady) {
+      return (
+        <div style={{ minHeight:"100vh", background:"#F7F5EF", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ width:48, height:48, border:"3px solid rgba(42,107,74,0.2)", borderTop:"3px solid #2A6B4A", borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 16px" }} />
+            <p style={{ fontFamily:"'Instrument Sans',sans-serif", color:"rgba(28,27,23,0.5)", fontSize:14 }}>Loading your dashboard…</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        </div>
+      );
+    }
+    // Check auth and trial validity
+    const expiry = toDate(trialExpiry);
+    if (!user) {
       navigateTo("/");
       return null;
     }
+    // Allow expired trial to reach DemoDashboard — it shows the contact form internally
     return (
-      <DemoPage 
-        user={user} 
-        trialExpiryDate={trialExpiry} 
-        onSignOut={handleSignOut} 
-        onBack={() => navigateTo("/")} 
+      <DemoPage
+        user={user}
+        trialExpiryDate={trialExpiry}
+        onSignOut={handleSignOut}
+        onBack={() => navigateTo("/")}
       />
     );
   }
 
-  // Main landing page (full version – only showing critical parts for brevity; the complete marketing sections are identical to previous message)
-  // The rest of the landing page JSX (hero, sections, footer) remains exactly the same as in the previous answer.
-  // To save space, I'm including a placeholder comment. In your actual file, copy the full landing page from my previous response.
-  // For completeness, the code below includes all the same sections as earlier (hero, ticker, stats, video, problem, solution, pricing, process, trust, FAQ, inquiry form, footer, sticky CTA, modal).
-  // Since the full markup is very long, I'm providing the essential wrapper; you can reuse the exact same JSX from the previous App.jsx answer (which already contains all sections).
-  
-  // NOTE: Because of space limitations, I'm showing the structure; you must merge the unchanged landing page JSX from my previous answer.
-  // The only changes in this version are: signInWithRedirect instead of signInWithPopup, plus the redirect result handler.
-  // The rest of the UI (all sections, styles, etc.) is untouched.
+  /* ─── FAQs ─── */
+  const faqs = [
+    { q:"What is School ERP Software?",           a:"School ERP integrates all school operations — attendance, exams, fees, assignments, communication, and analytics — into one system. NexaAttend is a complete ERP built for Indian schools, working offline-first with AI face recognition." },
+    { q:"How does attendance management work?",   a:"AI face recognition marks 30 students in under 60 seconds, works 100% offline, eliminates proxy attendance, and auto-syncs to parent WhatsApp and reports." },
+    { q:"How does fee management work?",          a:"Track collections, dues, and payment history in real time. Send automated WhatsApp reminders. Reduce fee leakage by up to 95%." },
+    { q:"Does it work without internet?",         a:"Yes — NexaAttend is offline-first. All recognition and data storage happen on your own computer. Internet is optional, only for cloud backups." },
+    { q:"How long does setup take?",              a:"Our team completes full installation, camera setup, and staff training in 3 days. No IT department needed." },
+    { q:"How accurate is face recognition?",      a:"99%+ accuracy under normal lighting. Handles glasses, hair changes, and varying conditions. Rigorously tested before handover." },
+    { q:"What does the setup fee cover?",         a:"On-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support." },
+    { q:"What is the 7-day guarantee?",           a:"Use NexaAttend for 7 days. If it doesn't save time and reduce errors — full refund, no conditions." },
+    { q:"What happens to student data?",          a:"Your data never leaves your premises. Stored on your own computer — not on any cloud. Complete ownership." },
+    { q:"What cameras does it require?",          a:"Every plan includes 2 cameras. Any webcam or IP camera works. Extra cameras available at ₹15,000 per camera (one-time)." },
+  ];
 
+  /* ══════════════════════
+     LANDING PAGE
+  ══════════════════════ */
   return (
     <div style={{ fontFamily:"'Instrument Sans','DM Sans',sans-serif", background:"#F7F5EF", color:"#1C1B17", overflowX:"hidden" }}>
-      <style>{` ... same CSS as before ... `}</style>
-      {/* Mobile menu, navbar, hero, ticker, stats, demo video, problem, solution, pricing, process, trust, FAQ, inquiry, footer, sticky demo CTA, modal – all identical to the previous full App.jsx */}
-      {/* For the complete working app, please copy the landing page JSX from my previous message (the one before the COOP fix) and paste it here. */}
-      {/* The only functional changes are the auth method (redirect) and the added getRedirectResult useEffect. */}
-      {/* I recommend using the previous answer's landing page markup unchanged. */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior: smooth; }
+        body { background: #F7F5EF; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes tickerScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+      `}</style>
+
+      {/* ── Navbar ── */}
+      <nav style={{
+        position:"fixed", top:0, left:0, right:0, zIndex:100,
+        padding:"0 5%",
+        background: navScrolled ? "rgba(247,245,239,0.95)" : "transparent",
+        backdropFilter: navScrolled ? "blur(12px)" : "none",
+        borderBottom: navScrolled ? "1px solid rgba(28,27,23,0.07)" : "none",
+        transition:"all 0.3s",
+        display:"flex", alignItems:"center", justifyContent:"space-between", height:68,
+      }}>
+        <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:20, fontWeight:600, color:"#1C1B17", cursor:"pointer" }} onClick={() => scrollTo("hero")}>
+          NexaAttend
+          <span style={{ display:"inline-block", width:6, height:6, borderRadius:"50%", background:"#2A6B4A", marginLeft:4, verticalAlign:"middle", marginBottom:2 }} />
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:28 }} className="desktop-nav">
+          {[["Features","modules"],["Pricing","pricing"],["FAQ","faq"],["Contact","inquiry"]].map(([label,id]) => (
+            <button key={id} onClick={() => scrollTo(id)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, fontWeight:500, color:"rgba(28,27,23,0.65)", fontFamily:"'Instrument Sans',sans-serif", transition:"color 0.2s" }}
+              onMouseEnter={e=>e.target.style.color="#1C1B17"} onMouseLeave={e=>e.target.style.color="rgba(28,27,23,0.65)"}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {authReady && user ? (
+            <button onClick={() => navigateTo("/demo")}
+              style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:"#2A6B4A", color:"#F7F5EF", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}>
+              {user.photoURL && <img src={user.photoURL} alt="" style={{ width:22, height:22, borderRadius:"50%" }} />}
+              Open Dashboard
+            </button>
+          ) : (
+            <button onClick={handleGoogleSignIn}
+              style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:"#1C1B17", color:"#F7F5EF", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}
+              onMouseEnter={e=>e.currentTarget.style.background="#2A6B4A"} onMouseLeave={e=>e.currentTarget.style.background="#1C1B17"}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+              Try Free Demo
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* ── Hero Section ── */}
+      <section id="hero" style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"120px 6% 80px", textAlign:"center", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 80% 60% at 50% 20%, rgba(42,107,74,0.06) 0%, transparent 70%)", pointerEvents:"none" }} />
+        <FadeIn delay={0}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(42,107,74,0.08)", border:"1px solid rgba(42,107,74,0.2)", borderRadius:100, padding:"7px 16px", marginBottom:24 }}>
+            <span style={{ width:7, height:7, borderRadius:"50%", background:"#2A6B4A", animation:"pulse 2s infinite" }} />
+            <span style={{ fontSize:12, fontWeight:600, color:"#1B5C3A", letterSpacing:"0.08em" }}>NOW LIVE IN 40+ SCHOOLS ACROSS GUJARAT</span>
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <h1 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(2.6rem,6vw,4.8rem)", lineHeight:1.1, color:"#1C1B17", maxWidth:900, marginBottom:24 }}>
+            India's Smartest<br />
+            <span style={{ color:"#2A6B4A", fontStyle:"italic" }}>School ERP</span> with<br />
+            AI Face Attendance
+          </h1>
+        </FadeIn>
+        <FadeIn delay={0.2}>
+          <p style={{ fontSize:"clamp(1rem,2vw,1.2rem)", color:"rgba(28,27,23,0.6)", maxWidth:620, lineHeight:1.75, marginBottom:40 }}>
+            Mark 300 students in 60 seconds. Manage fees, staff, exams & reports — all from one offline-first system built for Indian schools.
+          </p>
+        </FadeIn>
+        <FadeIn delay={0.3}>
+          <div style={{ display:"flex", gap:12, flexWrap:"wrap", justifyContent:"center", marginBottom:56 }}>
+            <button onClick={handleGoogleSignIn}
+              style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 28px", background:"#1C1B17", color:"#F7F5EF", border:"none", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif", boxShadow:"0 8px 24px rgba(28,27,23,0.18)" }}
+              onMouseEnter={e=>e.currentTarget.style.background="#2A6B4A"} onMouseLeave={e=>e.currentTarget.style.background="#1C1B17"}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+              Start 7-Day Free Trial
+            </button>
+            <button onClick={() => scrollTo("inquiry")}
+              style={{ padding:"14px 28px", background:"transparent", color:"#1C1B17", border:"2px solid rgba(28,27,23,0.2)", borderRadius:10, fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}
+              onMouseEnter={e=>{e.currentTarget.style.background="#1C1B17";e.currentTarget.style.color="#F7F5EF";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#1C1B17";}}>
+              Book a Demo →
+            </button>
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.4}>
+          <div style={{ display:"flex", alignItems:"center", gap:24, flexWrap:"wrap", justifyContent:"center" }}>
+            {[["99%+","Face Recognition Accuracy"],["< 60s","Attendance for 30 Students"],["3 Days","Setup & Training"],["₹0","Hidden Charges"]].map(([num,label],i) => (
+              <div key={i} style={{ textAlign:"center" }}>
+                <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:"1.8rem", fontWeight:700, color:"#2A6B4A" }}>{num}</div>
+                <div style={{ fontSize:12, color:"rgba(28,27,23,0.5)", marginTop:2 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </FadeIn>
+      </section>
+
+      {/* ── Scrolling Ticker ── */}
+      <div style={{ background:"#1C1B17", padding:"12px 0", overflow:"hidden", borderTop:"1px solid rgba(247,245,239,0.05)", borderBottom:"1px solid rgba(247,245,239,0.05)" }}>
+        <div style={{ display:"flex", animation:"tickerScroll 28s linear infinite", width:"max-content" }}>
+          {[...Array(2)].map((_,outerIdx) => (
+            <div key={outerIdx} style={{ display:"flex", gap:0 }}>
+              {["AI Face Recognition","Offline-First","WhatsApp Alerts","Payroll Automation","Fee Management","Staff HR","Exam Scheduling","Parent Portal","Custom Reports","99%+ Accuracy"].map((item,i) => (
+                <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:16, padding:"0 28px", fontSize:12, fontWeight:600, color:"rgba(247,245,239,0.55)", letterSpacing:"0.1em", textTransform:"uppercase", whiteSpace:"nowrap" }}>
+                  <span style={{ width:4, height:4, borderRadius:"50%", background:"#2A6B4A", flexShrink:0 }} />
+                  {item}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Stats ── */}
+      <section style={{ padding:"80px 6%", background:"#FFFFFF", borderBottom:"1px solid rgba(28,27,23,0.06)" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:48, textAlign:"center" }}>
+          {[
+            { target:40, suffix:"+", label:"Schools Using NexaAttend" },
+            { target:25000, suffix:"+", label:"Students Tracked Daily" },
+            { target:99, suffix:"%", label:"Attendance Accuracy" },
+            { target:3, suffix:" Days", label:"Average Setup Time" },
+          ].map((s,i) => (
+            <FadeIn key={i} delay={i*0.1}>
+              <div>
+                <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:"3rem", fontWeight:700, color:"#2A6B4A", lineHeight:1 }}>
+                  <AnimatedNumber target={s.target} suffix={s.suffix} />
+                </div>
+                <div style={{ fontSize:14, color:"rgba(28,27,23,0.5)", marginTop:8 }}>{s.label}</div>
+              </div>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Live Terminal Demo ── */}
+      <section style={{ padding:"80px 6%", background:"#F7F5EF" }}>
+        <div style={{ maxWidth:700, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:40 }}>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(42,107,74,0.08)", border:"1px solid rgba(42,107,74,0.2)", borderRadius:100, padding:"6px 14px", marginBottom:16 }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:"#5AC87A", animation:"pulse 1.5s infinite" }} />
+                <span style={{ fontSize:11, fontWeight:600, color:"#1B5C3A", letterSpacing:"0.1em" }}>LIVE RECOGNITION FEED</span>
+              </div>
+              <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(1.8rem,4vw,2.8rem)", color:"#1C1B17" }}>Watch students get marked in real time</h2>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ background:"#0F0E0B", borderRadius:16, overflow:"hidden", border:"1px solid rgba(247,245,239,0.06)", boxShadow:"0 40px 80px rgba(0,0,0,0.3)" }}>
+              <div style={{ padding:"12px 16px", background:"rgba(247,245,239,0.04)", borderBottom:"1px solid rgba(247,245,239,0.05)", display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ display:"flex", gap:6 }}>
+                  {["#FF5F57","#FFBD2E","#28C840"].map((c,i) => <div key={i} style={{ width:12, height:12, borderRadius:"50%", background:c }} />)}
+                </div>
+                <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:"rgba(247,245,239,0.3)", marginLeft:8 }}>nexaattend — live attendance terminal</span>
+                <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ width:6, height:6, borderRadius:"50%", background:"#5AC87A", animation:"pulse 1.5s infinite" }} />
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#5AC87A" }}>LIVE</span>
+                </div>
+              </div>
+              <div style={{ padding:"16px", fontFamily:"'JetBrains Mono',monospace", fontSize:12 }}>
+                {logs.slice(0, logIndex).map((l,i) => (
+                  <div key={i} style={{ display:"flex", gap:16, padding:"6px 0", borderBottom:"1px solid rgba(247,245,239,0.04)", animation: i===logIndex-1 ? "fadeUp 0.4s ease" : "none" }}>
+                    <span style={{ color:"rgba(247,245,239,0.3)", flexShrink:0 }}>{l.time}</span>
+                    <span style={{ color:"#F7F5EF", flex:1 }}>{l.name}</span>
+                    <span style={{ color:"rgba(247,245,239,0.45)", flexShrink:0 }}>{l.cls}</span>
+                    <span style={{ flexShrink:0, color: l.status==="present" ? "#5AC87A" : l.status==="late" ? "#F59E0B" : "#EF4444", fontWeight:600 }}>
+                      {l.status==="present" ? "✓ PRESENT" : l.status==="late" ? "⚠ LATE" : "✗ ABSENT"}
+                    </span>
+                  </div>
+                ))}
+                {logIndex < logs.length && (
+                  <div style={{ padding:"8px 0", color:"rgba(247,245,239,0.2)", animation:"pulse 1s infinite" }}>▋</div>
+                )}
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ── Modules ── */}
+      <section id="modules" style={{ padding:"100px 6%", background:"#FFFFFF" }}>
+        <div style={{ maxWidth:1200, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:60 }}>
+              <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(2rem,4vw,3rem)", color:"#1C1B17", marginBottom:16 }}>
+                Everything your school needs,<br /><span style={{ fontStyle:"italic", color:"#2A6B4A" }}>in one system</span>
+              </h2>
+              <p style={{ fontSize:16, color:"rgba(28,27,23,0.55)", maxWidth:560, margin:"0 auto" }}>
+                Built for Indian schools. Offline-first. No monthly subscription for updates.
+              </p>
+            </div>
+          </FadeIn>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:24 }}>
+            {modules.map((m,i) => (
+              <FadeIn key={i} delay={i*0.08}>
+                <div style={{ background:"#F7F5EF", borderRadius:16, padding:"28px 24px", border:"1px solid rgba(28,27,23,0.06)", transition:"transform 0.2s, box-shadow 0.2s", height:"100%" }}
+                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 20px 48px rgba(28,27,23,0.1)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:`${m.color}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, marginBottom:16, color:m.color }}>
+                    {m.icon}
+                  </div>
+                  <h3 style={{ fontSize:17, fontWeight:700, color:"#1C1B17", marginBottom:12 }}>{m.title}</h3>
+                  <ul style={{ listStyle:"none", display:"flex", flexDirection:"column", gap:8 }}>
+                    {m.features.map((f,j) => (
+                      <li key={j} style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:13.5, color:"rgba(28,27,23,0.65)", lineHeight:1.5 }}>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginTop:2, flexShrink:0 }}>
+                          <path d="M2.5 7.5l3 3 6-6" stroke={m.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section id="pricing" style={{ padding:"100px 6%", background:"#F7F5EF" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:52 }}>
+              <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(2rem,4vw,3rem)", color:"#1C1B17", marginBottom:16 }}>
+                Transparent pricing,<br /><span style={{ fontStyle:"italic", color:"#2A6B4A" }}>no surprises</span>
+              </h2>
+              <p style={{ fontSize:16, color:"rgba(28,27,23,0.55)" }}>One-time setup + monthly SaaS. Free lifetime updates included.</p>
+            </div>
+          </FadeIn>
+
+          {/* Plan selector */}
+          <div style={{ display:"flex", justifyContent:"center", gap:8, marginBottom:36 }}>
+            {PLANS.map(p => (
+              <button key={p.id} onClick={() => setSelectedPlan(p.id)}
+                style={{ padding:"10px 24px", borderRadius:100, border:`2px solid ${selectedPlan===p.id ? p.color : "rgba(28,27,23,0.15)"}`, background: selectedPlan===p.id ? p.color : "transparent", color: selectedPlan===p.id ? "#F7F5EF" : "#1C1B17", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif", transition:"all 0.2s" }}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Selected plan card */}
+          {plan && (
+            <FadeIn>
+              <div style={{ background:"#FFFFFF", borderRadius:20, border:`2px solid ${plan.color}`, padding:"40px 36px", maxWidth:680, margin:"0 auto", boxShadow:`0 20px 60px ${plan.color}18` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap:"wrap", gap:12 }}>
+                  <div>
+                    <div style={{ display:"inline-block", background:`${plan.color}15`, color:plan.color, fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", padding:"4px 12px", borderRadius:100, marginBottom:10 }}>{plan.badge}</div>
+                    <h3 style={{ fontFamily:"'Instrument Serif',serif", fontSize:28, color:"#1C1B17" }}>{plan.name} Plan</h3>
+                    <p style={{ fontSize:14, color:"rgba(28,27,23,0.5)", marginTop:4 }}>Up to {plan.students.toLocaleString("en-IN")} students</p>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:"2.4rem", color:plan.color, lineHeight:1 }}>₹{plan.monthly.toLocaleString("en-IN")}</div>
+                    <div style={{ fontSize:13, color:"rgba(28,27,23,0.45)" }}>/month</div>
+                  </div>
+                </div>
+                <div style={{ background:"rgba(42,107,74,0.06)", border:"1px solid rgba(42,107,74,0.15)", borderRadius:10, padding:"12px 16px", marginBottom:24 }}>
+                  <span style={{ fontSize:14, color:"#1B4D3E" }}>
+                    One-time setup: <strong style={{ textDecoration:"line-through", color:"rgba(28,27,23,0.4)", marginRight:8 }}>{fmt(plan.setup)}</strong>
+                    <strong style={{ color:"#2A6B4A", fontSize:17 }}>{fmt(plan.setupDiscounted)}</strong>
+                    <span style={{ marginLeft:8, background:"#2A6B4A", color:"#fff", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:100 }}>SAVE ₹30K</span>
+                  </span>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:28 }}>
+                  {plan.features.map((f,i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:13.5 }}>
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink:0, marginTop:1 }}>
+                        <circle cx="7.5" cy="7.5" r="7" fill={`${plan.color}20`}/>
+                        <path d="M4.5 7.5l2 2 4-4" stroke={plan.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ color:"rgba(28,27,23,0.7)", lineHeight:1.45 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                  <button onClick={handleGoogleSignIn}
+                    style={{ flex:1, minWidth:160, padding:"14px", background:plan.color, color:"#F7F5EF", border:"none", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}>
+                    Start Free Trial →
+                  </button>
+                  <button onClick={() => scrollTo("inquiry")}
+                    style={{ padding:"14px 20px", background:"transparent", border:`2px solid ${plan.color}`, color:plan.color, borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}>
+                    Book Demo
+                  </button>
+                </div>
+              </div>
+            </FadeIn>
+          )}
+        </div>
+      </section>
+
+      {/* ── How It Works ── */}
+      <section style={{ padding:"100px 6%", background:"#FFFFFF" }}>
+        <div style={{ maxWidth:1000, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:60 }}>
+              <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(2rem,4vw,3rem)", color:"#1C1B17", marginBottom:16 }}>
+                Up and running in <span style={{ fontStyle:"italic", color:"#2A6B4A" }}>3 days</span>
+              </h2>
+              <p style={{ fontSize:16, color:"rgba(28,27,23,0.55)" }}>Our team handles everything — you just show up on day 4.</p>
+            </div>
+          </FadeIn>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:32 }}>
+            {[
+              { day:"Day 1", title:"Installation", desc:"Our team visits your school. Hardware and software installed on your own computer.", icon:"💻" },
+              { day:"Day 2", title:"Enrollment", desc:"We photograph and enroll all students and staff. 300 faces typically done in one day.", icon:"📸" },
+              { day:"Day 3", title:"Training", desc:"Full admin and staff training. You run mock attendance sessions until confident.", icon:"🎓" },
+              { day:"Day 4+", title:"You're Live", desc:"NexaAttend is fully live. WhatsApp alerts, reports, and dashboards are active.", icon:"🚀" },
+            ].map((s,i) => (
+              <FadeIn key={i} delay={i*0.1}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ fontSize:36, marginBottom:16 }}>{s.icon}</div>
+                  <div style={{ display:"inline-block", background:"rgba(42,107,74,0.08)", color:"#2A6B4A", fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:100, marginBottom:10, letterSpacing:"0.08em" }}>{s.day}</div>
+                  <h3 style={{ fontSize:16, fontWeight:700, marginBottom:8 }}>{s.title}</h3>
+                  <p style={{ fontSize:14, color:"rgba(28,27,23,0.55)", lineHeight:1.65 }}>{s.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Guarantee Strip ── */}
+      <section style={{ background:"#1C1B17", padding:"60px 6%", textAlign:"center" }}>
+        <FadeIn>
+          <div style={{ maxWidth:700, margin:"0 auto" }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>🛡️</div>
+            <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(1.8rem,3.5vw,2.6rem)", color:"#F7F5EF", marginBottom:16 }}>
+              7-Day Full Refund Guarantee
+            </h2>
+            <p style={{ fontSize:16, color:"rgba(247,245,239,0.6)", lineHeight:1.75, marginBottom:28 }}>
+              Use NexaAttend for a full week. If it doesn't save your staff time, eliminate proxy attendance, and make reporting effortless — we refund everything. No conditions, no questions.
+            </p>
+            <button onClick={handleGoogleSignIn}
+              style={{ padding:"14px 32px", background:"#2A6B4A", color:"#F7F5EF", border:"none", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif" }}
+              onMouseEnter={e=>e.currentTarget.style.background="#5AC87A"} onMouseLeave={e=>e.currentTarget.style.background="#2A6B4A"}>
+              Claim Your Free Trial →
+            </button>
+          </div>
+        </FadeIn>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section id="faq" style={{ padding:"100px 6%", background:"#F7F5EF" }}>
+        <div style={{ maxWidth:800, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:52 }}>
+              <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(2rem,4vw,3rem)", color:"#1C1B17", marginBottom:12 }}>
+                Frequently asked questions
+              </h2>
+            </div>
+          </FadeIn>
+          {faqs.map((faq,i) => (
+            <FadeIn key={i} delay={i*0.04}>
+              <div style={{ borderBottom:"1px solid rgba(28,27,23,0.08)", overflow:"hidden" }}>
+                <button onClick={() => setActiveFaq(activeFaq===i ? null : i)}
+                  style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0", background:"none", border:"none", cursor:"pointer", textAlign:"left", fontFamily:"'Instrument Sans',sans-serif" }}>
+                  <span style={{ fontSize:16, fontWeight:600, color:"#1C1B17", paddingRight:16 }}>{faq.q}</span>
+                  <span style={{ fontSize:22, color:"#2A6B4A", flexShrink:0, transform: activeFaq===i ? "rotate(45deg)" : "rotate(0)", transition:"transform 0.2s" }}>+</span>
+                </button>
+                <div style={{ maxHeight: activeFaq===i ? 200 : 0, overflow:"hidden", transition:"max-height 0.3s ease" }}>
+                  <p style={{ fontSize:15, color:"rgba(28,27,23,0.65)", lineHeight:1.75, paddingBottom:20, paddingRight:32 }}>{faq.a}</p>
+                </div>
+              </div>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Inquiry Form ── */}
+      <section id="inquiry" style={{ padding:"100px 6%", background:"#FFFFFF" }}>
+        <div style={{ maxWidth:700, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:44 }}>
+              <h2 style={{ fontFamily:"'Instrument Serif',serif", fontSize:"clamp(2rem,4vw,3rem)", color:"#1C1B17", marginBottom:12 }}>
+                Book your free demo
+              </h2>
+              <p style={{ fontSize:16, color:"rgba(28,27,23,0.55)" }}>Our team will call you within 24 hours to schedule a visit.</p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <InquiryForm />
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={{ background:"#1C1B17", padding:"56px 6% 32px" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:48, marginBottom:48, flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:"#F7F5EF", marginBottom:12 }}>NexaAttend</div>
+              <p style={{ fontSize:14, color:"rgba(247,245,239,0.45)", lineHeight:1.75, maxWidth:320 }}>
+                AI-powered school ERP for India. Offline-first. Built for CBSE, GSEB, ICSE, and all state board schools.
+              </p>
+              <div style={{ marginTop:20, display:"flex", gap:10 }}>
+                <a href="https://wa.me/919974724656" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(247,245,239,0.06)", border:"1px solid rgba(247,245,239,0.1)", borderRadius:8, padding:"8px 14px", fontSize:13, color:"rgba(247,245,239,0.65)", textDecoration:"none" }}>💬 WhatsApp</a>
+                <a href="mailto:tishy5327@gmail.com" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(247,245,239,0.06)", border:"1px solid rgba(247,245,239,0.1)", borderRadius:8, padding:"8px 14px", fontSize:13, color:"rgba(247,245,239,0.65)", textDecoration:"none" }}>✉ Email</a>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(247,245,239,0.3)", marginBottom:16 }}>Product</div>
+              {["Features","Pricing","Free Trial","Book Demo"].map((item,i) => (
+                <button key={i} onClick={() => scrollTo(["modules","pricing","hero","inquiry"][i])} style={{ display:"block", background:"none", border:"none", cursor:"pointer", fontSize:14, color:"rgba(247,245,239,0.5)", marginBottom:10, textAlign:"left", fontFamily:"'Instrument Sans',sans-serif", padding:0 }}
+                  onMouseEnter={e=>e.target.style.color="#F7F5EF"} onMouseLeave={e=>e.target.style.color="rgba(247,245,239,0.5)"}>
+                  {item}
+                </button>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(247,245,239,0.3)", marginBottom:16 }}>Legal</div>
+              {[["Privacy Policy","/privacy-policy"],["Terms of Service","/terms"]].map(([label,path],i) => (
+                <button key={i} onClick={() => navigateTo(path)} style={{ display:"block", background:"none", border:"none", cursor:"pointer", fontSize:14, color:"rgba(247,245,239,0.5)", marginBottom:10, textAlign:"left", fontFamily:"'Instrument Sans',sans-serif", padding:0 }}
+                  onMouseEnter={e=>e.target.style.color="#F7F5EF"} onMouseLeave={e=>e.target.style.color="rgba(247,245,239,0.5)"}>
+                  {label}
+                </button>
+              ))}
+              <div style={{ marginTop:16, fontSize:13, color:"rgba(247,245,239,0.35)", lineHeight:1.6 }}>
+                Ahmedabad, Gujarat<br />India — 380015
+              </div>
+            </div>
+          </div>
+          <div style={{ borderTop:"1px solid rgba(247,245,239,0.07)", paddingTop:24, display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+            <p style={{ fontSize:13, color:"rgba(247,245,239,0.3)" }}>© 2026 Nova Teach ERP. All rights reserved.</p>
+            <p style={{ fontSize:13, color:"rgba(247,245,239,0.3)" }}>Made in India 🇮🇳 · GST-ready · Works offline</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* ── Sticky Demo CTA (shows when not signed in) ── */}
+      {authReady && !user && (
+        <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", zIndex:50, animation:"fadeUp 0.5s ease" }}>
+          <button onClick={handleGoogleSignIn}
+            style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 28px", background:"#1C1B17", color:"#F7F5EF", border:"none", borderRadius:100, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif", boxShadow:"0 12px 40px rgba(28,27,23,0.35)", whiteSpace:"nowrap" }}
+            onMouseEnter={e=>e.currentTarget.style.background="#2A6B4A"} onMouseLeave={e=>e.currentTarget.style.background="#1C1B17"}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+            Try 7-Day Free Demo
+            <span style={{ background:"#2A6B4A", borderRadius:100, padding:"2px 10px", fontSize:11, fontWeight:700, marginLeft:4 }}>FREE</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── Signed-in banner → open dashboard ── */}
+      {authReady && user && currentHash === "/" && (
+        <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", zIndex:50, animation:"fadeUp 0.5s ease" }}>
+          <button onClick={() => navigateTo("/demo")}
+            style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 24px", background:"#2A6B4A", color:"#F7F5EF", border:"none", borderRadius:100, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'Instrument Sans',sans-serif", boxShadow:"0 12px 40px rgba(42,107,74,0.35)", whiteSpace:"nowrap" }}>
+            {user.photoURL && <img src={user.photoURL} alt="" style={{ width:24, height:24, borderRadius:"50%" }} />}
+            Open My Dashboard →
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
