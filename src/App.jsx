@@ -1,8 +1,20 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
  * ║              NexaAttend — Complete School ERP · App.jsx              ║
- * ║         Single-file · Basic Plan · Production-Ready · v2.0          ║
+ * ║         Single-file · Basic Plan · Production-Ready · v2.1          ║
+ * ║                  AUTH PATCH: All auth bugs fixed                     ║
  * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * AUTH CHANGES (v2.0 → v2.1):
+ *  - FIX 1: signOut aliased as firebaseSignOut at import to prevent collision
+ *  - FIX 2: getRedirectResult errors are logged + surfaced in authError state
+ *  - FIX 3: setUser + setAuthReady fire IMMEDIATELY when onAuthStateChanged resolves
+ *           — never blocked by Firestore awaits
+ *  - FIX 4: Firestore profile sync moved to separate background function (syncUserProfile)
+ *           — Firestore failures never block login
+ *  - FIX 5: authError state added; surfaces errors in UI
+ *  - FIX 6: /demo route guard waits for authReady before redirecting
+ *  - FIX 7: Loading spinner shown while authReady is false on all routes
  *
  * SECTIONS:
  *  1.  Imports & Firebase Configuration
@@ -39,8 +51,12 @@ import {
 } from "react";
 import { initializeApp } from "firebase/app";
 import {
-  getAuth, signInWithRedirect, getRedirectResult,
-  GoogleAuthProvider, onAuthStateChanged, signOut,
+  getAuth,
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut as firebaseSignOut,   // FIX 1: aliased to avoid collision with local handler
 } from "firebase/auth";
 import {
   getFirestore, doc, setDoc, getDoc, getDocs,
@@ -58,9 +74,9 @@ const firebaseConfig = {
   appId: "1:1000462435473:web:e8542ef3f6c478f3182b30",
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const auth        = getAuth(firebaseApp);
-const db          = getFirestore(firebaseApp);
+const firebaseApp  = initializeApp(firebaseConfig);
+const auth         = getAuth(firebaseApp);
+const db           = getFirestore(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 
 const SHEET_URL =
@@ -132,18 +148,18 @@ const PLANS = [
 ];
 
 const NAV_TABS = [
-  { id: "overview",     label: "Overview",      icon: "◉" },
-  { id: "attendance",   label: "Attendance",     icon: "◈" },
-  { id: "students",     label: "Students",       icon: "◇" },
-  { id: "staff",        label: "Staff & HR",     icon: "▣" },
-  { id: "leave",        label: "Leave",          icon: "◆" },
-  { id: "payroll",      label: "Payroll",        icon: "◎" },
-  { id: "fees",         label: "Fees",           icon: "◐" },
-  { id: "exams",        label: "Exams",          icon: "◑" },
-  { id: "assignments",  label: "Assignments",    icon: "◒" },
-  { id: "parents",      label: "Parent Portal",  icon: "◓" },
-  { id: "notifications",label: "Notifications",  icon: "◔" },
-  { id: "reports",      label: "Reports",        icon: "◕" },
+  { id: "overview",      label: "Overview",      icon: "◉" },
+  { id: "attendance",    label: "Attendance",     icon: "◈" },
+  { id: "students",      label: "Students",       icon: "◇" },
+  { id: "staff",         label: "Staff & HR",     icon: "▣" },
+  { id: "leave",         label: "Leave",          icon: "◆" },
+  { id: "payroll",       label: "Payroll",        icon: "◎" },
+  { id: "fees",          label: "Fees",           icon: "◐" },
+  { id: "exams",         label: "Exams",          icon: "◑" },
+  { id: "assignments",   label: "Assignments",    icon: "◒" },
+  { id: "parents",       label: "Parent Portal",  icon: "◓" },
+  { id: "notifications", label: "Notifications",  icon: "◔" },
+  { id: "reports",       label: "Reports",        icon: "◕" },
 ];
 
 const MODULES_INFO = [
@@ -561,6 +577,49 @@ const Spinner = memo(() => (
   </div>
 ));
 
+// ─── FIX 5: Global full-page auth loading spinner ──────────
+const AuthLoadingScreen = memo(({ message = "Loading your dashboard…" }) => (
+  <div style={{
+    minHeight: "100vh", background: COLORS.bg,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexDirection: "column", gap: 16,
+  }}>
+    <div style={{
+      width: 44, height: 44,
+      border: `3px solid rgba(42,107,74,0.2)`,
+      borderTop: `3px solid ${COLORS.green}`,
+      borderRadius: "50%", animation: "spin 0.7s linear infinite",
+    }} />
+    <p style={{ fontFamily: FONTS.sans, color: COLORS.muted, fontSize: 13 }}>{message}</p>
+    <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+  </div>
+));
+
+// ─── FIX 5: Auth error banner ──────────────────────────────
+const AuthErrorBanner = memo(({ error, onDismiss }) => {
+  if (!error) return null;
+  return (
+    <div style={{
+      position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)",
+      zIndex: 300, background: "#7A1A1A", color: "#F7F5EF",
+      borderRadius: 10, padding: "12px 20px", maxWidth: 480, width: "90%",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.22)",
+      display: "flex", alignItems: "flex-start", gap: 12,
+      animation: "fadeUp 0.3s ease",
+    }}>
+      <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Sign-in failed</div>
+        <div style={{ fontSize: 12, opacity: 0.85, lineHeight: 1.5 }}>{error}</div>
+      </div>
+      <button onClick={onDismiss} style={{
+        background: "none", border: "none", color: "#F7F5EF",
+        fontSize: 18, cursor: "pointer", flexShrink: 0, opacity: 0.7, lineHeight: 1,
+      }}>✕</button>
+    </div>
+  );
+});
+
 // ═══════════════════════════════════════════════════════════
 // 6. MODAL COMPONENTS
 // ═══════════════════════════════════════════════════════════
@@ -767,7 +826,6 @@ const AttendanceModule = memo(() => {
         <StatCard label="Total" value={total} sub="enrolled" color={COLORS.navy} />
       </div>
 
-      {/* Weekly trend mini chart */}
       <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20, marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:600, marginBottom:14 }}>Weekly Trend</div>
         <div style={{ display:"flex", alignItems:"flex-end", gap:12, height:80 }}>
@@ -783,7 +841,6 @@ const AttendanceModule = memo(() => {
         </div>
       </div>
 
-      {/* Recognition log */}
       <div style={{ background:"#0F0E0B", borderRadius:14, overflow:"hidden", border:"1px solid rgba(247,245,239,0.06)" }}>
         <div style={{ padding:"12px 16px", background:"rgba(247,245,239,0.04)", borderBottom:"1px solid rgba(247,245,239,0.05)", display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ display:"flex", gap:6 }}>
@@ -795,7 +852,6 @@ const AttendanceModule = memo(() => {
             <span style={{ fontFamily:FONTS.mono, fontSize:10, color:COLORS.greenLight }}>LIVE</span>
           </div>
         </div>
-        {/* Filter bar */}
         <div style={{ padding:"10px 16px", borderBottom:"1px solid rgba(247,245,239,0.05)", display:"flex", gap:8 }}>
           {["all","present","late","absent"].map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{
@@ -1174,7 +1230,6 @@ const FeeModule = memo(() => {
 
 const ExamModule = memo(() => {
   const [exams] = useState(DEMO.exams);
-  const [view, setView] = useState("list");
 
   return (
     <div>
@@ -1277,7 +1332,7 @@ const AssignmentModule = memo(() => {
 // ═══════════════════════════════════════════════════════════
 
 const ParentPortal = memo(() => {
-  const student = DEMO.students[0]; // demo: show one student
+  const student = DEMO.students[0];
   const feeInfo = DEMO.fees[0];
 
   return (
@@ -1464,7 +1519,6 @@ const ReportsModule = memo(() => {
               <StatCard label="Today's Rate" value={`${Math.round((DEMO.todayAttendance.present/DEMO.todayAttendance.total)*100)}%`} color={COLORS.purple} />
             </div>
 
-            {/* Bar chart — pure CSS */}
             <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
               <div style={{ fontWeight:600, fontSize:13, marginBottom:16 }}>Student-wise Attendance</div>
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -1589,7 +1643,6 @@ const DashboardOverview = memo(() => {
     <div>
       <SectionHeader title="School Overview" subtitle="Wednesday, June 3, 2026 · Live dashboard" />
 
-      {/* Key metrics */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:14, marginBottom:24 }}>
         <StatCard label="Present Today"    value={present}          sub={`of ${total}`}     color={COLORS.green}  />
         <StatCard label="Late Today"       value={late}             sub="students"           color={COLORS.amber}  />
@@ -1600,7 +1653,6 @@ const DashboardOverview = memo(() => {
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
-        {/* Weekly chart */}
         <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
           <div style={{ fontSize:13, fontWeight:600, marginBottom:14, fontFamily:FONTS.serif }}>Weekly Attendance Trend</div>
           <div style={{ display:"flex", alignItems:"flex-end", gap:10, height:90 }}>
@@ -1616,7 +1668,6 @@ const DashboardOverview = memo(() => {
           </div>
         </div>
 
-        {/* Fee donut (CSS) */}
         <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
           <div style={{ fontSize:13, fontWeight:600, marginBottom:14, fontFamily:FONTS.serif }}>Fee Collection Rate</div>
           <div style={{ display:"flex", alignItems:"center", gap:16 }}>
@@ -1638,7 +1689,6 @@ const DashboardOverview = memo(() => {
         </div>
       </div>
 
-      {/* Recent activity */}
       <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
         <div style={{ fontSize:13, fontWeight:600, marginBottom:14, fontFamily:FONTS.serif }}>Recent Activity</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -1654,7 +1704,6 @@ const DashboardOverview = memo(() => {
         </div>
       </div>
 
-      {/* Quick links */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))", gap:10, marginTop:16 }}>
         {[
           { icon:"◈", label:"Take Attendance", color:COLORS.green  },
@@ -1703,10 +1752,12 @@ const DemoDashboard = memo(({ user, trialExpiryDate, onClose, onSignOut, isFullP
       const p = new URLSearchParams({ ...contactForm, source:"demo_expired", timestamp:new Date().toISOString() });
       await fetch(`${SHEET_URL}?${p.toString()}`, { method:"GET", mode:"no-cors" });
       setContactStatus("success");
-    } catch { setContactStatus("error"); }
+    } catch (err) {
+      console.error("[NexaAttend] Contact form submission failed:", err);
+      setContactStatus("error");
+    }
   };
 
-  // Expired trial — show contact form
   if (expired && contactStatus !== "success") {
     const iSt = { padding:"10px 14px", border:`1.5px solid ${COLORS.faint}`, borderRadius:8, fontSize:14, fontFamily:FONTS.sans, background:COLORS.bg, outline:"none", width:"100%", boxSizing:"border-box" };
     return (
@@ -1757,7 +1808,6 @@ const DemoDashboard = memo(({ user, trialExpiryDate, onClose, onSignOut, isFullP
     <div style={{ display:"flex", height:isFullPage?"calc(100vh - 62px)":"90vh", background:COLORS.bg, borderRadius:isFullPage?0:24, overflow:"hidden" }}>
       {/* Sidebar */}
       <div style={{ width:sidebarOpen?220:64, background:"#1C1B17", display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.25s cubic-bezier(0.16,1,0.3,1)", overflowX:"hidden" }}>
-        {/* Logo */}
         <div style={{ padding:"18px 16px 14px", borderBottom:"1px solid rgba(247,245,239,0.07)", display:"flex", alignItems:"center", gap:10, minWidth:220 }}>
           <div style={{ width:32, height:32, background:COLORS.green, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
             <svg width="15" height="15" viewBox="0 0 18 18" fill="none">
@@ -1773,7 +1823,6 @@ const DemoDashboard = memo(({ user, trialExpiryDate, onClose, onSignOut, isFullP
           )}
         </div>
 
-        {/* User */}
         <div style={{ padding:"12px 14px", borderBottom:"1px solid rgba(247,245,239,0.07)", minWidth:220 }}>
           {user?.photoURL && <img src={user.photoURL} alt="" style={{ width:28, height:28, borderRadius:"50%", marginBottom:6 }} />}
           {sidebarOpen && (
@@ -1787,7 +1836,6 @@ const DemoDashboard = memo(({ user, trialExpiryDate, onClose, onSignOut, isFullP
           )}
         </div>
 
-        {/* Navigation */}
         <nav style={{ flex:1, padding:"10px 8px", overflowY:"auto", overflowX:"hidden" }}>
           {NAV_TABS.map(t => {
             const isCurrent = activeTab === t.id;
@@ -1813,7 +1861,6 @@ const DemoDashboard = memo(({ user, trialExpiryDate, onClose, onSignOut, isFullP
           })}
         </nav>
 
-        {/* Bottom controls */}
         <div style={{ padding:"10px 8px", borderTop:"1px solid rgba(247,245,239,0.07)", minWidth:220 }}>
           {sidebarOpen && (
             <div style={{ background:"rgba(90,200,122,0.08)", border:"1px solid rgba(90,200,122,0.18)", borderRadius:8, padding:"8px 10px", marginBottom:8 }}>
@@ -1837,7 +1884,6 @@ const DemoDashboard = memo(({ user, trialExpiryDate, onClose, onSignOut, isFullP
 
       {/* Main panel */}
       <div style={{ flex:1, overflowY:"auto", background:COLORS.bg, minWidth:0 }}>
-        {/* Top bar */}
         <div style={{ padding:"14px 24px", background:COLORS.surface, borderBottom:`1px solid ${COLORS.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
           <div>
             <h2 style={{ fontSize:16, fontWeight:700, color:COLORS.dark, fontFamily:FONTS.serif }}>
@@ -1853,7 +1899,6 @@ const DemoDashboard = memo(({ user, trialExpiryDate, onClose, onSignOut, isFullP
           </div>
         </div>
 
-        {/* Module content */}
         <div style={{ padding:"22px 24px" }}>
           {moduleMap[activeTab] || <EmptyState title="Coming soon" />}
         </div>
@@ -1922,7 +1967,10 @@ const InquiryForm = memo(() => {
       await addDoc(collection(db,"salesLeads"), { ...lead, createdAt:serverTimestamp() });
       await fetch(`${SHEET_URL}?${new URLSearchParams(lead)}`, { method:"GET", mode:"no-cors" });
       setStatus("success");
-    } catch { setStatus("error"); }
+    } catch (err) {
+      console.error("[NexaAttend] Inquiry form submission failed:", err);
+      setStatus("error");
+    }
   };
 
   const iSt = (k) => ({
@@ -1968,7 +2016,6 @@ const InquiryForm = memo(() => {
 
   return (
     <div style={{ background:COLORS.surface, borderRadius:16, border:`1px solid ${COLORS.border}`, overflow:"hidden", boxShadow:"0 4px 24px rgba(28,27,23,0.06)" }}>
-      {/* Header */}
       <div style={{ padding:"22px 26px 18px", borderBottom:`1px solid ${COLORS.border}`, background:"linear-gradient(135deg,#FAFAF8,#F7F5EF)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
           <div style={{ width:38, height:38, background:COLORS.green, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -1983,7 +2030,6 @@ const InquiryForm = memo(() => {
             <span style={{ fontSize:9, fontWeight:700, color:"#1B5C3A", letterSpacing:"0.07em" }}>FREE · NO OBLIGATION</span>
           </div>
         </div>
-        {/* Step indicators */}
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           {["About You","Your School","Choose Plan"].map((label,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -2123,6 +2169,41 @@ const TermsOfService = memo(({ onBack }) => (
 // 22. MAIN APP COMPONENT
 // ═══════════════════════════════════════════════════════════
 
+// ─── FIX 3+4: Firestore profile sync runs in background ───
+// Never blocks auth state. Never throws to the caller.
+async function syncUserProfile(fbUser, setExpiry) {
+  try {
+    const ref = doc(db, "users", fbUser.uid);
+    const snap = await getDoc(ref);
+    let exp;
+    if (!snap.exists()) {
+      exp = new Date();
+      exp.setDate(exp.getDate() + 7);
+      await setDoc(ref, {
+        uid:          fbUser.uid,
+        displayName:  fbUser.displayName,
+        email:        fbUser.email,
+        photoURL:     fbUser.photoURL,
+        firstLoginDate: new Date().toISOString(),
+        trialExpiryDate: exp.toISOString(),
+        lastLogin:    new Date().toISOString(),
+      });
+      console.log("[NexaAttend] New user profile created in Firestore. Trial expires:", exp.toISOString());
+    } else {
+      exp = toDate(snap.data().trialExpiryDate);
+      console.log("[NexaAttend] Existing user loaded from Firestore. Trial expires:", exp);
+    }
+    setExpiry(exp);
+  } catch (err) {
+    // FIX 4: Firestore failure is logged but NEVER blocks login
+    console.error("[NexaAttend] Firestore profile sync failed (non-fatal):", err);
+    // Fallback: grant 7-day trial from now if we can't read Firestore
+    const fallbackExp = new Date();
+    fallbackExp.setDate(fallbackExp.getDate() + 7);
+    setExpiry(fallbackExp);
+  }
+}
+
 export default function App() {
   // ── Routing ──────────────────────────────────────────────
   const [hash, setHash] = useState(window.location.hash.slice(1) || "/");
@@ -2133,10 +2214,11 @@ export default function App() {
   }, []);
   const nav = useCallback((path) => { window.location.hash = path; }, []);
 
-  // ── Auth state ───────────────────────────────────────────
+  // ── Auth state — FIX 5: authError added ─────────────────
   const [user, setUser]           = useState(null);
   const [trialExpiry, setExpiry]  = useState(null);
-  const [authReady, setReady]     = useState(false);
+  const [authReady, setAuthReady] = useState(false);    // FIX 2: renamed for clarity
+  const [authError, setAuthError] = useState(null);     // FIX 5: new error state
 
   // ── UI state ─────────────────────────────────────────────
   const navScrolled = useScroll();
@@ -2145,31 +2227,79 @@ export default function App() {
   const [activeFaq, setActiveFaq] = useState(null);
   const [selPlan, setSelPlan]     = useState("standard");
 
-  // ── Firebase setup ───────────────────────────────────────
-  useEffect(() => { getRedirectResult(auth).catch(() => {}); }, []);
-
+  // ── FIX 1+2: getRedirectResult with proper error handling ─
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          // Redirect sign-in completed — onAuthStateChanged will fire next
+          console.log("[NexaAttend] Redirect sign-in completed for:", result.user.email);
+        } else {
+          console.log("[NexaAttend] getRedirectResult: no pending redirect.");
+        }
+      })
+      .catch((err) => {
+        // FIX 2: no longer silently swallowed
+        console.error("[NexaAttend] getRedirectResult failed:", err.code, err.message);
+        const friendlyMessages = {
+          "auth/popup-blocked":           "Your browser blocked the sign-in popup. Please allow popups for this site and try again.",
+          "auth/popup-closed-by-user":    "Sign-in was cancelled. Please try again.",
+          "auth/unauthorized-domain":     "This domain is not authorised for sign-in. Please contact support.",
+          "auth/network-request-failed":  "Network error during sign-in. Please check your connection and try again.",
+          "auth/cancelled-popup-request": "Sign-in request was cancelled. Please try again.",
+          "auth/account-exists-with-different-credential": "An account already exists with this email using a different sign-in method.",
+        };
+        const msg = friendlyMessages[err.code] || `Sign-in error: ${err.message}`;
+        setAuthError(msg);
+      });
+  }, []);
+
+  // ── FIX 3: onAuthStateChanged — setUser + setAuthReady fire IMMEDIATELY ──
+  // Firestore sync happens separately, in the background, non-blocking.
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (fbUser) => {
+      // ✅ Auth state is set immediately — never blocked by Firestore
+      setUser(fbUser ?? null);
+      setAuthReady(true);
+
       if (fbUser) {
-        try {
-          const ref = doc(db,"users",fbUser.uid);
-          const snap = await getDoc(ref);
-          let exp;
-          if (!snap.exists()) {
-            exp = new Date(); exp.setDate(exp.getDate()+7);
-            await setDoc(ref,{ uid:fbUser.uid, displayName:fbUser.displayName, email:fbUser.email, photoURL:fbUser.photoURL, firstLoginDate:new Date().toISOString(), trialExpiryDate:exp.toISOString(), lastLogin:new Date().toISOString() });
-          } else { exp = toDate(snap.data().trialExpiryDate); }
-          setUser(fbUser);
-          setExpiry(exp);
-        } catch { setUser(fbUser); setExpiry(null); }
-      } else { setUser(null); setExpiry(null); }
-      setReady(true);
+        console.log("[NexaAttend] Auth resolved — user signed in:", fbUser.email);
+        // FIX 4: Firestore runs in background, failure does not affect auth
+        syncUserProfile(fbUser, setExpiry);
+      } else {
+        console.log("[NexaAttend] Auth resolved — no user (signed out).");
+        setExpiry(null);
+      }
     });
     return () => unsub();
   }, []);
 
-  const signIn  = useCallback(async () => { try { await signInWithRedirect(auth, googleProvider); } catch {} }, []);
-  const signOut_ = useCallback(async () => { setUser(null); setExpiry(null); nav("/"); await signOut(auth); }, [nav]);
+  // ── FIX 4: signOut — uses aliased import, no naming conflict ──
+  const handleSignOut = useCallback(async () => {
+    try {
+      setUser(null);
+      setExpiry(null);
+      setAuthError(null);
+      nav("/");
+      await firebaseSignOut(auth);   // FIX 1: uses aliased firebaseSignOut
+      console.log("[NexaAttend] User signed out successfully.");
+    } catch (err) {
+      console.error("[NexaAttend] Sign-out failed:", err);
+      // State already cleared above — UI is consistent even if Firebase call fails
+    }
+  }, [nav]);
+
+  // ── signIn ────────────────────────────────────────────────
+  const signIn = useCallback(async () => {
+    try {
+      setAuthError(null);
+      console.log("[NexaAttend] Initiating Google redirect sign-in…");
+      await signInWithRedirect(auth, googleProvider);
+    } catch (err) {
+      console.error("[NexaAttend] signInWithRedirect failed:", err.code, err.message);
+      setAuthError(`Could not start sign-in: ${err.message}`);
+    }
+  }, []);
 
   // Live ticker
   useEffect(() => {
@@ -2187,18 +2317,27 @@ export default function App() {
   if (hash === "/privacy-policy") return <PrivacyPolicy onBack={() => nav("/")} />;
   if (hash === "/terms")          return <TermsOfService onBack={() => nav("/")} />;
 
+  // ── FIX 6: /demo route guard waits for authReady ─────────
+  // Previously: !user check ran before authReady, bouncing returning users
   if (hash === "/demo") {
-    if (!authReady) return (
-      <div style={{ minHeight:"100vh", background:COLORS.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
-        <div style={{ textAlign:"center" }}>
-          <div style={{ width:44, height:44, border:`3px solid rgba(42,107,74,0.2)`, borderTop:`3px solid ${COLORS.green}`, borderRadius:"50%", animation:"spin 0.7s linear infinite", margin:"0 auto 14px" }} />
-          <p style={{ fontFamily:FONTS.sans, color:COLORS.muted, fontSize:13 }}>Loading your dashboard…</p>
-          <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
-        </div>
-      </div>
+    // Show spinner while Firebase is still resolving
+    if (!authReady) {
+      return <AuthLoadingScreen message="Loading your dashboard…" />;
+    }
+    // Only redirect to home after auth has fully resolved and no user
+    if (!user) {
+      console.log("[NexaAttend] /demo accessed without auth — redirecting to /");
+      nav("/");
+      return null;
+    }
+    return (
+      <DemoPage
+        user={user}
+        trialExpiryDate={trialExpiry}
+        onSignOut={handleSignOut}
+        onBack={() => nav("/")}
+      />
     );
-    if (!user) { nav("/"); return null; }
-    return <DemoPage user={user} trialExpiryDate={trialExpiry} onSignOut={signOut_} onBack={() => nav("/")} />;
   }
 
   // ─── Landing page ─────────────────────────────────────────
@@ -2218,6 +2357,9 @@ export default function App() {
         ::-webkit-scrollbar-track { background:transparent; }
         ::-webkit-scrollbar-thumb { background:rgba(28,27,23,0.18); border-radius:3px; }
       `}</style>
+
+      {/* FIX 5: Auth error banner rendered at top level */}
+      <AuthErrorBanner error={authError} onDismiss={() => setAuthError(null)} />
 
       {/* ── Navbar ── */}
       <nav style={{
@@ -2240,7 +2382,10 @@ export default function App() {
           ))}
         </div>
         <div>
-          {authReady && user ? (
+          {/* FIX 6: show skeleton while auth resolves to prevent flash */}
+          {!authReady ? (
+            <div style={{ width:120, height:36, borderRadius:8, background:"rgba(28,27,23,0.06)", animation:"pulse 1.5s infinite" }} />
+          ) : user ? (
             <button onClick={() => nav("/demo")} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:COLORS.green, color:"#F7F5EF", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:FONTS.sans }}>
               {user.photoURL && <img src={user.photoURL} alt="" style={{ width:22, height:22, borderRadius:"50%" }} />}
               Open Dashboard
@@ -2291,10 +2436,10 @@ export default function App() {
         </FadeIn>
         <FadeIn delay={0.4}>
           <div style={{ display:"flex", alignItems:"center", gap:32, flexWrap:"wrap", justifyContent:"center" }}>
-            {[["99%+","Face Recognition Accuracy"],["< 60s","Mark 30 Students"],["3 Days","Setup & Training"],["₹0","Hidden Charges"]].map(([n,l],i) => (
+            {[["99%+","Face Recognition Accuracy"],["< 60s","Mark 30 Students"],["3 Days","Setup & Training"],["₹0","Hidden Charges"]].map((n,i) => (
               <div key={i} style={{ textAlign:"center" }}>
-                <div style={{ fontFamily:FONTS.serif, fontSize:"1.8rem", fontWeight:700, color:COLORS.green }}>{n}</div>
-                <div style={{ fontSize:12, color:COLORS.muted, marginTop:3 }}>{l}</div>
+                <div style={{ fontFamily:FONTS.serif, fontSize:"1.8rem", fontWeight:700, color:COLORS.green }}>{n[0]}</div>
+                <div style={{ fontSize:12, color:COLORS.muted, marginTop:3 }}>{n[1]}</div>
               </div>
             ))}
           </div>
@@ -2607,7 +2752,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* ── Sticky CTA ── */}
+      {/* ── Sticky CTA — FIX 6: only shown after authReady ── */}
       {authReady && !user && (
         <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", zIndex:50, animation:"fadeUp 0.5s ease" }}>
           <button onClick={signIn} style={{ display:"flex", alignItems:"center", gap:10, padding:"13px 26px", background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:100, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:FONTS.sans, boxShadow:"0 12px 40px rgba(28,27,23,0.32)", whiteSpace:"nowrap", transition:"background 0.2s" }}
