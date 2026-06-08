@@ -1,446 +1,374 @@
-/**
- * ╔══════════════════════════════════════════════════════════════════════════════╗
- * ║           NexaAttend — Complete School ERP · App.jsx · v5.0                 ║
- * ║   ALL AUTH BUGS FIXED · ROUTING FIXED · SESSION PERSISTENCE FIXED          ║
- * ╚══════════════════════════════════════════════════════════════════════════════╝
- *
- * CHANGELOG v5.0 (Auth / Routing fixes over v4.0):
- *
- *  ✅ FIX 1 [CRITICAL] — Switched primary sign-in from signInWithRedirect to
- *     signInWithPopup. signInWithRedirect is incompatible with hash-based routers:
- *     RFC 3986 forbids hash fragments in OAuth redirect_uri, so the browser always
- *     lands at the bare domain (hash="") on return. Popup keeps the SPA alive in the
- *     same window with no URL change, so hash state is preserved.
- *
- *  ✅ FIX 2 [CRITICAL] — Removed the standalone getRedirectResult() useEffect.
- *     It was a race-condition source: it resolved before onAuthStateChanged had a
- *     chance to hydrate the session, causing the "Auth resolved — signed out" log.
- *     getRedirectResult is now called ONCE inside the onAuthStateChanged listener so
- *     both sources of truth resolve in the same tick.
- *
- *  ✅ FIX 3 [CRITICAL] — Added nav("/demo") inside onAuthStateChanged when a user
- *     is present AND the current hash is "/" (landing page). Without this, a freshly
- *     signed-in user was never redirected to the dashboard.
- *
- *  ✅ FIX 4 [CRITICAL] — getRedirectResult result is now acted upon: if it returns
- *     a user, setUser() + syncUserProfile() + nav("/demo") are all called immediately,
- *     not just logged to the console.
- *
- *  ✅ FIX 5 [HIGH] — Added explicit browserLocalPersistence via setPersistence() so
- *     the auth session survives hard refreshes and new tabs reliably.
- *
- *  ✅ FIX 6 [HIGH] — syncUserProfile now races a 5-second AbortTimeout against the
- *     Firestore getDoc(). If Firestore is slow/offline, the fallback 7-day expiry is
- *     set immediately so the user is never stuck on the "Loading trial…" spinner.
- *
- *  ✅ FIX 7 [MEDIUM] — hashRef added so onAuthStateChanged always reads the latest
- *     hash value without stale closures (useRef tracking window.location.hash).
- *
- *  ✅ FIX 8 [LOW] — Removed redundant menuOpen state that was set but never consumed
- *     by any JSX (mobile menu was never rendered).
- *
- *  ✅ FIX 9 [LOW] — Removed Suspense wrapping moduleMap since values are plain JSX,
- *     not React.lazy() components. Suspense was silently doing nothing.
- *
- * ────────────────────────────────────────────────────────────────────────────────
- * GOOGLE SHEETS LOGGING SETUP (unchanged from v4.0)
- * ────────────────────────────────────────────────────────────────────────────────
- * 1. Open Google Sheets → Extensions → Apps Script
- * 2. Paste this code, then Deploy → New Deployment → Web App
- *    (Execute as: Me, Access: Anyone)
- * 3. Copy the deployment URL and paste it as SHEET_URL below.
- *
- * ---- Apps Script code ----
- * function doPost(e) {
- *   try {
- *     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
- *     const data  = JSON.parse(e.postData.contents);
- *     sheet.appendRow([new Date(), data.name, data.email, data.uid,
- *       data.timestamp, data.trialExpiry, data.userAgent, data.event]);
- *     return ContentService.createTextOutput(JSON.stringify({ status:"ok" }))
- *       .setMimeType(ContentService.MimeType.JSON);
- *   } catch (err) {
- *     return ContentService.createTextOutput(JSON.stringify({ status:"error", message:err.toString() }))
- *       .setMimeType(ContentService.MimeType.JSON);
- *   }
- * }
- * function doGet(e) {
- *   return ContentService.createTextOutput(JSON.stringify({ status:"ok" }))
- *     .setMimeType(ContentService.MimeType.JSON);
- * }
- * ---- end Apps Script ----
- */
-
-// ─── Core React ────────────────────────────────────────────────────────────────
-import React, {
-  useState, useEffect, useRef, useCallback, useMemo,
-  memo, Suspense, createContext, useContext, useReducer,
-} from "react";
-
-// ─── Firebase ──────────────────────────────────────────────────────────────────
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { initializeApp } from "firebase/app";
 import {
-  getAuth,
-  // FIX 1: signInWithPopup is now PRIMARY. signInWithRedirect kept only as named
-  // import in case you want an explicit fallback, but it is NOT called by default.
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signOut as firebaseSignOut,
-  // FIX 5: explicit persistence so sessions survive hard refreshes
-  setPersistence,
-  browserLocalPersistence,
+  getAuth, signInWithPopup, signInWithRedirect, getRedirectResult,
+  GoogleAuthProvider, onAuthStateChanged, signOut as firebaseSignOut,
+  setPersistence, browserLocalPersistence,
 } from "firebase/auth";
 import {
-  getFirestore, doc, setDoc, getDoc, getDocs,
-  collection, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, limit, serverTimestamp,
-  Timestamp,
+  getFirestore, doc, setDoc, getDoc, addDoc,
+  collection, serverTimestamp,
 } from "firebase/firestore";
 
-// ─── Firebase Config ────────────────────────────────────────────────────────
 const firebaseConfig = {
-  apiKey:            "AIzaSyCAhTxH2vcZprnlTqNkfQouwYy76zK1Z5k",
-  authDomain:        "nova-e3626.firebaseapp.com",
-  projectId:         "nova-e3626",
-  storageBucket:     "nova-e3626.firebasestorage.app",
+  apiKey: "AIzaSyCAhTxH2vcZprnlTqNkfQouwYy76zK1Z5k",
+  authDomain: "nova-e3626.firebaseapp.com",
+  projectId: "nova-e3626",
+  storageBucket: "nova-e3626.firebasestorage.app",
   messagingSenderId: "1000462435473",
-  appId:             "1:1000462435473:web:e8542ef3f6c478f3182b30",
+  appId: "1:1000462435473:web:e8542ef3f6c478f3182b30",
 };
 
-const firebaseApp    = initializeApp(firebaseConfig);
-const auth           = getAuth(firebaseApp);
-const db             = getFirestore(firebaseApp);
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-// FIX 5: Set persistence immediately at module level (before any auth calls).
-// This is fire-and-forget; errors are non-fatal (SDK falls back to its default).
-setPersistence(auth, browserLocalPersistence).catch(err =>
-  console.warn("[NexaAttend] setPersistence failed (non-fatal):", err.message)
-);
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbxgViYSKbN1zFyISMS2l9xgDQGFE8QQAY7IlWjkEmAouzeO5GZwrLg8HZJevvF3SX4uyQ/exec";
 
-// ─── Google Sheets Logger URL ───────────────────────────────────────────────
-const SHEET_URL =
-  "https://script.google.com/macros/s/AKfycbxgViYSKbN1zFyISMS2l9xgDQGFE8QQAY7IlWjkEmAouzeO5GZwrLg8HZJevvF3SX4uyQ/exec";
-const INQUIRY_SHEET_URL = SHEET_URL;
-
-// ==================== CONSTANTS ====================
-const COLORS = {
-  bg:         "#F7F5EF",
-  surface:    "#FFFFFF",
-  dark:       "#1C1B17",
-  green:      "#2A6B4A",
-  greenLight: "#5AC87A",
-  greenMuted: "rgba(42,107,74,0.08)",
-  navy:       "#1A2B4A",
-  purple:     "#3D1A4A",
-  amber:      "#7A5000",
-  red:        "#7A1A1A",
-  border:     "rgba(28,27,23,0.08)",
-  muted:      "rgba(28,27,23,0.45)",
-  faint:      "rgba(28,27,23,0.15)",
+const C = {
+  bg: "#F7F5EF", surface: "#FFFFFF", dark: "#1C1B17", green: "#2A6B4A",
+  greenLight: "#5AC87A", greenMuted: "rgba(42,107,74,0.08)", navy: "#1A2B4A",
+  purple: "#3D1A4A", amber: "#7A5000", red: "#7A1A1A",
+  border: "rgba(28,27,23,0.08)", muted: "rgba(28,27,23,0.45)", faint: "rgba(28,27,23,0.15)",
 };
 
-const FONTS = {
+const F = {
   serif: "'Instrument Serif', Georgia, serif",
-  sans:  "'Instrument Sans', 'DM Sans', sans-serif",
-  mono:  "'JetBrains Mono', 'Fira Code', monospace",
+  sans: "'Instrument Sans', 'DM Sans', sans-serif",
+  mono: "'JetBrains Mono', monospace",
 };
 
 const PLANS = [
-  {
-    id: "basic", name: "Basic", students: 300, monthly: 6000,
-    setup: 75000, setupDiscounted: 45000,
-    badge: "Best Value For Small Schools", color: COLORS.navy,
-    features: [
-      "Up to 300 students", "AI face recognition attendance",
-      "2 cameras included", "Student management",
-      "WhatsApp parent alerts", "Basic attendance reports",
-      "1 admin account", "Email support", "Free lifetime updates",
-    ],
-  },
-  {
-    id: "standard", name: "Standard", students: 600, monthly: 9000,
-    setup: 75000, setupDiscounted: 45000,
-    badge: "Most Popular", color: COLORS.green,
-    features: [
-      "Up to 600 students", "AI face recognition attendance",
-      "2 cameras included", "Student + Staff management",
-      "WhatsApp parent alerts", "Advanced reports & analytics",
-      "Payroll automation", "Multi-role admin access",
-      "Leave management", "Priority phone support", "Free lifetime updates",
-    ],
-  },
-  {
-    id: "premium", name: "Premium", students: 999, monthly: 12000,
-    setup: 75000, setupDiscounted: 45000,
-    badge: "Best For Larger Schools", color: COLORS.purple,
-    features: [
-      "Up to 999 students", "AI face recognition attendance",
-      "2 cameras included", "Complete School ERP",
-      "WhatsApp parent alerts", "Custom report builder",
-      "Payroll automation", "Unlimited admin accounts",
-      "Shift & leave management", "Dedicated account manager",
-      "Priority phone support", "Free lifetime updates",
-    ],
-  },
+  { id: "basic", name: "Basic", students: 300, monthly: 6000, setup: 75000, setupDiscounted: 45000, badge: "Best Value", color: C.navy,
+    features: ["Up to 300 students", "AI face recognition", "2 cameras", "Student management", "WhatsApp alerts", "1 admin account", "Free updates"] },
+  { id: "standard", name: "Standard", students: 600, monthly: 9000, setup: 75000, setupDiscounted: 45000, badge: "Most Popular", color: C.green,
+    features: ["Up to 600 students", "AI face recognition", "2 cameras", "Student + Staff", "Advanced reports", "Payroll automation", "Multi-role admin", "Priority support"] },
+  { id: "premium", name: "Premium", students: 999, monthly: 12000, setup: 75000, setupDiscounted: 45000, badge: "Best for Large", color: C.purple,
+    features: ["Up to 999 students", "AI face recognition", "2 cameras", "Complete ERP", "Custom reports", "Payroll automation", "Unlimited admins", "Dedicated manager"] },
 ];
 
 const NAV_TABS = [
-  { id: "overview",      label: "Overview",      icon: "◉" },
-  { id: "attendance",    label: "Attendance",     icon: "◈" },
-  { id: "students",      label: "Students",       icon: "◇" },
-  { id: "staff",         label: "Staff & HR",     icon: "▣" },
-  { id: "leave",         label: "Leave",          icon: "◆" },
-  { id: "payroll",       label: "Payroll",        icon: "◎" },
-  { id: "fees",          label: "Fees",           icon: "◐" },
-  { id: "exams",         label: "Exams",          icon: "◑" },
-  { id: "assignments",   label: "Assignments",    icon: "◒" },
-  { id: "parents",       label: "Parent Portal",  icon: "◓" },
-  { id: "notifications", label: "Notifications",  icon: "◔" },
-  { id: "reports",       label: "Reports",        icon: "◕" },
+  { id: "overview", label: "Overview", icon: "◉" },
+  { id: "attendance", label: "Attendance", icon: "◈" },
+  { id: "students", label: "Students", icon: "◇" },
+  { id: "staff", label: "Staff & HR", icon: "▣" },
+  { id: "leave", label: "Leave", icon: "◆" },
+  { id: "payroll", label: "Payroll", icon: "◎" },
+  { id: "fees", label: "Fees", icon: "◐" },
+  { id: "exams", label: "Exams", icon: "◑" },
+  { id: "assignments", label: "Assignments", icon: "◒" },
+  { id: "lms", label: "LMS", icon: "▤" },
+  { id: "parents", label: "Parent Portal", icon: "◓" },
+  { id: "notifications", label: "Notifications", icon: "◔" },
+  { id: "reports", label: "Reports", icon: "◕" },
+];
+
+const LMS_TABS = [
+  { id: "dashboard", label: "Dashboard", icon: "▤" },
+  { id: "courses", label: "All Courses", icon: "▦" },
+  { id: "learning", label: "My Learning", icon: "◧" },
+  { id: "quizzes", label: "Quizzes", icon: "◨" },
+  { id: "live", label: "Live Classes", icon: "◩" },
+  { id: "library", label: "Library", icon: "◪" },
+  { id: "gradebook", label: "Gradebook", icon: "▬" },
+];
+
+const LMS_SUBJECTS = [
+  { id: "all", label: "All Subjects", color: C.dark },
+  { id: "mathematics", label: "Mathematics", color: C.navy },
+  { id: "science", label: "Science", color: C.green },
+  { id: "english", label: "English", color: C.purple },
+  { id: "hindi", label: "Hindi", color: C.amber },
+  { id: "social", label: "Social Studies", color: "#4A2B0A" },
+  { id: "computer", label: "Computer Sci.", color: "#1A4A4A" },
+  { id: "physics", label: "Physics", color: "#1A2B5A" },
+];
+
+const LMS_LEVELS = [
+  { id: "all", label: "All Levels" },
+  { id: "IX", label: "Class IX" },
+  { id: "X", label: "Class X" },
+  { id: "XI", label: "Class XI" },
+  { id: "XII", label: "Class XII" },
 ];
 
 const MODULES_INFO = [
-  {
-    icon: "◉", title: "Smart Attendance",
-    features: [
-      "AI face recognition — zero ID cards",
-      "Works fully offline",
-      "Marks 30 students in under 60 seconds",
-      "Proxy attendance becomes impossible",
-    ],
-    color: COLORS.green,
-  },
-  {
-    icon: "◈", title: "Student Management",
-    features: [
-      "Complete student profiles & history",
-      "Batch and class management",
-      "Fee tracking and dues",
-      "Parent notification hub",
-    ],
-    color: COLORS.navy,
-  },
-  {
-    icon: "◇", title: "Staff & HR",
-    features: [
-      "Staff attendance via face recognition",
-      "Payroll auto-calculated from attendance",
-      "Leave management & approvals",
-      "Department & role management",
-    ],
-    color: COLORS.purple,
-  },
-  {
-    icon: "▣", title: "Reports & Analytics",
-    features: [
-      "One-click daily / weekly / monthly reports",
-      "Class-wise attendance trends",
-      "Payroll & fee collection reports",
-      "Admin dashboard — always live",
-    ],
-    color: "#4A2B0A",
-  },
+  { icon: "◉", title: "Smart Attendance", features: ["AI face recognition", "Works offline", "30 students in 60s", "No proxy"], color: C.green },
+  { icon: "◈", title: "Student Management", features: ["Full profiles", "Class management", "Fee tracking", "Parent hub"], color: C.navy },
+  { icon: "◇", title: "Staff & HR", features: ["Staff attendance", "Auto payroll", "Leave mgmt", "Departments"], color: C.purple },
+  { icon: "▣", title: "Reports & Analytics", features: ["Daily/weekly reports", "Trends", "Fee reports", "Live dashboard"], color: "#4A2B0A" },
 ];
 
-// ==================== DEMO DATA ====================
 const DEMO = {
   students: [
-    { id:"S001", name:"Arjun Mehta",   class:"X-A",   rollNo:24, phone:"9876543210", parent:"Suresh Mehta",  status:"Active", attendance:97, fees:"Paid",    dob:"2009-03-12", address:"Satellite, Ahmedabad" },
-    { id:"S002", name:"Priya Sharma",  class:"X-A",   rollNo:15, phone:"9876543211", parent:"Kiran Sharma",  status:"Active", attendance:95, fees:"Paid",    dob:"2009-07-22", address:"Bopal, Ahmedabad" },
-    { id:"S003", name:"Rohan Patel",   class:"IX-B",  rollNo:8,  phone:"9876543212", parent:"Nitin Patel",   status:"Active", attendance:89, fees:"Due",     dob:"2010-01-05", address:"Gota, Ahmedabad" },
-    { id:"S004", name:"Sneha Verma",   class:"X-A",   rollNo:31, phone:"9876543213", parent:"Anil Verma",    status:"Active", attendance:92, fees:"Paid",    dob:"2009-11-18", address:"Navrangpura, Ahmedabad" },
-    { id:"S005", name:"Dev Agarwal",   class:"XI-C",  rollNo:7,  phone:"9876543214", parent:"Raj Agarwal",   status:"Active", attendance:98, fees:"Paid",    dob:"2008-05-30", address:"Prahlad Nagar, Ahmedabad" },
-    { id:"S006", name:"Kavya Joshi",   class:"IX-B",  rollNo:19, phone:"9876543215", parent:"Meena Joshi",   status:"Active", attendance:93, fees:"Partial", dob:"2010-09-14", address:"Thaltej, Ahmedabad" },
-    { id:"S007", name:"Ishaan Nair",   class:"XII-A", rollNo:3,  phone:"9876543216", parent:"Ramesh Nair",   status:"Active", attendance:85, fees:"Paid",    dob:"2007-12-28", address:"Vastrapur, Ahmedabad" },
-    { id:"S008", name:"Ananya Singh",  class:"XI-C",  rollNo:22, phone:"9876543217", parent:"Poonam Singh",  status:"Active", attendance:91, fees:"Due",     dob:"2008-08-03", address:"Bodakdev, Ahmedabad" },
+    { id: "S001", name: "Arjun Mehta", class: "X-A", rollNo: 24, phone: "9876543210", parent: "Suresh Mehta", status: "Active", attendance: 97, fees: "Paid", dob: "2009-03-12", address: "Satellite, Ahmedabad" },
+    { id: "S002", name: "Priya Sharma", class: "X-A", rollNo: 15, phone: "9876543211", parent: "Kiran Sharma", status: "Active", attendance: 95, fees: "Paid", dob: "2009-07-22", address: "Bopal, Ahmedabad" },
+    { id: "S003", name: "Rohan Patel", class: "IX-B", rollNo: 8, phone: "9876543212", parent: "Nitin Patel", status: "Active", attendance: 89, fees: "Due", dob: "2010-01-05", address: "Gota, Ahmedabad" },
+    { id: "S004", name: "Sneha Verma", class: "X-A", rollNo: 31, phone: "9876543213", parent: "Anil Verma", status: "Active", attendance: 92, fees: "Paid", dob: "2009-11-18", address: "Navrangpura, Ahmedabad" },
+    { id: "S005", name: "Dev Agarwal", class: "XI-C", rollNo: 7, phone: "9876543214", parent: "Raj Agarwal", status: "Active", attendance: 98, fees: "Paid", dob: "2008-05-30", address: "Prahlad Nagar, Ahmedabad" },
+    { id: "S006", name: "Kavya Joshi", class: "IX-B", rollNo: 19, phone: "9876543215", parent: "Meena Joshi", status: "Active", attendance: 93, fees: "Partial", dob: "2010-09-14", address: "Thaltej, Ahmedabad" },
+    { id: "S007", name: "Ishaan Nair", class: "XII-A", rollNo: 3, phone: "9876543216", parent: "Ramesh Nair", status: "Active", attendance: 85, fees: "Paid", dob: "2007-12-28", address: "Vastrapur, Ahmedabad" },
+    { id: "S008", name: "Ananya Singh", class: "XI-C", rollNo: 22, phone: "9876543217", parent: "Poonam Singh", status: "Active", attendance: 91, fees: "Due", dob: "2008-08-03", address: "Bodakdev, Ahmedabad" },
   ],
   staff: [
-    { id:"T001", name:"Mrs. Deepa Rao",     role:"Principal",       dept:"Administration", phone:"9900001111", salary:75000, attendance:98, join:"2015-06-01", status:"Active" },
-    { id:"T002", name:"Mr. Amit Kulkarni",  role:"Mathematics HOD", dept:"Mathematics",    phone:"9900002222", salary:55000, attendance:96, join:"2017-04-15", status:"Active" },
-    { id:"T003", name:"Ms. Ritu Bansal",    role:"Science Teacher", dept:"Science",        phone:"9900003333", salary:48000, attendance:94, join:"2019-07-01", status:"Active" },
-    { id:"T004", name:"Mr. Sanjay Pillai",  role:"English Teacher", dept:"Languages",      phone:"9900004444", salary:46000, attendance:97, join:"2018-03-20", status:"Active" },
-    { id:"T005", name:"Ms. Pooja Dubey",    role:"Hindi Teacher",   dept:"Languages",      phone:"9900005555", salary:44000, attendance:92, join:"2020-06-10", status:"Active" },
-    { id:"T006", name:"Mr. Kiran Mehta",    role:"PT Teacher",      dept:"Sports",         phone:"9900006666", salary:40000, attendance:99, join:"2016-08-01", status:"Active" },
+    { id: "T001", name: "Mrs. Deepa Rao", role: "Principal", dept: "Administration", phone: "9900001111", salary: 75000, attendance: 98, join: "2015-06-01", status: "Active" },
+    { id: "T002", name: "Mr. Amit Kulkarni", role: "Mathematics HOD", dept: "Mathematics", phone: "9900002222", salary: 55000, attendance: 96, join: "2017-04-15", status: "Active" },
+    { id: "T003", name: "Ms. Ritu Bansal", role: "Science Teacher", dept: "Science", phone: "9900003333", salary: 48000, attendance: 94, join: "2019-07-01", status: "Active" },
+    { id: "T004", name: "Mr. Sanjay Pillai", role: "English Teacher", dept: "Languages", phone: "9900004444", salary: 46000, attendance: 97, join: "2018-03-20", status: "Active" },
+    { id: "T005", name: "Ms. Pooja Dubey", role: "Hindi Teacher", dept: "Languages", phone: "9900005555", salary: 44000, attendance: 92, join: "2020-06-10", status: "Active" },
+    { id: "T006", name: "Mr. Kiran Mehta", role: "PT Teacher", dept: "Sports", phone: "9900006666", salary: 40000, attendance: 99, join: "2016-08-01", status: "Active" },
   ],
   leaveRequests: [
-    { id:"L001", name:"Ms. Ritu Bansal",   type:"Medical",  from:"2026-06-08", to:"2026-06-10", days:3, reason:"Fever and flu",     status:"Pending",  avatar:"RB" },
-    { id:"L002", name:"Mr. Sanjay Pillai", type:"Personal", from:"2026-06-12", to:"2026-06-12", days:1, reason:"Family function",    status:"Approved", avatar:"SP" },
-    { id:"L003", name:"Ms. Pooja Dubey",   type:"Casual",   from:"2026-06-15", to:"2026-06-16", days:2, reason:"Personal emergency", status:"Pending",  avatar:"PD" },
-    { id:"L004", name:"Mr. Kiran Mehta",   type:"Medical",  from:"2026-05-28", to:"2026-05-30", days:3, reason:"Surgery recovery",   status:"Approved", avatar:"KM" },
+    { id: "L001", name: "Ms. Ritu Bansal", type: "Medical", from: "2026-06-08", to: "2026-06-10", days: 3, reason: "Fever and flu", status: "Pending" },
+    { id: "L002", name: "Mr. Sanjay Pillai", type: "Personal", from: "2026-06-12", to: "2026-06-12", days: 1, reason: "Family function", status: "Approved" },
+    { id: "L003", name: "Ms. Pooja Dubey", type: "Casual", from: "2026-06-15", to: "2026-06-16", days: 2, reason: "Personal emergency", status: "Pending" },
+    { id: "L004", name: "Mr. Kiran Mehta", type: "Medical", from: "2026-05-28", to: "2026-05-30", days: 3, reason: "Surgery recovery", status: "Approved" },
   ],
   payroll: [
-    { id:"T001", name:"Mrs. Deepa Rao",    salary:75000, present:26, absent:0, lop:0,    deductions:2250, net:72750, status:"Processed" },
-    { id:"T002", name:"Mr. Amit Kulkarni", salary:55000, present:25, absent:1, lop:2117, deductions:1650, net:51233, status:"Processed" },
-    { id:"T003", name:"Ms. Ritu Bansal",   salary:48000, present:24, absent:2, lop:3840, deductions:1440, net:42720, status:"Pending"   },
-    { id:"T004", name:"Mr. Sanjay Pillai", salary:46000, present:26, absent:0, lop:0,    deductions:1380, net:44620, status:"Processed" },
-    { id:"T005", name:"Ms. Pooja Dubey",   salary:44000, present:25, absent:1, lop:1760, deductions:1320, net:40920, status:"Pending"   },
-    { id:"T006", name:"Mr. Kiran Mehta",   salary:40000, present:26, absent:0, lop:0,    deductions:1200, net:38800, status:"Processed" },
+    { id: "T001", name: "Mrs. Deepa Rao", salary: 75000, present: 26, absent: 0, lop: 0, deductions: 2250, net: 72750, status: "Processed" },
+    { id: "T002", name: "Mr. Amit Kulkarni", salary: 55000, present: 25, absent: 1, lop: 2117, deductions: 1650, net: 51233, status: "Processed" },
+    { id: "T003", name: "Ms. Ritu Bansal", salary: 48000, present: 24, absent: 2, lop: 3840, deductions: 1440, net: 42720, status: "Pending" },
+    { id: "T004", name: "Mr. Sanjay Pillai", salary: 46000, present: 26, absent: 0, lop: 0, deductions: 1380, net: 44620, status: "Processed" },
+    { id: "T005", name: "Ms. Pooja Dubey", salary: 44000, present: 25, absent: 1, lop: 1760, deductions: 1320, net: 40920, status: "Pending" },
+    { id: "T006", name: "Mr. Kiran Mehta", salary: 40000, present: 26, absent: 0, lop: 0, deductions: 1200, net: 38800, status: "Processed" },
   ],
   fees: [
-    { id:"S001", name:"Arjun Mehta",  class:"X-A",   annual:45000, paid:45000, due:0,     last:"2026-04-05", status:"Paid"    },
-    { id:"S002", name:"Priya Sharma", class:"X-A",   annual:45000, paid:45000, due:0,     last:"2026-04-10", status:"Paid"    },
-    { id:"S003", name:"Rohan Patel",  class:"IX-B",  annual:42000, paid:21000, due:21000, last:"2026-01-20", status:"Due"     },
-    { id:"S004", name:"Sneha Verma",  class:"X-A",   annual:45000, paid:45000, due:0,     last:"2026-05-01", status:"Paid"    },
-    { id:"S005", name:"Dev Agarwal",  class:"XI-C",  annual:48000, paid:48000, due:0,     last:"2026-03-15", status:"Paid"    },
-    { id:"S006", name:"Kavya Joshi",  class:"IX-B",  annual:42000, paid:28000, due:14000, last:"2026-02-28", status:"Partial" },
-    { id:"S007", name:"Ishaan Nair",  class:"XII-A", annual:50000, paid:50000, due:0,     last:"2026-04-22", status:"Paid"    },
-    { id:"S008", name:"Ananya Singh", class:"XI-C",  annual:48000, paid:0,     due:48000, last:"—",          status:"Due"     },
+    { id: "S001", name: "Arjun Mehta", class: "X-A", annual: 45000, paid: 45000, due: 0, last: "2026-04-05", status: "Paid" },
+    { id: "S002", name: "Priya Sharma", class: "X-A", annual: 45000, paid: 45000, due: 0, last: "2026-04-10", status: "Paid" },
+    { id: "S003", name: "Rohan Patel", class: "IX-B", annual: 42000, paid: 21000, due: 21000, last: "2026-01-20", status: "Due" },
+    { id: "S004", name: "Sneha Verma", class: "X-A", annual: 45000, paid: 45000, due: 0, last: "2026-05-01", status: "Paid" },
+    { id: "S005", name: "Dev Agarwal", class: "XI-C", annual: 48000, paid: 48000, due: 0, last: "2026-03-15", status: "Paid" },
+    { id: "S006", name: "Kavya Joshi", class: "IX-B", annual: 42000, paid: 28000, due: 14000, last: "2026-02-28", status: "Partial" },
+    { id: "S007", name: "Ishaan Nair", class: "XII-A", annual: 50000, paid: 50000, due: 0, last: "2026-04-22", status: "Paid" },
+    { id: "S008", name: "Ananya Singh", class: "XI-C", annual: 48000, paid: 0, due: 48000, last: "—", status: "Due" },
   ],
   exams: [
-    { id:"E001", name:"Unit Test I",      date:"June 20–22, 2026",  classes:"All",    subjects:5, status:"Upcoming",  maxMarks:25  },
-    { id:"E002", name:"Mid-Term Exam",    date:"July 15–25, 2026",  classes:"IX–XII", subjects:6, status:"Scheduled", maxMarks:80  },
-    { id:"E003", name:"Annual Exam",      date:"Nov 1–15, 2026",    classes:"All",    subjects:6, status:"Scheduled", maxMarks:100 },
-    { id:"E004", name:"Pre-Board",        date:"Oct 10–18, 2026",   classes:"X, XII", subjects:6, status:"Scheduled", maxMarks:80  },
-    { id:"E005", name:"Class Test – Jun", date:"June 10, 2026",     classes:"VIII",   subjects:2, status:"Upcoming",  maxMarks:20  },
+    { id: "E001", name: "Unit Test I", date: "June 20–22, 2026", classes: "All", subjects: 5, status: "Upcoming", maxMarks: 25 },
+    { id: "E002", name: "Mid-Term Exam", date: "July 15–25, 2026", classes: "IX–XII", subjects: 6, status: "Scheduled", maxMarks: 80 },
+    { id: "E003", name: "Annual Exam", date: "Nov 1–15, 2026", classes: "All", subjects: 6, status: "Scheduled", maxMarks: 100 },
+    { id: "E004", name: "Pre-Board", date: "Oct 10–18, 2026", classes: "X, XII", subjects: 6, status: "Scheduled", maxMarks: 80 },
+    { id: "E005", name: "Class Test – Jun", date: "June 10, 2026", classes: "VIII", subjects: 2, status: "Upcoming", maxMarks: 20 },
   ],
   assignments: [
-    { id:"A001", title:"Maths – Algebra Ch.3",      class:"X-A",  due:"June 5, 2026",  submitted:42, total:45, subject:"Mathematics", teacher:"Mr. Amit Kulkarni" },
-    { id:"A002", title:"Science – Light & Optics",  class:"IX-B", due:"June 7, 2026",  submitted:38, total:42, subject:"Science",     teacher:"Ms. Ritu Bansal"    },
-    { id:"A003", title:"English Essay – My Goals",  class:"X-A",  due:"June 10, 2026", submitted:30, total:45, subject:"English",     teacher:"Mr. Sanjay Pillai"  },
-    { id:"A004", title:"Hindi Nibandh",             class:"XI-C", due:"June 12, 2026", submitted:18, total:38, subject:"Hindi",       teacher:"Ms. Pooja Dubey"    },
-    { id:"A005", title:"Physics – Motion Problems", class:"XII-A",due:"June 14, 2026", submitted:25, total:32, subject:"Physics",     teacher:"Ms. Ritu Bansal"    },
+    { id: "A001", title: "Maths – Algebra Ch.3", class: "X-A", due: "June 5, 2026", submitted: 42, total: 45, subject: "Mathematics", teacher: "Mr. Amit Kulkarni" },
+    { id: "A002", title: "Science – Light & Optics", class: "IX-B", due: "June 7, 2026", submitted: 38, total: 42, subject: "Science", teacher: "Ms. Ritu Bansal" },
+    { id: "A003", title: "English Essay – My Goals", class: "X-A", due: "June 10, 2026", submitted: 30, total: 45, subject: "English", teacher: "Mr. Sanjay Pillai" },
+    { id: "A004", title: "Hindi Nibandh", class: "XI-C", due: "June 12, 2026", submitted: 18, total: 38, subject: "Hindi", teacher: "Ms. Pooja Dubey" },
+    { id: "A005", title: "Physics – Motion Problems", class: "XII-A", due: "June 14, 2026", submitted: 25, total: 32, subject: "Physics", teacher: "Ms. Ritu Bansal" },
   ],
   notifications: [
-    { id:"N001", title:"Attendance Alert",       message:"8 students were absent today. WhatsApp alerts sent to parents.",   type:"alert",   time:"8:10 AM",  read:false },
-    { id:"N002", title:"Fee Reminder Sent",      message:"Automated fee reminders sent to 3 parents with pending dues.",    type:"info",    time:"9:00 AM",  read:false },
-    { id:"N003", title:"Leave Request – Ritu",   message:"Ms. Ritu Bansal has requested medical leave (Jun 8–10).",         type:"warning", time:"10:30 AM", read:true  },
-    { id:"N004", title:"Exam Schedule Published",message:"Mid-term exam dates published. Parents notified via WhatsApp.",   type:"success", time:"11:45 AM", read:true  },
-    { id:"N005", title:"Assignment Submitted",   message:"42 of 45 students submitted Algebra assignment before deadline.",  type:"success", time:"2:30 PM",  read:false },
-    { id:"N006", title:"New Student Enrolled",   message:"Ananya Singh (XI-C) enrollment completed. Roll No. 22 assigned.", type:"info",    time:"Yesterday",read:true  },
+    { id: "N001", title: "Attendance Alert", message: "8 students were absent today.", type: "alert", time: "8:10 AM", read: false },
+    { id: "N002", title: "Fee Reminder Sent", message: "Reminders sent to 3 parents.", type: "info", time: "9:00 AM", read: false },
+    { id: "N003", title: "Leave Request – Ritu", message: "Ms. Ritu Bansal has requested leave.", type: "warning", time: "10:30 AM", read: true },
+    { id: "N004", title: "Exam Schedule Published", message: "Mid-term exam dates are out.", type: "success", time: "11:45 AM", read: true },
+    { id: "N005", title: "Assignment Submitted", message: "42 of 45 students submitted.", type: "success", time: "2:30 PM", read: false },
+    { id: "N006", title: "New Student Enrolled", message: "Ananya Singh enrolled in XI-C.", type: "info", time: "Yesterday", read: true },
   ],
   attendanceLogs: [
-    { time:"08:01:03", name:"Arjun Mehta",  cls:"X-A",   status:"present" },
-    { time:"08:01:07", name:"Priya Sharma", cls:"X-A",   status:"present" },
-    { time:"08:01:14", name:"Rohan Patel",  cls:"IX-B",  status:"present" },
-    { time:"08:01:21", name:"Sneha Verma",  cls:"X-A",   status:"late"    },
-    { time:"08:01:28", name:"Dev Agarwal",  cls:"XI-C",  status:"present" },
-    { time:"08:01:35", name:"Kavya Joshi",  cls:"IX-B",  status:"present" },
-    { time:"08:01:40", name:"Ishaan Nair",  cls:"XII-A", status:"absent"  },
-    { time:"08:01:55", name:"Ananya Singh", cls:"XI-C",  status:"present" },
+    { time: "08:01:03", name: "Arjun Mehta", cls: "X-A", status: "present" },
+    { time: "08:01:07", name: "Priya Sharma", cls: "X-A", status: "present" },
+    { time: "08:01:14", name: "Rohan Patel", cls: "IX-B", status: "present" },
+    { time: "08:01:21", name: "Sneha Verma", cls: "X-A", status: "late" },
+    { time: "08:01:28", name: "Dev Agarwal", cls: "XI-C", status: "present" },
+    { time: "08:01:35", name: "Kavya Joshi", cls: "IX-B", status: "present" },
+    { time: "08:01:40", name: "Ishaan Nair", cls: "XII-A", status: "absent" },
+    { time: "08:01:55", name: "Ananya Singh", cls: "XI-C", status: "present" },
   ],
-  todayAttendance: { present:284, late:12, absent:8, total:304 },
+  todayAttendance: { present: 284, late: 12, absent: 8, total: 304 },
   weeklyTrend: [
-    { day:"Mon", pct:96 }, { day:"Tue", pct:94 }, { day:"Wed", pct:97 },
-    { day:"Thu", pct:93 }, { day:"Fri", pct:96 },
+    { day: "Mon", pct: 96 }, { day: "Tue", pct: 94 }, { day: "Wed", pct: 97 },
+    { day: "Thu", pct: 93 }, { day: "Fri", pct: 96 },
   ],
   recentActivity: [
-    { icon:"✓",  text:"X-A attendance marked (98% present)",      time:"8:02 AM",   type:"success" },
-    { icon:"📝", text:"42 students submitted Algebra assignment",   time:"9:15 AM",   type:"info"    },
-    { icon:"₹",  text:"₹45,000 fees collected — 3 students",      time:"10:30 AM",  type:"money"   },
-    { icon:"🔔", text:"Parent alerts sent to 8 absent students",   time:"8:10 AM",   type:"alert"   },
-    { icon:"📅", text:"Mid-term exam schedule published",           time:"Yesterday", type:"info"    },
+    { icon: "✓", text: "X-A attendance marked (98% present)", time: "8:02 AM" },
+    { icon: "📝", text: "42 students submitted Algebra assignment", time: "9:15 AM" },
+    { icon: "₹", text: "₹45,000 fees collected", time: "10:30 AM" },
+    { icon: "🔔", text: "Parent alerts sent to 8 absent students", time: "8:10 AM" },
+    { icon: "📅", text: "Mid-term exam schedule published", time: "Yesterday" },
+  ],
+};
+
+const DEMO_LMS = {
+  courses: [
+    { id: "C001", code: "MATH-X", title: "Mathematics – Class X", subtitle: "CBSE · Algebra, Geometry & Trigonometry", subject: "mathematics", subjectLabel: "Mathematics", grade: "X",
+      teacher: "Mr. Amit Kulkarni", teacherId: "T002", description: "Master Class X mathematics with our comprehensive course covering algebra, geometry, trigonometry, statistics, and probability.",
+      thumbnail: "📐", color: C.navy, cover: `linear-gradient(135deg, ${C.navy} 0%, #3A5A8A 100%)`,
+      duration: "40 hours", modules: 6, lessons: 48, quizzes: 8, enrolled: 45, capacity: 50, rating: 4.8, reviews: 124,
+      tags: ["Algebra", "Geometry", "Trigonometry"], progress: 68, lastAccessed: "2 hours ago", nextLesson: "Quadratic Equations – Problem Solving",
+      certificate: true, live: true, enrolled2: true,
+      syllabus: [
+        { id: "M1", title: "Algebra Foundations", lessons: 8, duration: "8h", completed: 8 },
+        { id: "M2", title: "Quadratic Equations", lessons: 6, duration: "6h", completed: 4 },
+        { id: "M3", title: "Arithmetic Progressions", lessons: 4, duration: "4h", completed: 0 },
+        { id: "M4", title: "Triangles & Geometry", lessons: 10, duration: "10h", completed: 0 },
+        { id: "M5", title: "Trigonometry", lessons: 9, duration: "9h", completed: 0 },
+        { id: "M6", title: "Statistics & Probability", lessons: 6, duration: "6h", completed: 0 },
+      ] },
+    { id: "C002", code: "SCI-X", title: "Science – Class X", subtitle: "CBSE · Physics, Chemistry, Biology", subject: "science", subjectLabel: "Science", grade: "X",
+      teacher: "Ms. Ritu Bansal", teacherId: "T003", description: "Explore science with our integrated Class X course covering physics, chemistry, and biology.",
+      thumbnail: "🔬", color: C.green, cover: `linear-gradient(135deg, ${C.green} 0%, ${C.greenLight} 100%)`,
+      duration: "45 hours", modules: 7, lessons: 54, quizzes: 10, enrolled: 42, capacity: 50, rating: 4.7, reviews: 98,
+      tags: ["Physics", "Chemistry", "Biology"], progress: 0, lastAccessed: "Never", nextLesson: null,
+      certificate: true, live: true, enrolled2: false,
+      syllabus: [
+        { id: "M1", title: "Chemical Reactions", lessons: 8, duration: "8h", completed: 0 },
+        { id: "M2", title: "Acids, Bases & Salts", lessons: 6, duration: "6h", completed: 0 },
+        { id: "M3", title: "Light & Reflection", lessons: 9, duration: "9h", completed: 0 },
+        { id: "M4", title: "Electricity & Magnetism", lessons: 10, duration: "10h", completed: 0 },
+        { id: "M5", title: "Life Processes", lessons: 8, duration: "8h", completed: 0 },
+      ] },
+    { id: "C003", code: "ENG-X", title: "English Literature & Grammar", subtitle: "CBSE Class X", subject: "english", subjectLabel: "English", grade: "X",
+      teacher: "Mr. Sanjay Pillai", teacherId: "T004", description: "Develop strong English language skills through literature analysis and creative writing.",
+      thumbnail: "📚", color: C.purple, cover: `linear-gradient(135deg, ${C.purple} 0%, #6D3A7A 100%)`,
+      duration: "35 hours", modules: 5, lessons: 42, quizzes: 6, enrolled: 38, capacity: 45, rating: 4.6, reviews: 76,
+      tags: ["Literature", "Grammar", "Writing"], progress: 42, lastAccessed: "Yesterday", nextLesson: "Writing Workshop – Narrative Essays",
+      certificate: true, live: false, enrolled2: true,
+      syllabus: [
+        { id: "M1", title: "Reading Comprehension", lessons: 8, duration: "8h", completed: 8 },
+        { id: "M2", title: "Grammar & Sentence Structure", lessons: 9, duration: "9h", completed: 7 },
+        { id: "M3", title: "Literature – Prose", lessons: 10, duration: "10h", completed: 3 },
+      ] },
+    { id: "C004", code: "HIN-X", title: "Hindi Vyakaran aur Sahitya", subtitle: "CBSE Class X · Hindi", subject: "hindi", subjectLabel: "Hindi", grade: "X",
+      teacher: "Ms. Pooja Dubey", teacherId: "T005", description: "हिंदी साहित्य और व्याकरण का संपूर्ण अध्ययन।",
+      thumbnail: "📖", color: C.amber, cover: `linear-gradient(135deg, ${C.amber} 0%, #B07000 100%)`,
+      duration: "30 hours", modules: 5, lessons: 36, quizzes: 5, enrolled: 35, capacity: 45, rating: 4.5, reviews: 62,
+      tags: ["साहित्य", "व्याकरण", "निबंध"], progress: 0, lastAccessed: "Never", nextLesson: null,
+      certificate: true, live: false, enrolled2: false,
+      syllabus: [
+        { id: "M1", title: "व्याकरण", lessons: 8, duration: "8h", completed: 0 },
+        { id: "M2", title: "कविता संग्रह", lessons: 7, duration: "7h", completed: 0 },
+      ] },
+    { id: "C005", code: "SST-X", title: "Social Studies – Class X", subtitle: "History, Geography, Civics & Economics", subject: "social", subjectLabel: "Social Studies", grade: "X",
+      teacher: "Mr. Sanjay Pillai", teacherId: "T004", description: "Comprehensive coverage of Class X Social Studies.",
+      thumbnail: "🌍", color: "#4A2B0A", cover: `linear-gradient(135deg, #4A2B0A 0%, #7A4A1A 100%)`,
+      duration: "38 hours", modules: 6, lessons: 45, quizzes: 7, enrolled: 40, capacity: 50, rating: 4.4, reviews: 54,
+      tags: ["History", "Geography", "Civics"], progress: 25, lastAccessed: "3 days ago", nextLesson: "Indian National Movement",
+      certificate: true, live: false, enrolled2: true,
+      syllabus: [
+        { id: "M1", title: "Indian History – Ancient", lessons: 8, duration: "8h", completed: 8 },
+        { id: "M2", title: "Indian History – Modern", lessons: 9, duration: "9h", completed: 2 },
+      ] },
+    { id: "C006", code: "PHY-XII", title: "Physics – Class XII", subtitle: "CBSE Class XII · Advanced Physics", subject: "physics", subjectLabel: "Physics", grade: "XII",
+      teacher: "Ms. Ritu Bansal", teacherId: "T003", description: "Master Class XII Physics with mechanics, electromagnetism, optics, and modern physics.",
+      thumbnail: "⚛️", color: "#1A2B5A", cover: `linear-gradient(135deg, #1A2B5A 0%, #3A4B7A 100%)`,
+      duration: "60 hours", modules: 10, lessons: 72, quizzes: 12, enrolled: 32, capacity: 40, rating: 4.9, reviews: 156,
+      tags: ["Mechanics", "Electromagnetism", "Optics"], progress: 88, lastAccessed: "5h ago", nextLesson: "EMI – Final Review",
+      certificate: true, live: true, enrolled2: true,
+      syllabus: [
+        { id: "M1", title: "Electrostatics", lessons: 8, duration: "8h", completed: 8 },
+        { id: "M2", title: "Current Electricity", lessons: 7, duration: "7h", completed: 7 },
+      ] },
+    { id: "C007", code: "CS-XI", title: "Computer Science – Class XI", subtitle: "Programming & Data Structures", subject: "computer", subjectLabel: "Computer Sci.", grade: "XI",
+      teacher: "Mr. Amit Kulkarni", teacherId: "T002", description: "Learn Python, data structures, algorithms, and databases.",
+      thumbnail: "💻", color: "#1A4A4A", cover: `linear-gradient(135deg, #1A4A4A 0%, #3A7A7A 100%)`,
+      duration: "50 hours", modules: 8, lessons: 60, quizzes: 10, enrolled: 28, capacity: 40, rating: 4.7, reviews: 84,
+      tags: ["Python", "Data Structures", "Algorithms"], progress: 0, lastAccessed: "Never", nextLesson: null,
+      certificate: true, live: false, enrolled2: false,
+      syllabus: [
+        { id: "M1", title: "Computer Systems", lessons: 6, duration: "6h", completed: 0 },
+        { id: "M2", title: "Introduction to Python", lessons: 8, duration: "8h", completed: 0 },
+      ] },
+    { id: "C008", code: "PE-IX", title: "Physical Education – Class IX", subtitle: "Sports, Fitness & Health", subject: "physical", subjectLabel: "Physical Ed.", grade: "IX",
+      teacher: "Mr. Kiran Mehta", teacherId: "T006", description: "Comprehensive physical education covering sports and fitness.",
+      thumbnail: "⚽", color: "#5A2A4A", cover: `linear-gradient(135deg, #5A2A4A 0%, #7A4A6A 100%)`,
+      duration: "25 hours", modules: 4, lessons: 30, quizzes: 4, enrolled: 55, capacity: 60, rating: 4.5, reviews: 42,
+      tags: ["Sports", "Fitness", "Health"], progress: 50, lastAccessed: "1 week ago", nextLesson: "Football – Advanced",
+      certificate: false, live: false, enrolled2: true,
+      syllabus: [
+        { id: "M1", title: "Fitness Fundamentals", lessons: 7, duration: "7h", completed: 7 },
+        { id: "M2", title: "Team Sports", lessons: 8, duration: "8h", completed: 4 },
+      ] },
+  ],
+  quizzes: [
+    { id: "Q001", courseId: "C001", title: "Algebra – Linear Equations", description: "Test your understanding of linear equations.",
+      duration: 20, totalMarks: 20, questions: 10, difficulty: "Easy", attempts: 234, avgScore: 76, status: "completed", lastScore: 85, bestScore: 95,
+      questionsData: [
+        { q: "What is a linear equation?", options: ["An equation with degree 1", "An equation with degree 2", "An equation with degree 3", "An equation with no solution"], correct: 0 },
+        { q: "The standard form of a linear equation in two variables is:", options: ["ax + by + c = 0", "ax² + bx + c = 0", "ax + by = c", "a/x + b/y = 1"], correct: 0 },
+        { q: "How many solutions does a linear equation in two variables have?", options: ["One", "Two", "Infinitely many", "None"], correct: 2 },
+        { q: "If 2x + 3 = 11, what is x?", options: ["3", "4", "5", "6"], correct: 1 },
+        { q: "The graph of a linear equation is a:", options: ["Curve", "Straight line", "Circle", "Parabola"], correct: 1 },
+        { q: "Which method solves a pair of linear equations?", options: ["Substitution", "Elimination", "Graphical", "All of the above"], correct: 3 },
+        { q: "If x=2, y=3 solves 3x+ky=12, then k=", options: ["1", "2", "3", "4"], correct: 1 },
+        { q: "A linear equation has:", options: ["Only one variable", "Maximum two variables", "No variables", "Infinite variables"], correct: 1 },
+        { q: "The point (0, 0) is called:", options: ["x-intercept", "y-intercept", "Origin", "Vertex"], correct: 2 },
+        { q: "If y=0, what does 2x+5y=10 become?", options: ["2x=10", "2x+5=10", "5y=10", "2x=5"], correct: 0 },
+      ] },
+    { id: "Q002", courseId: "C001", title: "Quadratic Equations – Mastery Test", description: "Comprehensive test on quadratic equations.",
+      duration: 30, totalMarks: 30, questions: 15, difficulty: "Medium", attempts: 189, avgScore: 68, status: "available", lastScore: null, bestScore: null },
+    { id: "Q003", courseId: "C003", title: "English Grammar – Tenses", description: "Master English tenses.",
+      duration: 25, totalMarks: 25, questions: 12, difficulty: "Easy", attempts: 312, avgScore: 81, status: "completed", lastScore: 92, bestScore: 96 },
+    { id: "Q004", courseId: "C006", title: "Physics – Electromagnetic Induction", description: "Advanced quiz on EMI concepts.",
+      duration: 45, totalMarks: 50, questions: 20, difficulty: "Hard", attempts: 78, avgScore: 62, status: "available", lastScore: null, bestScore: null },
+    { id: "Q005", courseId: "C005", title: "History – Indian National Movement", description: "Test your knowledge of India's freedom struggle.",
+      duration: 20, totalMarks: 20, questions: 10, difficulty: "Medium", attempts: 145, avgScore: 73, status: "locked", lastScore: null, bestScore: null },
+  ],
+  liveClasses: [
+    { id: "LC001", courseId: "C001", title: "Doubt Session: Quadratic Equations", teacher: "Mr. Amit Kulkarni", teacherId: "T002",
+      scheduledAt: "2026-06-04T10:00:00", duration: 60, status: "upcoming", attendees: 38, maxAttendees: 50, description: "Live doubt-clearing session for the chapter on Quadratic Equations." },
+    { id: "LC002", courseId: "C006", title: "Live Problem Solving: EMI Numericals", teacher: "Ms. Ritu Bansal", teacherId: "T003",
+      scheduledAt: "2026-06-03T15:00:00", duration: 90, status: "live", attendees: 28, maxAttendees: 40, description: "Solving 20+ numericals on Electromagnetic Induction." },
+    { id: "LC003", courseId: "C003", title: "Writing Workshop – Essays", teacher: "Mr. Sanjay Pillai", teacherId: "T004",
+      scheduledAt: "2026-06-05T14:00:00", duration: 75, status: "upcoming", attendees: 22, maxAttendees: 30, description: "Interactive workshop on essay writing." },
+    { id: "LC004", courseId: "C001", title: "Trigonometry Crash Course", teacher: "Mr. Amit Kulkarni", teacherId: "T002",
+      scheduledAt: "2026-06-02T11:00:00", duration: 120, status: "completed", attendees: 45, maxAttendees: 50, description: "Full 2-hour crash course on Trigonometry basics." },
+    { id: "LC005", courseId: "C006", title: "Career Guidance: Physics After XII", teacher: "Ms. Ritu Bansal", teacherId: "T003",
+      scheduledAt: "2026-06-06T16:00:00", duration: 60, status: "upcoming", attendees: 34, maxAttendees: 50, description: "Career paths after Class XII Physics." },
+  ],
+  library: [
+    { id: "LB001", title: "NCERT Mathematics Textbook – Class X", type: "pdf", subject: "Mathematics", grade: "X", size: "12.4 MB", pages: 320, uploadedBy: "Admin", downloads: 234, rating: 4.9, cover: "📕", description: "Official NCERT textbook for Class X Mathematics." },
+    { id: "LB002", title: "Physics Formula Sheet – Class XII", type: "pdf", subject: "Physics", grade: "XII", size: "2.1 MB", pages: 24, uploadedBy: "Ms. Ritu Bansal", downloads: 456, rating: 4.8, cover: "📐", description: "Complete formula reference for Class XII Physics." },
+    { id: "LB003", title: "English Grammar Reference Guide", type: "pdf", subject: "English", grade: "All", size: "5.6 MB", pages: 84, uploadedBy: "Mr. Sanjay Pillai", downloads: 189, rating: 4.7, cover: "📘", description: "Comprehensive grammar reference." },
+    { id: "LB004", title: "Hindi Vyakaran Notes – Class X", type: "pdf", subject: "Hindi", grade: "X", size: "3.2 MB", pages: 48, uploadedBy: "Ms. Pooja Dubey", downloads: 142, rating: 4.5, cover: "📗", description: "हिंदी व्याकरण के सभी नियम।" },
+    { id: "LB005", title: "Light & Optics – Video Lessons", type: "video", subject: "Science", grade: "X", size: "450 MB", pages: null, uploadedBy: "Ms. Ritu Bansal", downloads: 89, rating: 4.8, cover: "🎬", description: "12 video lessons on light and optics." },
+    { id: "LB006", title: "Quadratic Equations Worksheet", type: "pdf", subject: "Mathematics", grade: "X", size: "1.8 MB", pages: 16, uploadedBy: "Mr. Amit Kulkarni", downloads: 312, rating: 4.6, cover: "📒", description: "50+ practice problems with solutions." },
+  ],
+  gradebook: [
+    { subject: "Mathematics", term1: 88, term2: 92, term3: 85, overall: 88.3, grade: "A" },
+    { subject: "Science", term1: 82, term2: 85, term3: 90, overall: 85.7, grade: "A" },
+    { subject: "English", term1: 78, term2: 82, term3: 80, overall: 80.0, grade: "B+" },
+    { subject: "Hindi", term1: 75, term2: 78, term3: 82, overall: 78.3, grade: "B+" },
+    { subject: "Social Studies", term1: 80, term2: 77, term3: 84, overall: 80.3, grade: "B+" },
+    { subject: "Computer Science", term1: 95, term2: 92, term3: 94, overall: 93.7, grade: "A+" },
+  ],
+  topPerformers: [
+    { name: "Dev Agarwal", class: "XI-C", avg: 96.5, avatar: "DA" },
+    { name: "Sneha Verma", class: "X-A", avg: 94.2, avatar: "SV" },
+    { name: "Arjun Mehta", class: "X-A", avg: 92.8, avatar: "AM" },
+    { name: "Priya Sharma", class: "X-A", avg: 91.4, avatar: "PS" },
   ],
 };
 
 const FAQS = [
-  { q:"What is School ERP Software?",          a:"School ERP integrates all school operations — attendance, exams, fees, assignments, communication, and analytics — into one system. NexaAttend is a complete ERP built for Indian schools, working offline-first with AI face recognition." },
-  { q:"How does attendance management work?",  a:"AI face recognition marks 30 students in under 60 seconds, works 100% offline, eliminates proxy attendance, and auto-syncs to parent WhatsApp and reports." },
-  { q:"How does fee management work?",         a:"Track collections, dues, and payment history in real time. Send automated WhatsApp reminders. Reduce fee leakage by up to 95%." },
-  { q:"Does it work without internet?",        a:"Yes — NexaAttend is offline-first. All recognition and data storage happen on your own computer. Internet is optional, only for cloud backups." },
-  { q:"How long does setup take?",             a:"Our team completes full installation, camera setup, and staff training in 3 days. No IT department needed." },
-  { q:"How accurate is face recognition?",    a:"99%+ accuracy under normal lighting. Handles glasses, hair changes, and varying conditions. Rigorously tested before handover." },
-  { q:"What does the setup fee cover?",        a:"On-site installation, camera configuration, face data enrollment for all students and staff, admin training, and 3-day handover support." },
-  { q:"What is the 7-day guarantee?",          a:"Use NexaAttend for 7 days. If it doesn't save time and reduce errors — full refund, no conditions." },
-  { q:"What happens to student data?",         a:"Your data never leaves your premises. Stored on your own computer — not on any cloud. Complete ownership." },
-  { q:"What cameras does it require?",         a:"Every plan includes 2 cameras. Any webcam or IP camera works. Extra cameras available at ₹15,000 per camera (one-time)." },
+  { q: "What is School ERP Software?", a: "School ERP integrates all school operations — attendance, exams, fees, assignments, communication, and analytics — into one system." },
+  { q: "How does attendance management work?", a: "AI face recognition marks 30 students in under 60 seconds, works 100% offline, eliminates proxy attendance." },
+  { q: "How does fee management work?", a: "Track collections, dues, and payment history in real time. Send automated WhatsApp reminders." },
+  { q: "Does it work without internet?", a: "Yes — NexaAttend is offline-first. All recognition and data storage happen on your own computer." },
+  { q: "How long does setup take?", a: "Our team completes full installation, camera setup, and staff training in 3 days." },
+  { q: "How accurate is face recognition?", a: "99%+ accuracy under normal lighting. Handles glasses, hair changes, and varying conditions." },
+  { q: "What does the setup fee cover?", a: "On-site installation, camera configuration, face data enrollment, admin training, and 3-day handover support." },
+  { q: "What is the 7-day guarantee?", a: "Use NexaAttend for 7 days. If it doesn't save time and reduce errors — full refund, no conditions." },
+  { q: "What happens to student data?", a: "Your data never leaves your premises. Stored on your own computer — not on any cloud." },
+  { q: "What cameras does it require?", a: "Every plan includes 2 cameras. Any webcam or IP camera works." },
 ];
 
 // ==================== UTILITIES ====================
-const toDate = (value) => {
-  if (!value) return null;
-  if (value?.toDate) return value.toDate();
-  if (value instanceof Date) return value;
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? null : d;
-};
+const initials = (n = "") => n.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
+const fmtINR = (n) => !n && n !== 0 ? "—" : n >= 100000 ? `₹${(n / 100000).toFixed(n % 100000 === 0 ? 0 : 1)}L` : `₹${n.toLocaleString("en-IN")}`;
+const fmtDate = (d) => !d ? "—" : new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const statusColor = (s) => ({ present: "#1B5C3A", Paid: "#1B5C3A", Approved: "#1B5C3A", Processed: "#1B5C3A", Active: "#1B5C3A", success: "#1B5C3A", live: "#1B5C3A", completed: "#1B5C3A", available: C.navy, Easy: C.green, Medium: C.amber, Hard: C.red, late: C.amber, Partial: C.amber, warning: C.amber, Upcoming: C.navy, Scheduled: "rgba(28,27,23,0.5)", info: C.navy, absent: C.red, Due: C.red, Pending: C.red, alert: C.red, locked: "rgba(28,27,23,0.5)" }[s] || "rgba(28,27,23,0.5)");
+const statusBg = (s) => ({ present: "rgba(42,107,74,0.1)", Paid: "rgba(42,107,74,0.1)", Approved: "rgba(42,107,74,0.1)", Processed: "rgba(42,107,74,0.1)", Active: "rgba(42,107,74,0.1)", success: "rgba(42,107,74,0.1)", live: "rgba(90,200,122,0.15)", completed: "rgba(42,107,74,0.08)", available: "rgba(26,43,74,0.08)", Easy: "rgba(42,107,74,0.1)", Medium: "rgba(122,80,0,0.1)", Hard: "rgba(239,68,68,0.1)", late: "rgba(122,80,0,0.1)", Partial: "rgba(122,80,0,0.1)", warning: "rgba(122,80,0,0.1)", Upcoming: "rgba(26,43,74,0.1)", Scheduled: "rgba(28,27,23,0.06)", info: "rgba(26,43,74,0.08)", absent: "rgba(239,68,68,0.1)", Due: "rgba(239,68,68,0.1)", Pending: "rgba(245,158,11,0.12)", alert: "rgba(239,68,68,0.1)", locked: "rgba(28,27,23,0.06)" }[s] || "rgba(28,27,23,0.06)");
 
-const fmtINR = (n) => {
-  if (!n && n !== 0) return "—";
-  if (n >= 100000) return `₹${(n / 100000).toFixed(n % 100000 === 0 ? 0 : 1)}L`;
-  return `₹${n.toLocaleString("en-IN")}`;
-};
-
-const fmtDate = (d) => {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
-};
-
-const initials = (name = "") =>
-  name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
-
-const statusColor = (s) => {
-  const map = {
-    present:"#1B5C3A", Paid:"#1B5C3A", Approved:"#1B5C3A", Processed:"#1B5C3A", Active:"#1B5C3A", success:"#1B5C3A",
-    late:COLORS.amber, Partial:COLORS.amber, warning:COLORS.amber,
-    absent:COLORS.red, Due:COLORS.red, Pending:COLORS.red, alert:COLORS.red,
-    Upcoming:COLORS.navy, Scheduled:"rgba(28,27,23,0.5)", info:COLORS.navy,
-  };
-  return map[s] || "rgba(28,27,23,0.5)";
-};
-
-const statusBg = (s) => {
-  const map = {
-    present:"rgba(42,107,74,0.1)", Paid:"rgba(42,107,74,0.1)", Approved:"rgba(42,107,74,0.1)", Processed:"rgba(42,107,74,0.1)", Active:"rgba(42,107,74,0.1)", success:"rgba(42,107,74,0.1)",
-    late:"rgba(122,80,0,0.1)", Partial:"rgba(122,80,0,0.1)", warning:"rgba(122,80,0,0.1)",
-    absent:"rgba(239,68,68,0.1)", Due:"rgba(239,68,68,0.1)", Pending:"rgba(245,158,11,0.12)", alert:"rgba(239,68,68,0.1)",
-    Upcoming:"rgba(26,43,74,0.1)", Scheduled:"rgba(28,27,23,0.06)", info:"rgba(26,43,74,0.08)",
-  };
-  return map[s] || "rgba(28,27,23,0.06)";
-};
-
-// ==================== GOOGLE SHEETS LOGGER ====================
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function logDemoVisitToSheets(payload, maxRetries = 3) {
-  let lastError = null;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await fetch(SHEET_URL, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      const json = await res.json();
-      if (json.status !== "ok") throw new Error(`Sheets error: ${json.message || JSON.stringify(json)}`);
-      console.log("[NexaAttend] Demo visit logged to Sheets ✓", payload.event);
-      return { success: true };
-    } catch (err) {
-      lastError = err;
-      console.warn(`[NexaAttend] Sheets log attempt ${attempt}/${maxRetries} failed:`, err.message);
-      if (attempt < maxRetries) await sleep(500 * Math.pow(2, attempt - 1));
-    }
-  }
-  console.error("[NexaAttend] Sheets logging failed after all retries:", lastError);
-  return { success: false, error: lastError?.message };
-}
-
-// ==================== BODY SCROLL LOCK ====================
-let _scrollLockCount = 0;
-function lockBodyScroll() {
-  _scrollLockCount++;
-  if (_scrollLockCount === 1) document.body.style.overflow = "hidden";
-}
-function unlockBodyScroll() {
-  _scrollLockCount = Math.max(0, _scrollLockCount - 1);
-  if (_scrollLockCount === 0) document.body.style.overflow = "";
-}
-
-// ==================== CUSTOM HOOKS ====================
+// ==================== HOOKS ====================
 const useInView = (threshold = 0.08) => {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setInView(true); },
-      { threshold }
-    );
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
     obs.observe(el);
     return () => obs.disconnect();
   }, [threshold]);
@@ -448,13 +376,13 @@ const useInView = (threshold = 0.08) => {
 };
 
 const useScroll = () => {
-  const [scrolled, setScrolled] = useState(false);
+  const [s, setS] = useState(false);
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 40);
+    const fn = () => setS(window.scrollY > 40);
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
   }, []);
-  return scrolled;
+  return s;
 };
 
 const useModal = () => {
@@ -466,958 +394,518 @@ const useModal = () => {
 };
 
 const useSearch = (items, keys) => {
-  const [rawQuery, setRawQuery] = useState("");
   const [query, setQuery] = useState("");
-  const timerRef = useRef(null);
-  const setRawQueryHandler = useCallback((val) => {
-    setRawQuery(val);
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setQuery(val), 300);
-  }, []);
-  useEffect(() => () => clearTimeout(timerRef.current), []);
   const filtered = useMemo(() => {
     if (!query.trim()) return items;
     const q = query.toLowerCase();
     return items.filter(item => keys.some(k => String(item[k] ?? "").toLowerCase().includes(q)));
   }, [items, query, keys]);
-  return { query: rawQuery, setQuery: setRawQueryHandler, filtered };
+  return { query, setQuery, filtered };
 };
 
-const useLocalState = (key, initial) => {
-  const [value, setValue] = useState(() => {
-    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : initial; }
-    catch { return initial; }
-  });
-  const set = useCallback((v) => {
-    setValue(prev => {
-      const next = typeof v === "function" ? v(prev) : v;
-      try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, [key]);
-  return [value, set];
-};
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
-  useEffect(() => {
-    const fn = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", fn, { passive: true });
-    return () => window.removeEventListener("resize", fn);
-  }, []);
-  return isMobile;
-};
-
-// ── Mobile CSS injected once ─────────────────────────────────────────────────
-const MOBILE_CSS = `
-  @media (max-width: 767px) {
-    .nexa-nav-links { display: none !important; }
-    .nexa-nav-cta   { display: none !important; }
-    .nexa-hamburger { display: flex !important; }
-    .nexa-mobile-menu-open .nexa-nav-links { display: flex !important; flex-direction: column; position: fixed; inset: 0; top: 68px; background: rgba(247,245,239,0.97); backdrop-filter: blur(14px); z-index: 99; padding: 28px 24px; gap: 8px; align-items: flex-start; }
-    .nexa-mobile-menu-open .nexa-nav-cta   { display: flex !important; margin-top: 16px; width: 100%; }
-    .nexa-footer-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
-    .nexa-pricing-tabs { flex-wrap: wrap !important; }
-    .nexa-pricing-tabs button { flex: 1 !important; min-width: 90px; }
-    .nexa-plan-features { grid-template-columns: 1fr !important; }
-    .nexa-hero-cta { flex-direction: column !important; }
-    .nexa-hero-cta button, .nexa-hero-cta a { width: 100% !important; justify-content: center !important; }
-    .nexa-stats-grid { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
-    .nexa-modules-grid { grid-template-columns: 1fr !important; }
-    .nexa-how-grid { grid-template-columns: 1fr 1fr !important; }
-    .nexa-inquiry-form-grid { grid-template-columns: 1fr !important; }
-    .nexa-inquiry-plan-grid { grid-template-columns: 1fr !important; }
-    .nexa-sticky-cta { left: 16px !important; right: 16px !important; transform: none !important; width: auto !important; }
-    .nexa-sticky-cta button { width: 100% !important; justify-content: center !important; }
-    .nexa-demo-shell { flex-direction: column !important; height: auto !important; min-height: calc(100vh - 62px) !important; }
-    .nexa-sidebar { display: none !important; }
-    .nexa-sidebar-mobile { display: flex !important; }
-    .nexa-main-panel { padding-bottom: 72px !important; }
-    .nexa-bottom-nav { display: flex !important; }
-    .nexa-demo-main-header { padding: 10px 14px !important; }
-    .nexa-demo-content { padding: 14px 14px !important; }
-    .nexa-stat-cards { grid-template-columns: 1fr 1fr !important; }
-    .nexa-section-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
-    .nexa-modal-grid { grid-template-columns: 1fr !important; }
-    .nexa-add-student-grid { grid-template-columns: 1fr !important; }
-  }
-  @media (max-width: 480px) {
-    .nexa-how-grid { grid-template-columns: 1fr !important; }
-    .nexa-hero-stats { gap: 18px !important; }
-    .nexa-ticker-text { font-size: 10px !important; }
-  }
-`;
-const MobileCSSInjector = memo(function MobileCSSInjector() {
-  return <style>{MOBILE_CSS}</style>;
-});
-
-// ==================== REUSABLE UI COMPONENTS ====================
-const FadeIn = memo(function FadeIn({ children, delay = 0, className = "", style = {} }) {
+// ==================== UI COMPONENTS ====================
+const FadeIn = memo(({ children, delay = 0, style = {} }) => {
   const [ref, inView] = useInView();
-  return (
-    <div ref={ref} className={className} style={{
-      opacity: inView ? 1 : 0,
-      transform: inView ? "translateY(0)" : "translateY(28px)",
-      transition: `opacity 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
-      ...style,
-    }}>{children}</div>
-  );
+  return <div ref={ref} style={{ opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(28px)", transition: `opacity 0.75s ease ${delay}s, transform 0.75s ease ${delay}s`, ...style }}>{children}</div>;
 });
 
-const AnimatedNumber = memo(function AnimatedNumber({ target, suffix = "", prefix = "" }) {
-  const [count, setCount] = useState(0);
-  const [ref, inView] = useInView(0.3);
-  const rafRef = useRef(null);
-  useEffect(() => {
-    if (!inView) return;
-    let start = null;
-    const step = (ts) => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / 1800, 1);
-      setCount(Math.floor((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) rafRef.current = requestAnimationFrame(step);
-    };
-    rafRef.current = requestAnimationFrame(step);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [inView, target]);
-  return <span ref={ref}>{prefix}{count.toLocaleString("en-IN")}{suffix}</span>;
-});
+const Badge = memo(({ status, children }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 600, background: statusBg(status || children), color: statusColor(status || children) }}>{children}</span>
+));
 
-const Badge = memo(function Badge({ status, children }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center",
-      padding: "3px 10px", borderRadius: 100,
-      fontSize: 11, fontWeight: 600,
-      background: statusBg(status || children),
-      color: statusColor(status || children),
-    }}>{children}</span>
-  );
-});
+const Avatar = memo(({ name, size = 36, color = C.green }) => (
+  <div style={{ width: size, height: size, borderRadius: "50%", background: `${color}22`, color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 700, fontFamily: F.sans, flexShrink: 0, border: `1.5px solid ${color}30` }}>{initials(name)}</div>
+));
 
-const Avatar = memo(function Avatar({ name, size = 36, color = COLORS.green }) {
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: `${color}22`, color,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.35, fontWeight: 700,
-      fontFamily: FONTS.sans, flexShrink: 0,
-      border: `1.5px solid ${color}30`,
-    }}>{initials(name)}</div>
-  );
-});
+const StatCard = memo(({ label, value, sub, color = C.green, accent }) => (
+  <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px 16px", borderTop: `3px solid ${color}` }}>
+    <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
+    <div style={{ fontSize: 26, fontWeight: 700, color, lineHeight: 1, fontFamily: F.serif }}>{value}</div>
+    {sub && <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{sub}</div>}
+    {accent && <div style={{ fontSize: 12, color: C.green, marginTop: 4, fontWeight: 600 }}>{accent}</div>}
+  </div>
+));
 
-const StatCard = memo(function StatCard({ label, value, sub, color = COLORS.green, accent }) {
-  return (
-    <div style={{
-      background: COLORS.surface, border: `1px solid ${COLORS.border}`,
-      borderRadius: 12, padding: "18px 16px",
-      borderTop: `3px solid ${color}`,
-    }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.muted, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, color, lineHeight: 1, fontFamily: FONTS.serif }}>{value}</div>
-      {sub    && <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>{sub}</div>}
-      {accent && <div style={{ fontSize: 12, color: COLORS.green, marginTop: 4, fontWeight: 600 }}>{accent}</div>}
-    </div>
-  );
-});
-
-const ProgressBar = memo(function ProgressBar({ value, max = 100, color = COLORS.green, height = 6 }) {
+const ProgressBar = memo(({ value, max = 100, color = C.green, height = 6 }) => {
   const pct = Math.min(100, Math.round((value / max) * 100));
-  return (
-    <div style={{ height, background: "rgba(28,27,23,0.06)", borderRadius: height }}>
-      <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: height, transition: "width 0.8s ease" }} />
+  return <div style={{ height, background: "rgba(28,27,23,0.06)", borderRadius: height }}><div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: height, transition: "width 0.8s ease" }} /></div>;
+});
+
+const SectionHeader = memo(({ title, subtitle, action }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
+    <div>
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: C.dark, fontFamily: F.serif }}>{title}</h3>
+      {subtitle && <p style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{subtitle}</p>}
     </div>
-  );
+    {action}
+  </div>
+));
+
+const SearchBar = memo(({ value, onChange, placeholder = "Search…" }) => (
+  <div style={{ position: "relative" }}>
+    <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{ width: "100%", padding: "9px 12px 9px 34px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, background: C.bg, color: C.dark, fontFamily: F.sans, outline: "none", boxSizing: "border-box" }} />
+    <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.muted }}>🔍</span>
+  </div>
+));
+
+const Btn = memo(({ children, onClick, variant = "primary", size = "md", disabled = false, style: extra = {} }) => {
+  const [h, sH] = useState(false);
+  const base = { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: F.sans, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", border: "none", borderRadius: 8, transition: "all 0.18s", outline: "none", opacity: disabled ? 0.55 : 1, padding: size === "sm" ? "7px 14px" : size === "lg" ? "13px 26px" : "10px 18px", fontSize: size === "sm" ? 12 : size === "lg" ? 15 : 13, ...extra };
+  const v = { primary: { background: h ? C.green : C.dark, color: "#F7F5EF" }, green: { background: h ? "#1B5C3A" : C.green, color: "#F7F5EF" }, outline: { background: "transparent", color: C.dark, border: `1.5px solid ${C.faint}` }, ghost: { background: h ? "rgba(28,27,23,0.06)" : "transparent", color: C.dark } };
+  return <button onClick={disabled ? undefined : onClick} style={{ ...base, ...v[variant] }} onMouseEnter={() => sH(true)} onMouseLeave={() => sH(false)} disabled={disabled}>{children}</button>;
 });
 
-const SectionHeader = memo(function SectionHeader({ title, subtitle, action }) {
-  return (
-    <div className="nexa-section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-      <div>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark, fontFamily: FONTS.serif }}>{title}</h3>
-        {subtitle && <p style={{ fontSize: 12, color: COLORS.muted, marginTop: 3 }}>{subtitle}</p>}
-      </div>
-      {action}
-    </div>
-  );
-});
+const EmptyState = memo(({ icon = "◎", title, subtitle }) => (
+  <div style={{ textAlign: "center", padding: "48px 24px", color: C.muted }}>
+    <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>
+    <div style={{ fontSize: 15, fontWeight: 600, color: C.dark, marginBottom: 6 }}>{title}</div>
+    {subtitle && <div style={{ fontSize: 13, lineHeight: 1.6 }}>{subtitle}</div>}
+  </div>
+));
 
-const SearchBar = memo(function SearchBar({ value, onChange, placeholder = "Search…" }) {
-  return (
-    <div style={{ position: "relative" }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }}>
-        <circle cx="11" cy="11" r="8" stroke={COLORS.muted} strokeWidth="2"/>
-        <path d="M21 21l-4.35-4.35" stroke={COLORS.muted} strokeWidth="2" strokeLinecap="round"/>
-      </svg>
-      <input
-        value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          width: "100%", padding: "9px 12px 9px 34px",
-          border: `1.5px solid ${COLORS.faint}`, borderRadius: 8,
-          fontSize: 13, background: COLORS.bg, color: COLORS.dark,
-          fontFamily: FONTS.sans, outline: "none",
-        }}
-      />
-    </div>
-  );
-});
+const Spinner = memo(() => <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}><div style={{ width: 32, height: 32, border: `3px solid ${C.greenMuted}`, borderTop: `3px solid ${C.green}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /></div>);
 
-const Btn = memo(function Btn({ children, onClick, variant = "primary", size = "md", disabled = false, style: extra = {} }) {
-  const [hover, setHover] = useState(false);
-  const base = {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    fontFamily: FONTS.sans, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
-    border: "none", borderRadius: 8, transition: "all 0.18s", outline: "none",
-    opacity: disabled ? 0.55 : 1,
-    padding: size === "sm" ? "7px 14px" : size === "lg" ? "13px 26px" : "10px 18px",
-    fontSize: size === "sm" ? 12 : size === "lg" ? 15 : 13,
-    ...extra,
-  };
-  const variants = {
-    primary:  { background: hover ? COLORS.green : COLORS.dark, color: "#F7F5EF" },
-    green:    { background: hover ? "#1B5C3A" : COLORS.green,   color: "#F7F5EF" },
-    outline:  { background: "transparent", color: COLORS.dark,  border: `1.5px solid ${COLORS.faint}` },
-    danger:   { background: hover ? "#9B1C1C" : COLORS.red,     color: "#F7F5EF" },
-    ghost:    { background: hover ? "rgba(28,27,23,0.06)" : "transparent", color: COLORS.dark },
-  };
-  return (
-    <button
-      onClick={disabled ? undefined : onClick}
-      style={{ ...base, ...variants[variant] }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-});
+const AuthLoadingScreen = memo(({ message = "Loading…" }) => (
+  <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+    <div style={{ width: 44, height: 44, border: `3px solid rgba(42,107,74,0.2)`, borderTop: `3px solid ${C.green}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+    <p style={{ fontFamily: F.sans, color: C.muted, fontSize: 13 }}>{message}</p>
+  </div>
+));
 
-const TabBar = memo(function TabBar({ tabs, active, onChange }) {
-  return (
-    <div style={{ display: "flex", gap: 4, background: COLORS.bg, borderRadius: 8, padding: 4 }}>
-      {tabs.map(t => (
-        <button key={t.id} onClick={() => onChange(t.id)} style={{
-          flex: 1, padding: "7px 12px", borderRadius: 6, border: "none",
-          background: active === t.id ? COLORS.surface : "transparent",
-          color: active === t.id ? COLORS.dark : COLORS.muted,
-          fontFamily: FONTS.sans, fontSize: 12, fontWeight: active === t.id ? 600 : 400,
-          cursor: "pointer", transition: "all 0.18s",
-          boxShadow: active === t.id ? "0 1px 4px rgba(28,27,23,0.08)" : "none",
-        }}>{t.label}</button>
-      ))}
-    </div>
-  );
-});
-
-const EmptyState = memo(function EmptyState({ icon = "◎", title, subtitle }) {
-  return (
-    <div style={{ textAlign: "center", padding: "48px 24px", color: COLORS.muted }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>
-      <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.dark, marginBottom: 6 }}>{title}</div>
-      {subtitle && <div style={{ fontSize: 13, lineHeight: 1.6 }}>{subtitle}</div>}
-    </div>
-  );
-});
-
-const Spinner = memo(function Spinner() {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
-      <div style={{ width: 32, height: 32, border: `3px solid ${COLORS.greenMuted}`, borderTop: `3px solid ${COLORS.green}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-    </div>
-  );
-});
-
-const AuthLoadingScreen = memo(function AuthLoadingScreen({ message = "Loading your dashboard…" }) {
-  return (
-    <div style={{
-      minHeight: "100vh", background: COLORS.bg,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      flexDirection: "column", gap: 16,
-    }}>
-      <div style={{
-        width: 44, height: 44,
-        border: `3px solid rgba(42,107,74,0.2)`,
-        borderTop: `3px solid ${COLORS.green}`,
-        borderRadius: "50%", animation: "spin 0.7s linear infinite",
-      }} />
-      <p style={{ fontFamily: FONTS.sans, color: COLORS.muted, fontSize: 13 }}>{message}</p>
-      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
-    </div>
-  );
-});
-
-const AuthErrorBanner = memo(function AuthErrorBanner({ error, onDismiss, onRetryWithPopup }) {
-  if (!error) return null;
-  return (
-    <div style={{
-      position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)",
-      zIndex: 300, background: "#7A1A1A", color: "#F7F5EF",
-      borderRadius: 10, padding: "12px 20px", maxWidth: 500, width: "90%",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.22)",
-      display: "flex", alignItems: "flex-start", gap: 12,
-      animation: "fadeUp 0.3s ease",
-    }}>
-      <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Sign-in failed</div>
-        <div style={{ fontSize: 12, opacity: 0.85, lineHeight: 1.5 }}>{error}</div>
-        {onRetryWithPopup && (
-          <button onClick={onRetryWithPopup} style={{
-            marginTop: 8, background: "rgba(255,255,255,0.2)", border: "none",
-            color: "#F7F5EF", borderRadius: 6, padding: "4px 12px", fontSize: 11,
-            cursor: "pointer", fontWeight: 600,
-          }}>Try again</button>
-        )}
-      </div>
-      <button onClick={onDismiss} style={{
-        background: "none", border: "none", color: "#F7F5EF",
-        fontSize: 18, cursor: "pointer", flexShrink: 0, opacity: 0.7, lineHeight: 1,
-      }}>✕</button>
-    </div>
-  );
-});
-
-// ==================== MODAL COMPONENTS ====================
-const Modal = memo(function Modal({ open, onClose, title, children, width = 560 }) {
+// ==================== MODAL ====================
+const Modal = memo(({ open, onClose, title, children, width = 600 }) => {
   useEffect(() => {
-    if (open) {
-      lockBodyScroll();
-      return () => unlockBodyScroll();
-    }
+    if (open) { document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = ""; }; }
   }, [open]);
   if (!open) return null;
   return (
-    <div onClick={onClose} style={{
-      position: "fixed", inset: 0, background: "rgba(28,27,23,0.45)",
-      backdropFilter: "blur(4px)", zIndex: 200,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 16, animation: "fadeIn 0.2s ease",
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        background: COLORS.surface, borderRadius: 16, width: "100%", maxWidth: width,
-        maxHeight: "90vh", overflowY: "auto",
-        boxShadow: "0 24px 80px rgba(28,27,23,0.22)",
-        animation: "slideUp 0.25s cubic-bezier(0.16,1,0.3,1)",
-      }}>
-        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, fontFamily: FONTS.serif }}>{title}</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: COLORS.muted, lineHeight: 1, padding: 4 }}>✕</button>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(28,27,23,0.5)", backdropFilter: "blur(4px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "fadeIn 0.2s ease" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 16, width: "100%", maxWidth: width, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 80px rgba(28,27,23,0.22)", animation: "slideUp 0.25s cubic-bezier(0.16,1,0.3,1)" }}>
+        <div style={{ padding: "18px 22px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, fontFamily: F.serif }}>{title}</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.muted, lineHeight: 1, padding: 4 }}>✕</button>
         </div>
-        <div style={{ padding: 24 }}>{children}</div>
+        <div style={{ padding: 22 }}>{children}</div>
       </div>
     </div>
   );
 });
 
-const StudentModal = memo(function StudentModal({ open, onClose, student }) {
+const StudentModal = memo(({ open, onClose, student }) => {
   if (!student) return null;
-  const rows = [
-    ["Roll No",          student.rollNo],
-    ["Class",            student.class],
-    ["Date of Birth",    fmtDate(student.dob)],
-    ["Parent / Guardian",student.parent],
-    ["Phone",            student.phone],
-    ["Address",          student.address],
-    ["Attendance",       `${student.attendance}%`],
-    ["Fee Status",       <Badge key="f" status={student.fees}>{student.fees}</Badge>],
-    ["Status",           <Badge key="s" status={student.status}>{student.status}</Badge>],
-  ];
   return (
     <Modal open={open} onClose={onClose} title="Student Profile">
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, padding: "16px", background: COLORS.bg, borderRadius: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, padding: 16, background: C.bg, borderRadius: 10 }}>
         <Avatar name={student.name} size={56} />
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: FONTS.serif }}>{student.name}</div>
-          <div style={{ fontSize: 13, color: COLORS.muted }}>{student.id} · {student.class}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.serif }}>{student.name}</div>
+          <div style={{ fontSize: 13, color: C.muted }}>{student.id} · {student.class}</div>
         </div>
       </div>
-      <div className="nexa-modal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {rows.map(([k, v]) => (
-          <div key={k} style={{ background: COLORS.bg, borderRadius: 8, padding: "10px 14px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{k}</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.dark }}>{v}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.muted, marginBottom: 8 }}>ATTENDANCE</div>
-        <ProgressBar value={student.attendance} color={student.attendance > 90 ? COLORS.green : COLORS.amber} />
-        <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>{student.attendance}% this term</div>
-      </div>
-    </Modal>
-  );
-});
-
-const StaffModal = memo(function StaffModal({ open, onClose, staff }) {
-  if (!staff) return null;
-  return (
-    <Modal open={open} onClose={onClose} title="Staff Profile">
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, padding: 16, background: COLORS.bg, borderRadius: 10 }}>
-        <Avatar name={staff.name} size={56} color={COLORS.navy} />
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: FONTS.serif }}>{staff.name}</div>
-          <div style={{ fontSize: 13, color: COLORS.muted }}>{staff.role} · {staff.dept}</div>
-        </div>
-      </div>
-      <div className="nexa-modal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {[
-          ["Employee ID", staff.id],
-          ["Department",  staff.dept],
-          ["Phone",       staff.phone],
-          ["Join Date",   fmtDate(staff.join)],
-          ["Salary",      fmtINR(staff.salary)],
-          ["Attendance",  `${staff.attendance}%`],
-          ["Status",      <Badge key="s" status={staff.status}>{staff.status}</Badge>],
-        ].map(([k, v]) => (
-          <div key={k} style={{ background: COLORS.bg, borderRadius: 8, padding: "10px 14px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{k}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {[["Roll No", student.rollNo], ["Class", student.class], ["DOB", fmtDate(student.dob)], ["Parent", student.parent], ["Phone", student.phone], ["Address", student.address]].map(([k, v]) => (
+          <div key={k} style={{ background: C.bg, borderRadius: 8, padding: "10px 14px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", marginBottom: 4 }}>{k}</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{v}</div>
           </div>
         ))}
       </div>
+      <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 8 }}>ATTENDANCE</div>
+        <ProgressBar value={student.attendance} color={student.attendance > 90 ? C.green : C.amber} />
+      </div>
     </Modal>
   );
 });
 
-const AddStudentModal = memo(function AddStudentModal({ open, onClose, onSave }) {
-  const [form, setForm] = useState({ name:"", class:"X-A", rollNo:"", phone:"", parent:"", dob:"", address:"" });
-  const setF = useCallback(k => e => setForm(f => ({ ...f, [k]: e.target.value })), []);
-  const handle = useCallback(() => {
-    if (form.name && form.rollNo) {
-      onSave({ ...form, id:`S${Date.now()}`, status:"Active", attendance:0, fees:"Due" });
-      onClose();
-      setForm({ name:"", class:"X-A", rollNo:"", phone:"", parent:"", dob:"", address:"" });
-    }
-  }, [form, onSave, onClose]);
-  const iSt = { width:"100%", padding:"9px 12px", border:`1.5px solid ${COLORS.faint}`, borderRadius:8, fontSize:13, fontFamily:FONTS.sans, background:COLORS.bg, outline:"none", boxSizing:"border-box" };
+// ==================== LMS MODALS ====================
+const CourseDetailModal = memo(({ open, onClose, course, onEnroll }) => {
+  if (!course) return null;
+  const [tab, setTab] = useState("overview");
   return (
-    <Modal open={open} onClose={onClose} title="Add New Student">
-      <div className="nexa-add-student-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        {[["name","Full Name"],["rollNo","Roll No"],["phone","Phone"],["parent","Parent Name"],["dob","Date of Birth"],["address","Address"]].map(([k,p]) => (
-          <div key={k} style={{ gridColumn: k==="address" ? "1/-1" : undefined }}>
-            <label style={{ fontSize:11, fontWeight:600, color:COLORS.muted, display:"block", marginBottom:5 }}>{p}</label>
-            <input type={k==="dob"?"date":"text"} placeholder={p} value={form[k]} onChange={setF(k)} style={iSt} />
+    <Modal open={open} onClose={onClose} title={course.title} width={720}>
+      <div style={{ height: 160, borderRadius: 12, background: course.cover, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, marginBottom: 18, color: "#F7F5EF" }}>
+        {course.thumbnail}
+      </div>
+      <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, marginBottom: 18 }}>{course.description}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 10, marginBottom: 18 }}>
+        {[["Duration", course.duration], ["Modules", course.modules], ["Lessons", course.lessons], ["Quizzes", course.quizzes], ["Enrolled", `${course.enrolled}/${course.capacity}`], ["Rating", `⭐ ${course.rating}`]].map(([k, v]) => (
+          <div key={k} style={{ background: C.bg, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", fontWeight: 700 }}>{k}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginTop: 3 }}>{v}</div>
           </div>
         ))}
-        <div>
-          <label style={{ fontSize:11, fontWeight:600, color:COLORS.muted, display:"block", marginBottom:5 }}>Class</label>
-          <select value={form.class} onChange={setF("class")} style={{ ...iSt, appearance:"none" }}>
-            {["VIII-A","VIII-B","IX-A","IX-B","X-A","X-B","XI-A","XI-B","XI-C","XII-A","XII-B"].map(c=><option key={c}>{c}</option>)}
-          </select>
-        </div>
       </div>
-      <div style={{ display:"flex", gap:10, marginTop:20 }}>
-        <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-        <Btn variant="green" onClick={handle} style={{ flex:1, justifyContent:"center" }}>Save Student</Btn>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {["overview", "syllabus", "instructor"].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: "7px 10px", borderRadius: 6, border: "none", background: tab === t ? C.surface : "transparent", color: tab === t ? C.dark : C.muted, fontFamily: F.sans, fontSize: 12, fontWeight: tab === t ? 600 : 400, cursor: "pointer", textTransform: "capitalize", boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}>{t}</button>
+        ))}
+      </div>
+      {tab === "overview" && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 8 }}>TAGS</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+            {course.tags.map(t => <span key={t} style={{ padding: "3px 10px", background: `${course.color}15`, color: course.color, borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{t}</span>)}
+          </div>
+          {course.certificate && <div style={{ padding: "10px 14px", background: C.greenMuted, borderRadius: 8, fontSize: 12, color: "#1B5C3A", marginBottom: 12 }}>🎓 Certificate of completion included</div>}
+          {course.live && <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", borderRadius: 8, fontSize: 12, color: C.red, marginBottom: 12 }}>🔴 Live classes available</div>}
+        </div>
+      )}
+      {tab === "syllabus" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {course.syllabus.map(m => (
+            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: C.bg, borderRadius: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: m.completed === m.lessons ? C.greenMuted : "rgba(28,27,23,0.06)", color: m.completed === m.lessons ? C.green : C.muted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{m.completed === m.lessons ? "✓" : m.id.replace("M", "")}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{m.title}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>{m.lessons} lessons · {m.duration}</div>
+              </div>
+              {m.completed > 0 && <div style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>{m.completed}/{m.lessons}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {tab === "instructor" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 16, background: C.bg, borderRadius: 10 }}>
+          <Avatar name={course.teacher} size={56} color={course.color} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>{course.teacher}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{course.subjectLabel} Expert · 8+ years experience</div>
+            <div style={{ fontSize: 11, color: course.color, marginTop: 4, fontWeight: 600 }}>⭐ 4.8 average rating</div>
+          </div>
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+        {course.enrolled2 ? (
+          <Btn variant="green" style={{ flex: 1, justifyContent: "center" }}>Continue Learning →</Btn>
+        ) : (
+          <Btn variant="green" style={{ flex: 1, justifyContent: "center" }} onClick={() => onEnroll?.(course)}>Enroll Now — Free</Btn>
+        )}
+        <Btn variant="outline" onClick={onClose}>Close</Btn>
       </div>
     </Modal>
   );
 });
 
-// ==================== TABLE COMPONENT ====================
-const DataTable = memo(function DataTable({ columns, data, onRowClick, emptyMsg = "No data found" }) {
+const QuizPlayerModal = memo(({ open, onClose, quiz }) => {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  if (!quiz || !quiz.questionsData) return null;
+  const total = quiz.questionsData.length;
+  const currentQ = quiz.questionsData[step];
+  const score = useMemo(() => {
+    if (!submitted) return 0;
+    return quiz.questionsData.reduce((acc, q, i) => acc + (answers[i] === q.correct ? 1 : 0), 0);
+  }, [submitted, answers, quiz]);
+
+  useEffect(() => { if (open) { setStep(0); setAnswers({}); setSubmitted(false); } }, [open, quiz?.id]);
+
   return (
-    <div style={{ overflow: "hidden", borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "rgba(28,27,23,0.02)", borderBottom: `1px solid ${COLORS.border}` }}>
-              {columns.map(c => (
-                <th key={c.key} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: COLORS.muted, letterSpacing: "0.07em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.length === 0 ? (
-              <tr><td colSpan={columns.length}><EmptyState title={emptyMsg} /></td></tr>
-            ) : data.map((row, i) => (
-              <tr
-                key={row.id || i}
-                onClick={() => onRowClick?.(row)}
-                style={{ borderTop: `1px solid rgba(28,27,23,0.04)`, cursor: onRowClick ? "pointer" : "default", transition: "background 0.15s" }}
-                onMouseEnter={e => { if (onRowClick) e.currentTarget.style.background = COLORS.bg; }}
-                onMouseLeave={e => { e.currentTarget.style.background = ""; }}
-              >
-                {columns.map(c => (
-                  <td key={c.key} style={{ padding: "11px 16px", fontSize: 13, color: c.muted ? COLORS.muted : COLORS.dark, fontFamily: c.mono ? FONTS.mono : FONTS.sans, whiteSpace: c.nowrap ? "nowrap" : undefined }}>
-                    {c.render ? c.render(row[c.key], row) : row[c.key]}
-                  </td>
-                ))}
-              </tr>
+    <Modal open={open} onClose={onClose} title={quiz.title} width={680}>
+      {!submitted ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, fontSize: 12, color: C.muted }}>
+            <span>Question {step + 1} of {total}</span>
+            <span>{quiz.duration} min · {quiz.totalMarks} marks</span>
+          </div>
+          <div style={{ height: 4, background: "rgba(28,27,23,0.06)", borderRadius: 2, marginBottom: 18 }}>
+            <div style={{ height: "100%", width: `${((step + 1) / total) * 100}%`, background: C.green, borderRadius: 2, transition: "width 0.3s" }} />
+          </div>
+          <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 18, fontFamily: F.serif }}>{currentQ.q}</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {currentQ.options.map((opt, i) => (
+              <button key={i} onClick={() => setAnswers(a => ({ ...a, [step]: i }))} style={{ padding: "12px 16px", border: `2px solid ${answers[step] === i ? C.green : C.faint}`, background: answers[step] === i ? C.greenMuted : C.surface, borderRadius: 10, cursor: "pointer", textAlign: "left", fontSize: 13, fontFamily: F.sans, color: C.dark, fontWeight: answers[step] === i ? 600 : 400 }}>
+                {String.fromCharCode(65 + i)}. {opt}
+              </button>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-});
-
-// ==================== MODULES ====================
-const AttendanceModule = memo(function AttendanceModule() {
-  const [logIndex, setLogIndex] = useState(4);
-  const [filter, setFilter] = useState("all");
-  const { present, late, absent, total } = DEMO.todayAttendance;
-  const attPct = Math.round((present / total) * 100);
-  useEffect(() => {
-    const t = setInterval(() => {
-      setLogIndex(i => (i >= DEMO.attendanceLogs.length ? i : i + 1));
-    }, 1600);
-    return () => clearInterval(t);
-  }, []);
-  const logs = useMemo(() =>
-    DEMO.attendanceLogs.filter(l => filter === "all" || l.status === filter),
-    [filter]
-  );
-  return (
-    <div>
-      <SectionHeader
-        title="Today's Attendance"
-        subtitle={`Wednesday, June 3, 2026 · ${total} students enrolled`}
-        action={
-          <div style={{ display:"flex", alignItems:"center", gap:6, background:COLORS.greenMuted, border:`1px solid rgba(42,107,74,0.2)`, borderRadius:100, padding:"5px 12px" }}>
-            <span style={{ width:6, height:6, borderRadius:"50%", background:COLORS.green, animation:"pulse 1.5s infinite" }} />
-            <span style={{ fontSize:10, fontWeight:700, color:"#1B5C3A", letterSpacing:"0.07em" }}>AI LIVE</span>
           </div>
-        }
-      />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:24 }}>
-        <StatCard label="Present" value={present} sub={`${attPct}% of class`} color={COLORS.green} />
-        <StatCard label="Late"    value={late}    sub="students"              color={COLORS.amber} />
-        <StatCard label="Absent"  value={absent}  sub="students"              color={COLORS.red}   />
-        <StatCard label="Total"   value={total}   sub="enrolled"              color={COLORS.navy}  />
-      </div>
-      <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20, marginBottom:20 }}>
-        <div style={{ fontSize:13, fontWeight:600, marginBottom:14 }}>Weekly Trend</div>
-        <div style={{ display:"flex", alignItems:"flex-end", gap:12, height:80 }}>
-          {DEMO.weeklyTrend.map((d, i) => (
-            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-              <span style={{ fontSize:10, fontWeight:600, color:COLORS.green }}>{d.pct}%</span>
-              <div style={{ width:"100%", background:"rgba(42,107,74,0.1)", borderRadius:4, height:56, position:"relative" }}>
-                <div style={{ position:"absolute", bottom:0, left:0, right:0, background:`linear-gradient(to top,${COLORS.green},${COLORS.greenLight})`, borderRadius:4, height:`${d.pct}%`, transition:"height 1s ease" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 22 }}>
+            <Btn variant="outline" disabled={step === 0} onClick={() => setStep(s => s - 1)}>← Previous</Btn>
+            {step < total - 1 ? <Btn variant="green" disabled={answers[step] === undefined} onClick={() => setStep(s => s + 1)}>Next →</Btn> : <Btn variant="green" disabled={Object.keys(answers).length < total} onClick={() => setSubmitted(true)}>Submit Quiz</Btn>}
+          </div>
+        </>
+      ) : (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <div style={{ fontSize: 60, marginBottom: 14 }}>{score / total >= 0.8 ? "🏆" : score / total >= 0.5 ? "👍" : "📚"}</div>
+          <h2 style={{ fontSize: 28, fontWeight: 700, color: C.dark, marginBottom: 8, fontFamily: F.serif }}>Quiz Complete!</h2>
+          <p style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>You scored <strong style={{ color: C.green, fontSize: 20 }}>{score}/{total}</strong> ({Math.round((score / total) * 100)}%)</p>
+          <div style={{ background: C.bg, borderRadius: 10, padding: 14, marginBottom: 20, textAlign: "left" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 10 }}>REVIEW</div>
+            {quiz.questionsData.map((q, i) => (
+              <div key={i} style={{ padding: "8px 0", borderBottom: i < total - 1 ? `1px solid ${C.border}` : "none", fontSize: 12 }}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{i + 1}. {q.q}</div>
+                <div style={{ color: answers[i] === q.correct ? C.green : C.red }}>
+                  Your answer: {q.options[answers[i]] || "—"} {answers[i] === q.correct ? "✓" : `✗ (Correct: ${q.options[q.correct]})`}
+                </div>
               </div>
-              <span style={{ fontSize:10, color:COLORS.muted }}>{d.day}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{ background:"#0F0E0B", borderRadius:14, overflow:"hidden", border:"1px solid rgba(247,245,239,0.06)" }}>
-        <div style={{ padding:"12px 16px", background:"rgba(247,245,239,0.04)", borderBottom:"1px solid rgba(247,245,239,0.05)", display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ display:"flex", gap:6 }}>
-            {["#FF5F57","#FFBD2E","#28C840"].map((c,i) => <div key={i} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
+            ))}
           </div>
-          <span style={{ fontFamily:FONTS.mono, fontSize:11, color:"rgba(247,245,239,0.3)", marginLeft:8 }}>nexaattend — live recognition terminal</span>
-          <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6 }}>
-            <span style={{ width:6, height:6, borderRadius:"50%", background:COLORS.greenLight, animation:"pulse 1.5s infinite" }} />
-            <span style={{ fontFamily:FONTS.mono, fontSize:10, color:COLORS.greenLight }}>LIVE</span>
+          <Btn variant="green" onClick={onClose} style={{ justifyContent: "center", minWidth: 140 }}>Done</Btn>
+        </div>
+      )}
+    </Modal>
+  );
+});
+
+const LiveClassModal = memo(({ open, onClose, liveClass, course }) => {
+  if (!liveClass) return null;
+  const scheduledDate = new Date(liveClass.scheduledAt);
+  return (
+    <Modal open={open} onClose={onClose} title="Live Class Details" width={580}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+        <div style={{ width: 56, height: 56, borderRadius: 12, background: liveClass.status === "live" ? "rgba(239,68,68,0.1)" : C.greenMuted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>
+          {liveClass.status === "live" ? "🔴" : liveClass.status === "completed" ? "✓" : "📅"}
+        </div>
+        <div>
+          <Badge status={liveClass.status}>{liveClass.status.toUpperCase()}</Badge>
+          <h3 style={{ fontSize: 17, fontWeight: 700, fontFamily: F.serif, marginTop: 6 }}>{liveClass.title}</h3>
+          {course && <div style={{ fontSize: 12, color: C.muted }}>{course.title}</div>}
+        </div>
+      </div>
+      <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, marginBottom: 18 }}>{liveClass.description}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+        {[["Teacher", liveClass.teacher], ["Duration", `${liveClass.duration} min`], ["Scheduled", scheduledDate.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })], ["Attendees", `${liveClass.attendees}/${liveClass.maxAttendees}`]].map(([k, v]) => (
+          <div key={k} style={{ background: C.bg, borderRadius: 8, padding: "10px 14px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", marginBottom: 4 }}>{k}</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{v}</div>
           </div>
-        </div>
-        <div style={{ padding:"10px 16px", borderBottom:"1px solid rgba(247,245,239,0.05)", display:"flex", gap:8 }}>
-          {["all","present","late","absent"].map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{
-              padding:"3px 12px", borderRadius:100, border:"none", cursor:"pointer",
-              background: filter===f ? (f==="present"?"rgba(90,200,122,0.2)":f==="absent"?"rgba(239,68,68,0.2)":f==="late"?"rgba(245,158,11,0.2)":"rgba(247,245,239,0.1)") : "transparent",
-              color: filter===f ? (f==="present"?"#5AC87A":f==="absent"?"#EF4444":f==="late"?"#F59E0B":"rgba(247,245,239,0.8)") : "rgba(247,245,239,0.3)",
-              fontSize:11, fontWeight:600, textTransform:"capitalize", fontFamily:FONTS.sans,
-            }}>{f}</button>
-          ))}
-        </div>
-        <div style={{ padding:"8px", maxHeight:320, overflowY:"auto" }}>
-          {logs.slice(0, logIndex).map((l, i) => (
-            <div key={i} style={{
-              display:"flex", gap:14, padding:"8px", borderRadius:6,
-              borderBottom:"1px solid rgba(247,245,239,0.03)",
-              animation: i === logIndex-1 ? "fadeUp 0.4s ease" : "none",
-            }}>
-              <span style={{ fontFamily:FONTS.mono, fontSize:11, color:"rgba(247,245,239,0.3)", flexShrink:0, marginTop:1 }}>{l.time}</span>
-              <span style={{ color:"#F7F5EF", flex:1, fontSize:13, fontWeight:500 }}>{l.name}</span>
-              <span style={{ color:"rgba(247,245,239,0.4)", fontSize:12, flexShrink:0 }}>{l.cls}</span>
-              <span style={{ fontSize:11, fontWeight:700, flexShrink:0,
-                color: l.status==="present"?"#5AC87A":l.status==="late"?"#F59E0B":"#EF4444" }}>
-                {l.status==="present"?"✓ PRESENT":l.status==="late"?"⚠ LATE":"✗ ABSENT"}
-              </span>
-            </div>
-          ))}
-          {logIndex < DEMO.attendanceLogs.length && (
-            <div style={{ padding:"8px", fontFamily:FONTS.mono, fontSize:12, color:"rgba(247,245,239,0.2)", animation:"pulse 1s infinite" }}>▋</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const StudentModule = memo(function StudentModule() {
-  const [students, setStudents] = useState(DEMO.students);
-  const { query, setQuery, filtered } = useSearch(students, ["name","class","id","parent"]);
-  const { open: modalOpen, data: modalStudent, show: showModal, hide: hideModal } = useModal();
-  const { open: addOpen, show: showAdd, hide: hideAdd } = useModal();
-  const [classFilter, setClassFilter] = useState("all");
-  const classes = useMemo(() => ["all", ...new Set(students.map(s => s.class))], [students]);
-  const displayed = useMemo(() =>
-    classFilter === "all" ? filtered : filtered.filter(s => s.class === classFilter),
-    [filtered, classFilter]
-  );
-  const handleAddSave = useCallback(s => setStudents(prev => [s, ...prev]), []);
-  const columns = useMemo(() => [
-    { key:"name", label:"Student", render:(v,r) => (
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <Avatar name={v} size={30} />
-        <div>
-          <div style={{ fontWeight:600, fontSize:13 }}>{v}</div>
-          <div style={{ fontSize:11, color:COLORS.muted }}>{r.id}</div>
-        </div>
-      </div>
-    )},
-    { key:"class",      label:"Class",      muted:true },
-    { key:"rollNo",     label:"Roll",       mono:true, muted:true },
-    { key:"parent",     label:"Parent",     muted:true },
-    { key:"attendance", label:"Attendance", render:(v) => (
-      <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:90 }}>
-        <ProgressBar value={v} color={v>90?COLORS.green:COLORS.amber} height={4} />
-        <span style={{ fontSize:12, fontWeight:600, color:v>90?COLORS.green:COLORS.amber, minWidth:34 }}>{v}%</span>
-      </div>
-    )},
-    { key:"fees",   label:"Fees",   render:(v) => <Badge status={v}>{v}</Badge> },
-    { key:"status", label:"Status", render:(v) => <Badge status={v}>{v}</Badge> },
-  ], []);
-  return (
-    <div>
-      <SectionHeader
-        title="Student Management"
-        subtitle={`${students.length} students enrolled`}
-        action={<Btn variant="green" size="sm" onClick={showAdd}>+ Add Student</Btn>}
-      />
-      <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" }}>
-        <div style={{ flex:1, minWidth:200 }}>
-          <SearchBar value={query} onChange={setQuery} placeholder="Search students, parents…" />
-        </div>
-        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-          {classes.map(c => (
-            <button key={c} onClick={() => setClassFilter(c)} style={{
-              padding:"7px 14px", borderRadius:100, border:`1.5px solid ${classFilter===c?COLORS.green:COLORS.faint}`,
-              background:classFilter===c?COLORS.greenMuted:"transparent", color:classFilter===c?COLORS.green:COLORS.dark,
-              fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:FONTS.sans,
-            }}>{c === "all" ? "All Classes" : c}</button>
-          ))}
-        </div>
-      </div>
-      <DataTable columns={columns} data={displayed} onRowClick={showModal} />
-      <StudentModal open={modalOpen} onClose={hideModal} student={modalStudent} />
-      <AddStudentModal open={addOpen} onClose={hideAdd} onSave={handleAddSave} />
-    </div>
-  );
-});
-
-const StaffModule = memo(function StaffModule() {
-  const { query, setQuery, filtered } = useSearch(DEMO.staff, ["name","role","dept"]);
-  const { open, data, show, hide } = useModal();
-  const columns = useMemo(() => [
-    { key:"name", label:"Staff Member", render:(v,r) => (
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <Avatar name={v} size={32} color={COLORS.navy} />
-        <div>
-          <div style={{ fontWeight:600 }}>{v}</div>
-          <div style={{ fontSize:11, color:COLORS.muted }}>{r.id}</div>
-        </div>
-      </div>
-    )},
-    { key:"role",       label:"Role",       muted:true },
-    { key:"dept",       label:"Department", muted:true },
-    { key:"phone",      label:"Phone",      mono:true, muted:true },
-    { key:"salary",     label:"Salary",     render:(v) => <span style={{ fontWeight:600, color:COLORS.green }}>{fmtINR(v)}</span> },
-    { key:"attendance", label:"Attendance", render:(v) => <span style={{ fontWeight:600, color:v>95?COLORS.green:COLORS.amber }}>{v}%</span> },
-    { key:"status",     label:"Status",     render:(v) => <Badge status={v}>{v}</Badge> },
-  ], []);
-  return (
-    <div>
-      <SectionHeader
-        title="Staff & HR"
-        subtitle={`${DEMO.staff.length} staff members`}
-        action={<Btn variant="green" size="sm">+ Add Staff</Btn>}
-      />
-      <div style={{ marginBottom:16 }}>
-        <SearchBar value={query} onChange={setQuery} placeholder="Search by name, role, department…" />
-      </div>
-      <div className="nexa-stat-cards" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:20 }}>
-        <StatCard label="Total Staff"     value={DEMO.staff.length} color={COLORS.navy}   />
-        <StatCard label="Present Today"   value={5} sub="out of 6"  color={COLORS.green}  />
-        <StatCard label="On Leave"        value={1}                 color={COLORS.amber}  />
-        <StatCard label="Avg. Attendance" value="96%"               color={COLORS.purple} />
-      </div>
-      <DataTable columns={columns} data={filtered} onRowClick={show} />
-      <StaffModal open={open} onClose={hide} staff={data} />
-    </div>
-  );
-});
-
-const LeaveModule = memo(function LeaveModule() {
-  const [leaves, setLeaves] = useState(DEMO.leaveRequests);
-  const [filter, setFilter] = useState("all");
-  const displayed = useMemo(() =>
-    filter === "all" ? leaves : leaves.filter(l => l.status.toLowerCase() === filter),
-    [leaves, filter]
-  );
-  const approve = useCallback((id) => setLeaves(prev => prev.map(l => l.id===id ? {...l,status:"Approved"} : l)), []);
-  const reject  = useCallback((id) => setLeaves(prev => prev.map(l => l.id===id ? {...l,status:"Rejected"} : l)), []);
-  const stats = useMemo(() => ({
-    total:    leaves.length,
-    pending:  leaves.filter(l => l.status==="Pending").length,
-    approved: leaves.filter(l => l.status==="Approved").length,
-    rejected: leaves.filter(l => l.status==="Rejected").length,
-  }), [leaves]);
-  return (
-    <div>
-      <SectionHeader title="Leave Management" subtitle="Staff leave requests & approvals" />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:20 }}>
-        <StatCard label="Total Requests" value={stats.total}    color={COLORS.navy}  />
-        <StatCard label="Pending"        value={stats.pending}  color={COLORS.amber} />
-        <StatCard label="Approved"       value={stats.approved} color={COLORS.green} />
-        <StatCard label="Rejected"       value={stats.rejected} color={COLORS.red}   />
-      </div>
-      <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-        {["all","pending","approved"].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{
-            padding:"6px 16px", borderRadius:100, border:`1.5px solid ${filter===f?COLORS.green:COLORS.faint}`,
-            background:filter===f?COLORS.greenMuted:"transparent", color:filter===f?COLORS.green:COLORS.dark,
-            fontSize:12, fontWeight:600, cursor:"pointer", textTransform:"capitalize", fontFamily:FONTS.sans,
-          }}>{f}</button>
         ))}
       </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-        {displayed.length === 0 && <EmptyState title="No leave requests" />}
-        {displayed.map(l => (
-          <div key={l.id} style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:"16px 20px" }}>
-            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <Avatar name={l.name} size={38} color={COLORS.navy} />
+      <Btn variant={liveClass.status === "completed" ? "outline" : "green"} style={{ width: "100%", justifyContent: "center" }} onClick={onClose}>
+        {liveClass.status === "live" ? "🎥 Join Live Class" : liveClass.status === "completed" ? "📼 Watch Recording" : "🔔 Add to Calendar"}
+      </Btn>
+    </Modal>
+  );
+});
+
+// ==================== LMS SUB-MODULES ====================
+const LMSDashboard = memo(({ onOpenCourse, onOpenLiveClass, onOpenQuiz, courses }) => {
+  const enrolled = courses.filter(c => c.enrolled2);
+  const upcoming = DEMO_LMS.liveClasses.filter(l => l.status !== "completed").length;
+  const completed = DEMO_LMS.quizzes.filter(q => q.status === "completed").length;
+  const avgProgress = Math.round(enrolled.reduce((a, c) => a + c.progress, 0) / enrolled.length);
+  return (
+    <div>
+      <SectionHeader title="Learning Dashboard" subtitle="Your learning journey at a glance" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Enrolled Courses" value={enrolled.length} color={C.navy} />
+        <StatCard label="Avg. Progress" value={`${avgProgress}%`} color={C.green} />
+        <StatCard label="Upcoming Classes" value={upcoming} color={C.amber} />
+        <StatCard label="Quizzes Completed" value={completed} color={C.purple} />
+      </div>
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, fontFamily: F.serif }}>Continue Learning</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
+          {enrolled.slice(0, 3).map(c => (
+            <div key={c.id} onClick={() => onOpenCourse(c)} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden", cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-3px)"} onMouseLeave={e => e.currentTarget.style.transform = ""}>
+              <div style={{ height: 80, background: c.cover, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>{c.thumbnail}</div>
+              <div style={{ padding: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{c.title}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>Next: {c.nextLesson || "Start learning"}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <ProgressBar value={c.progress} color={c.color} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: c.color }}>{c.progress}%</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, fontFamily: F.serif }}>Upcoming Live Classes</h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {DEMO_LMS.liveClasses.filter(l => l.status !== "completed").slice(0, 3).map(lc => {
+            const course = courses.find(c => c.id === lc.courseId);
+            return (
+              <div key={lc.id} onClick={() => onOpenLiveClass(lc, course)} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                <div style={{ width: 42, height: 42, borderRadius: 10, background: lc.status === "live" ? "rgba(239,68,68,0.1)" : C.greenMuted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{lc.status === "live" ? "🔴" : "📅"}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lc.title}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{lc.teacher} · {new Date(lc.scheduledAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                </div>
+                <Badge status={lc.status}>{lc.status}</Badge>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const LMSCourses = memo(({ courses, onOpenCourse, onEnroll }) => {
+  const [subject, setSubject] = useState("all");
+  const [level, setLevel] = useState("all");
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => courses.filter(c =>
+    (subject === "all" || c.subject === subject) &&
+    (level === "all" || c.grade === level) &&
+    (!search || c.title.toLowerCase().includes(search.toLowerCase()) || c.tags.some(t => t.toLowerCase().includes(search.toLowerCase())))
+  ), [courses, subject, level, search]);
+  return (
+    <div>
+      <SectionHeader title="Course Catalog" subtitle={`${filtered.length} courses available`} />
+      <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200 }}><SearchBar value={search} onChange={setSearch} placeholder="Search courses, topics…" /></div>
+        <select value={level} onChange={e => setLevel(e.target.value)} style={{ padding: "8px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 12, fontFamily: F.sans, background: C.bg, cursor: "pointer" }}>
+          {LMS_LEVELS.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
+        </select>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
+        {LMS_SUBJECTS.map(s => (
+          <button key={s.id} onClick={() => setSubject(s.id)} style={{ padding: "6px 14px", borderRadius: 100, border: `1.5px solid ${subject === s.id ? s.color : C.faint}`, background: subject === s.id ? `${s.color}15` : "transparent", color: subject === s.id ? s.color : C.dark, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F.sans }}>{s.label}</button>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 16 }}>
+        {filtered.map(c => (
+          <div key={c.id} onClick={() => onOpenCourse(c)} style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, overflow: "hidden", cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 12px 30px rgba(0,0,0,0.08)"; }} onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
+            <div style={{ height: 100, background: c.cover, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, position: "relative" }}>
+              {c.thumbnail}
+              {c.live && <span style={{ position: "absolute", top: 8, right: 8, background: C.red, color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 100, letterSpacing: "0.07em" }}>● LIVE</span>}
+              {c.enrolled2 && <span style={{ position: "absolute", top: 8, left: 8, background: "rgba(42,107,74,0.9)", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 100 }}>✓ ENROLLED</span>}
+            </div>
+            <div style={{ padding: 16 }}>
+              <div style={{ fontSize: 11, color: c.color, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>{c.subjectLabel} · Class {c.grade}</div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, marginTop: 4, marginBottom: 4, fontFamily: F.serif }}>{c.title}</h3>
+              <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, marginBottom: 12, minHeight: 36 }}>{c.subtitle}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                <span>{c.lessons} lessons · {c.modules} modules</span>
+                <span>⭐ {c.rating} ({c.reviews})</span>
+              </div>
+              {c.enrolled2 ? (
                 <div>
-                  <div style={{ fontWeight:700, fontSize:14 }}>{l.name}</div>
-                  <div style={{ fontSize:12, color:COLORS.muted, marginTop:2 }}>
-                    {l.type} Leave · {fmtDate(l.from)} – {fmtDate(l.to)} · {l.days} day{l.days>1?"s":""}
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 11 }}>
+                    <span style={{ color: C.muted }}>Progress</span>
+                    <span style={{ fontWeight: 700, color: c.color }}>{c.progress}%</span>
                   </div>
-                  <div style={{ fontSize:12, color:"rgba(28,27,23,0.6)", marginTop:4, fontStyle:"italic" }}>"{l.reason}"</div>
+                  <ProgressBar value={c.progress} color={c.color} height={5} />
                 </div>
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <Badge status={l.status}>{l.status}</Badge>
-                {l.status === "Pending" && (
-                  <>
-                    <Btn variant="green"   size="sm" onClick={() => approve(l.id)}>Approve</Btn>
-                    <Btn variant="outline" size="sm" onClick={() => reject(l.id)}>Reject</Btn>
-                  </>
-                )}
-              </div>
+              ) : (
+                <Btn variant="green" size="sm" style={{ width: "100%", justifyContent: "center" }} onClick={(e) => { e.stopPropagation(); onEnroll(c); }}>Enroll Free</Btn>
+              )}
             </div>
           </div>
         ))}
       </div>
+      {filtered.length === 0 && <EmptyState title="No courses found" subtitle="Try adjusting your filters" />}
     </div>
   );
 });
 
-const PayrollModule = memo(function PayrollModule() {
-  const [payroll] = useState(DEMO.payroll);
-  const { query, setQuery, filtered } = useSearch(payroll, ["name","id"]);
-  const totals = useMemo(() => ({
-    gross:      payroll.reduce((s,p) => s+p.salary,0),
-    deductions: payroll.reduce((s,p) => s+p.deductions+p.lop,0),
-    net:        payroll.reduce((s,p) => s+p.net,0),
-    processed:  payroll.filter(p => p.status==="Processed").length,
-  }), [payroll]);
-  const columns = useMemo(() => [
-    { key:"name", label:"Employee", render:(v,r) => (
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <Avatar name={v} size={30} color={COLORS.navy} />
-        <div><div style={{ fontWeight:600 }}>{v}</div><div style={{ fontSize:11, color:COLORS.muted }}>{r.id}</div></div>
-      </div>
-    )},
-    { key:"salary",     label:"Gross Salary",  render:(v) => fmtINR(v) },
-    { key:"present",    label:"Days Present",   mono:true },
-    { key:"absent",     label:"Absent",         mono:true, muted:true },
-    { key:"lop",        label:"LOP Deduct.",    render:(v) => <span style={{ color:v>0?COLORS.red:"inherit" }}>{fmtINR(v)}</span> },
-    { key:"deductions", label:"PF / ESI",       render:(v) => fmtINR(v), muted:true },
-    { key:"net",        label:"Net Pay",        render:(v) => <span style={{ fontWeight:700, color:COLORS.green }}>{fmtINR(v)}</span> },
-    { key:"status",     label:"Status",         render:(v) => <Badge status={v}>{v}</Badge> },
-  ], []);
+const LMSMyLearning = memo(({ courses, onOpenCourse, onOpenQuiz }) => {
+  const enrolled = courses.filter(c => c.enrolled2);
   return (
     <div>
-      <SectionHeader
-        title="Payroll – June 2026"
-        subtitle="Monthly payroll auto-calculated from attendance"
-        action={<Btn variant="green" size="sm">Process All Salaries</Btn>}
-      />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:20 }}>
-        <StatCard label="Gross Payroll"    value={fmtINR(totals.gross)}      color={COLORS.navy}   />
-        <StatCard label="Total Deductions" value={fmtINR(totals.deductions)} color={COLORS.amber}  />
-        <StatCard label="Net Payable"      value={fmtINR(totals.net)}        color={COLORS.green}  />
-        <StatCard label="Processed"        value={`${totals.processed}/${payroll.length}`} color={COLORS.purple} />
-      </div>
-      <div style={{ background:"rgba(42,107,74,0.06)", border:`1px solid rgba(42,107,74,0.15)`, borderRadius:10, padding:"12px 16px", marginBottom:16 }}>
-        <p style={{ fontSize:13, color:"#1B4D3E", lineHeight:1.7 }}>
-          💡 <strong>Auto-calculation:</strong> Loss of pay (LOP) is calculated from absent days. PF = 3% of gross. ESI included for staff below ₹21,000/mo.
-        </p>
-      </div>
-      <div style={{ marginBottom:14 }}>
-        <SearchBar value={query} onChange={setQuery} placeholder="Search employees…" />
-      </div>
-      <DataTable columns={columns} data={filtered} />
-    </div>
-  );
-});
-
-const FeeModule = memo(function FeeModule() {
-  const [fees] = useState(DEMO.fees);
-  const { query, setQuery, filtered } = useSearch(fees, ["name","class","id"]);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const totals = useMemo(() => ({
-    annual:    fees.reduce((s,f) => s+f.annual,0),
-    collected: fees.reduce((s,f) => s+f.paid,0),
-    pending:   fees.reduce((s,f) => s+f.due,0),
-  }), [fees]);
-  const collPct = Math.round((totals.collected / totals.annual) * 100);
-  const displayed = useMemo(() =>
-    statusFilter==="all" ? filtered : filtered.filter(f => f.status===statusFilter),
-    [filtered, statusFilter]
-  );
-  const columns = useMemo(() => [
-    { key:"name", label:"Student", render:(v,r) => (
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <Avatar name={v} size={30} />
-        <div><div style={{ fontWeight:600 }}>{v}</div><div style={{ fontSize:11, color:COLORS.muted }}>{r.class}</div></div>
-      </div>
-    )},
-    { key:"annual", label:"Annual Fee",   render:(v) => fmtINR(v) },
-    { key:"paid",   label:"Paid",         render:(v) => <span style={{ color:COLORS.green, fontWeight:600 }}>{fmtINR(v)}</span> },
-    { key:"due",    label:"Pending",      render:(v) => <span style={{ color:v>0?COLORS.red:COLORS.muted, fontWeight:v>0?700:400 }}>{v>0?fmtINR(v):"—"}</span> },
-    { key:"last",   label:"Last Payment", muted:true },
-    { key:"status", label:"Status",       render:(v) => <Badge status={v}>{v}</Badge> },
-    { key:"id",     label:"Action",       render:(_,r) => r.due > 0 ? (
-      <Btn variant="outline" size="sm">Send Reminder</Btn>
-    ) : <span style={{ fontSize:12, color:COLORS.muted }}>—</span> },
-  ], []);
-  return (
-    <div>
-      <SectionHeader
-        title="Fee Management"
-        subtitle="Annual fee tracking and collections"
-        action={<Btn variant="green" size="sm">Record Payment</Btn>}
-      />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:20 }}>
-        <StatCard label="Total Annual Fees" value={fmtINR(totals.annual)}    color={COLORS.navy}  />
-        <StatCard label="Collected"         value={fmtINR(totals.collected)} color={COLORS.green} accent={`${collPct}% rate`} />
-        <StatCard label="Pending"           value={fmtINR(totals.pending)}   color={COLORS.red}   />
-        <StatCard label="Defaulters"        value={fees.filter(f=>f.due>0).length} sub="students" color={COLORS.amber} />
-      </div>
-      <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20, marginBottom:20 }}>
-        <div style={{ fontSize:13, fontWeight:600, marginBottom:10 }}>Collection Rate · {collPct}%</div>
-        <div style={{ height:10, background:"rgba(28,27,23,0.06)", borderRadius:10 }}>
-          <div style={{ height:"100%", width:`${collPct}%`, background:`linear-gradient(to right,${COLORS.green},${COLORS.greenLight})`, borderRadius:10, transition:"width 1s ease" }} />
-        </div>
-        <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, fontSize:12, color:COLORS.muted }}>
-          <span>Collected: {fmtINR(totals.collected)}</span>
-          <span>Target: {fmtINR(totals.annual)}</span>
-        </div>
-      </div>
-      <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
-        <div style={{ flex:1, minWidth:200 }}>
-          <SearchBar value={query} onChange={setQuery} placeholder="Search students…" />
-        </div>
-        {["all","Paid","Partial","Due"].map(s => (
-          <button key={s} onClick={() => setStatusFilter(s)} style={{
-            padding:"7px 14px", borderRadius:100, border:`1.5px solid ${statusFilter===s?COLORS.green:COLORS.faint}`,
-            background:statusFilter===s?COLORS.greenMuted:"transparent", color:statusFilter===s?COLORS.green:COLORS.dark,
-            fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:FONTS.sans,
-          }}>{s==="all"?"All":s}</button>
-        ))}
-      </div>
-      <DataTable columns={columns} data={displayed} />
-    </div>
-  );
-});
-
-const ExamModule = memo(function ExamModule() {
-  const [exams] = useState(DEMO.exams);
-  return (
-    <div>
-      <SectionHeader
-        title="Exam Schedule"
-        subtitle="Academic year 2025–26 examination calendar"
-        action={<Btn variant="green" size="sm">+ Schedule Exam</Btn>}
-      />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:20 }}>
-        <StatCard label="Total Exams" value={exams.length}                                     color={COLORS.navy}   />
-        <StatCard label="Upcoming"    value={exams.filter(e=>e.status==="Upcoming").length}    color={COLORS.amber}  />
-        <StatCard label="Scheduled"   value={exams.filter(e=>e.status==="Scheduled").length}   color={COLORS.purple} />
-        <StatCard label="Completed"   value={exams.filter(e=>e.status==="Completed").length}   color={COLORS.green}  />
-      </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-        {exams.map(e => (
-          <div key={e.id} style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:"18px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-              <div style={{ width:44, height:44, borderRadius:10, background:statusBg(e.status), display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>📋</div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:15, fontFamily:FONTS.serif }}>{e.name}</div>
-                <div style={{ fontSize:12, color:COLORS.muted, marginTop:3 }}>
-                  {e.date} · Classes: {e.classes} · {e.subjects} subjects · Max Marks: {e.maxMarks}
+      <SectionHeader title="My Learning" subtitle={`${enrolled.length} active courses`} />
+      {enrolled.length === 0 ? (
+        <EmptyState icon="📚" title="No active courses" subtitle="Enroll in a course from the catalog to start learning" />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {enrolled.map(c => (
+            <div key={c.id} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 18, display: "flex", gap: 16, alignItems: "center" }} className="nexa-my-learning-card">
+              <div style={{ width: 70, height: 70, borderRadius: 12, background: c.cover, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>{c.thumbnail}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 6 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, fontFamily: F.serif }}>{c.title}</h3>
+                  <span style={{ fontSize: 11, color: C.muted }}>Last accessed: {c.lastAccessed}</span>
                 </div>
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>{c.teacher} · {c.lessons} lessons</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <ProgressBar value={c.progress} color={c.color} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: c.color, minWidth: 36 }}>{c.progress}%</span>
+                </div>
+                {c.nextLesson && <div style={{ fontSize: 11, color: C.dark, marginTop: 6 }}>📌 Next: {c.nextLesson}</div>}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                <Btn variant="green" size="sm" onClick={() => onOpenCourse(c)}>Continue</Btn>
+                <Btn variant="outline" size="sm" onClick={() => { const q = DEMO_LMS.quizzes.find(q => q.courseId === c.id); if (q) onOpenQuiz(q); }}>Take Quiz</Btn>
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <Badge status={e.status}>{e.status}</Badge>
-              <Btn variant="outline" size="sm">View Details</Btn>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop:20, background:"rgba(26,43,74,0.06)", border:`1px solid rgba(26,43,74,0.15)`, borderRadius:10, padding:"14px 18px" }}>
-        <p style={{ fontSize:13, color:COLORS.navy, lineHeight:1.7 }}>
-          📅 <strong>Next exam:</strong> Class Test – June 10, 2026 for Class VIII. Parents have been notified via WhatsApp.
-        </p>
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
 
-const AssignmentModule = memo(function AssignmentModule() {
-  const [assignments] = useState(DEMO.assignments);
-  const { query, setQuery, filtered } = useSearch(assignments, ["title","class","subject","teacher"]);
+const LMSQuizzes = memo(({ onOpenQuiz, courses }) => {
+  const [filter, setFilter] = useState("all");
+  const filtered = useMemo(() => DEMO_LMS.quizzes.filter(q => filter === "all" || q.status === filter), [filter]);
   return (
     <div>
-      <SectionHeader
-        title="Assignments"
-        subtitle="Track submissions and pending work"
-        action={<Btn variant="green" size="sm">+ New Assignment</Btn>}
-      />
-      <div style={{ marginBottom:16 }}>
-        <SearchBar value={query} onChange={setQuery} placeholder="Search assignments, classes, teachers…" />
+      <SectionHeader title="Quizzes & Tests" subtitle="Test your knowledge" />
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {["all", "available", "completed", "locked"].map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: 100, border: `1.5px solid ${filter === f ? C.green : C.faint}`, background: filter === f ? C.greenMuted : "transparent", color: filter === f ? C.green : C.dark, fontSize: 12, fontWeight: 600, cursor: "pointer", textTransform: "capitalize", fontFamily: F.sans }}>{f}</button>
+        ))}
       </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-        {filtered.map(a => {
-          const pct = Math.round((a.submitted/a.total)*100);
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
+        {filtered.map(q => {
+          const course = courses.find(c => c.id === q.courseId);
           return (
-            <div key={a.id} style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:"18px 22px" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14, flexWrap:"wrap", gap:8 }}>
-                <div>
-                  <div style={{ fontWeight:700, fontSize:15 }}>{a.title}</div>
-                  <div style={{ fontSize:12, color:COLORS.muted, marginTop:3 }}>
-                    {a.class} · {a.subject} · {a.teacher} · Due: <strong>{a.due}</strong>
-                  </div>
-                </div>
-                <div style={{ textAlign:"right" }}>
-                  <div style={{ fontSize:20, fontWeight:700, color:COLORS.green, fontFamily:FONTS.serif }}>{a.submitted}/{a.total}</div>
-                  <div style={{ fontSize:11, color:COLORS.muted }}>submitted</div>
-                </div>
+            <div key={q.id} onClick={() => q.status !== "locked" && onOpenQuiz(q)} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 18, cursor: q.status === "locked" ? "not-allowed" : "pointer", opacity: q.status === "locked" ? 0.6 : 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <Badge status={q.difficulty}>{q.difficulty}</Badge>
+                <Badge status={q.status}>{q.status}</Badge>
               </div>
-              <ProgressBar value={pct} color={pct===100?COLORS.green:pct>70?COLORS.amber:COLORS.red} />
-              <div style={{ display:"flex", justifyContent:"space-between", marginTop:6, fontSize:11, color:COLORS.muted }}>
-                <span>{pct}% submitted</span>
-                <span>{a.total-a.submitted} pending</span>
+              <h3 style={{ fontSize: 15, fontWeight: 700, fontFamily: F.serif, marginBottom: 6 }}>{q.title}</h3>
+              {course && <div style={{ fontSize: 11, color: course.color, fontWeight: 600, marginBottom: 8 }}>{course.title}</div>}
+              <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, marginBottom: 12 }}>{q.description}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, fontSize: 11, marginBottom: 12 }}>
+                {[["Q", q.questions], ["Mins", q.duration], ["Marks", q.totalMarks]].map(([k, v]) => (
+                  <div key={k} style={{ background: C.bg, borderRadius: 6, padding: "6px 8px", textAlign: "center" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>{v}</div>
+                    <div style={{ color: C.muted, fontSize: 10 }}>{k}</div>
+                  </div>
+                ))}
+              </div>
+              {q.status === "completed" && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: C.greenMuted, borderRadius: 8, fontSize: 12 }}>
+                  <span style={{ color: "#1B5C3A" }}>Best: <strong>{q.bestScore}%</strong></span>
+                  <span style={{ color: "#1B5C3A" }}>Last: <strong>{q.lastScore}%</strong></span>
+                </div>
+              )}
+              {q.status === "available" && <Btn variant="green" size="sm" style={{ width: "100%", justifyContent: "center" }}>Start Quiz →</Btn>}
+              {q.status === "locked" && <div style={{ textAlign: "center", fontSize: 11, color: C.muted }}>🔒 Enroll in the course to unlock</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+const LMSLiveClasses = memo(({ onOpenLiveClass, courses }) => {
+  const [filter, setFilter] = useState("all");
+  const filtered = useMemo(() => DEMO_LMS.liveClasses.filter(l => filter === "all" || l.status === filter), [filter]);
+  return (
+    <div>
+      <SectionHeader title="Live Classes" subtitle="Join interactive sessions with teachers" />
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {["all", "live", "upcoming", "completed"].map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: 100, border: `1.5px solid ${filter === f ? C.green : C.faint}`, background: filter === f ? C.greenMuted : "transparent", color: filter === f ? C.green : C.dark, fontSize: 12, fontWeight: 600, cursor: "pointer", textTransform: "capitalize", fontFamily: F.sans }}>{f}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {filtered.map(lc => {
+          const course = courses.find(c => c.id === lc.courseId);
+          return (
+            <div key={lc.id} onClick={() => onOpenLiveClass(lc, course)} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 18, cursor: "pointer", display: "flex", gap: 16, alignItems: "center" }}>
+              <div style={{ width: 60, height: 60, borderRadius: 12, background: lc.status === "live" ? "rgba(239,68,68,0.1)" : lc.status === "completed" ? C.greenMuted : "rgba(26,43,74,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
+                {lc.status === "live" ? "🔴" : lc.status === "completed" ? "✓" : "📅"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                  <Badge status={lc.status}>{lc.status === "live" ? "● LIVE NOW" : lc.status.toUpperCase()}</Badge>
+                  {course && <span style={{ fontSize: 11, color: course.color, fontWeight: 600 }}>{course.subjectLabel}</span>}
+                </div>
+                <h3 style={{ fontSize: 15, fontWeight: 700, fontFamily: F.serif, marginBottom: 4 }}>{lc.title}</h3>
+                <div style={{ fontSize: 12, color: C.muted }}>{lc.teacher} · {new Date(lc.scheduledAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })} · {lc.duration} min</div>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{lc.attendees}/{lc.maxAttendees}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>attending</div>
               </div>
             </div>
           );
@@ -1427,80 +915,37 @@ const AssignmentModule = memo(function AssignmentModule() {
   );
 });
 
-const ParentPortal = memo(function ParentPortal() {
-  const student = DEMO.students[0];
-  const feeInfo = DEMO.fees[0];
+const LMSLibrary = memo(() => {
+  const [subject, setSubject] = useState("all");
+  const filtered = useMemo(() => DEMO_LMS.library.filter(l => subject === "all" || l.subject === subject), [subject]);
   return (
     <div>
-      <SectionHeader title="Parent Portal" subtitle="Parent-facing view for Arjun Mehta (Demo)" />
-      <div style={{ background:"rgba(42,107,74,0.06)", border:`1px solid rgba(42,107,74,0.15)`, borderRadius:12, padding:"16px 20px", marginBottom:20 }}>
-        <p style={{ fontSize:13, color:"#1B4D3E", lineHeight:1.7 }}>
-          📱 <strong>Note:</strong> In production, parents log in separately and see only their child's data. WhatsApp alerts are sent automatically.
-        </p>
+      <SectionHeader title="Digital Library" subtitle={`${filtered.length} study materials available`} />
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {[{ id: "all", label: "All" }, ...LMS_SUBJECTS.filter(s => s.id !== "all")].map(s => (
+          <button key={s.id} onClick={() => setSubject(s.id)} style={{ padding: "6px 14px", borderRadius: 100, border: `1.5px solid ${subject === s.id ? s.color : C.faint}`, background: subject === s.id ? `${s.color}15` : "transparent", color: subject === s.id ? s.color : C.dark, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F.sans }}>{s.label}</button>
+        ))}
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
-        <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-          <div style={{ fontWeight:700, fontSize:14, marginBottom:14, fontFamily:FONTS.serif }}>Child Overview</div>
-          <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16 }}>
-            <Avatar name={student.name} size={48} />
-            <div>
-              <div style={{ fontWeight:700, fontSize:16 }}>{student.name}</div>
-              <div style={{ fontSize:13, color:COLORS.muted }}>Class {student.class} · Roll #{student.rollNo}</div>
-            </div>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {[
-              ["Attendance",`${student.attendance}%`,student.attendance>90?COLORS.green:COLORS.amber],
-              ["Fee Status",student.fees,student.fees==="Paid"?COLORS.green:COLORS.red],
-              ["Status",student.status,COLORS.green],
-            ].map(([k,v,c]) => (
-              <div key={k} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:13, color:COLORS.muted }}>{k}</span>
-                <span style={{ fontSize:13, fontWeight:600, color:c }}>{v}</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14 }}>
+        {filtered.map(item => (
+          <div key={item.id} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 16 }}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 50, height: 60, background: C.bg, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{item.cover}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Badge status={item.type === "pdf" ? "info" : "live"}>{item.type.toUpperCase()}</Badge>
+                <h3 style={{ fontSize: 13, fontWeight: 700, marginTop: 6, lineHeight: 1.35 }}>{item.title}</h3>
               </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-          <div style={{ fontWeight:700, fontSize:14, marginBottom:14, fontFamily:FONTS.serif }}>Fee Summary</div>
-          {[
-            ["Annual Fee",  fmtINR(feeInfo.annual)],
-            ["Paid",        fmtINR(feeInfo.paid)],
-            ["Pending",     fmtINR(feeInfo.due)],
-            ["Last Payment",fmtDate(feeInfo.last)],
-          ].map(([k,v]) => (
-            <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${COLORS.border}` }}>
-              <span style={{ fontSize:13, color:COLORS.muted }}>{k}</span>
-              <span style={{ fontSize:13, fontWeight:600 }}>{v}</span>
             </div>
-          ))}
-          <Btn variant="green" style={{ width:"100%", justifyContent:"center", marginTop:14 }}>Pay Online</Btn>
-        </div>
-      </div>
-      <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20, marginBottom:16 }}>
-        <div style={{ fontWeight:700, fontSize:14, marginBottom:14, fontFamily:FONTS.serif }}>Recent Attendance (This Week)</div>
-        <div style={{ display:"flex", gap:10 }}>
-          {["Mon","Tue","Wed","Thu","Fri"].map((d,i) => (
-            <div key={d} style={{ flex:1, textAlign:"center" }}>
-              <div style={{ width:40, height:40, borderRadius:"50%", margin:"0 auto 6px", display:"flex", alignItems:"center", justifyContent:"center",
-                background:i===4?"rgba(245,158,11,0.15)":"rgba(42,107,74,0.12)",
-                border:`2px solid ${i===4?COLORS.amber:COLORS.green}` }}>
-                <span style={{ fontSize:14 }}>{i===4?"⚠":"✓"}</span>
-              </div>
-              <div style={{ fontSize:11, fontWeight:600, color:COLORS.muted }}>{d}</div>
+            <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, marginBottom: 12 }}>{item.description}</p>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              <span>📦 {item.size}</span>
+              {item.pages && <span>📄 {item.pages} pages</span>}
+              <span>⬇ {item.downloads}</span>
             </div>
-          ))}
-        </div>
-      </div>
-      <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-        <div style={{ fontWeight:700, fontSize:14, marginBottom:14, fontFamily:FONTS.serif }}>Upcoming Assignments</div>
-        {DEMO.assignments.slice(0,3).map(a => (
-          <div key={a.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:`1px solid ${COLORS.border}` }}>
-            <div>
-              <div style={{ fontSize:13, fontWeight:500 }}>{a.title}</div>
-              <div style={{ fontSize:11, color:COLORS.muted }}>Due: {a.due}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: C.amber, fontWeight: 600 }}>⭐ {item.rating}</span>
+              <Btn variant="green" size="sm">Download</Btn>
             </div>
-            <Badge status="Pending">Pending</Badge>
           </div>
         ))}
       </div>
@@ -1508,1607 +953,650 @@ const ParentPortal = memo(function ParentPortal() {
   );
 });
 
-const NotificationCenter = memo(function NotificationCenter() {
-  const [notifs, setNotifs] = useState(DEMO.notifications);
-  const [filter, setFilter] = useState("all");
-  const markRead = useCallback((id) =>
-    setNotifs(prev => prev.map(n => n.id===id ? {...n,read:true} : n)), []);
-  const markAll  = useCallback(() =>
-    setNotifs(prev => prev.map(n => ({...n,read:true}))), []);
-  const displayed = filter==="all" ? notifs : notifs.filter(n => !n.read);
-  const unread    = notifs.filter(n => !n.read).length;
-  const typeIcon  = { alert:"🔔", info:"ℹ️", warning:"⚠️", success:"✅" };
+const LMSGradebook = memo(() => {
   return (
     <div>
-      <SectionHeader
-        title="Notification Center"
-        subtitle={`${unread} unread notification${unread!==1?"s":""}`}
-        action={<Btn variant="outline" size="sm" onClick={markAll}>Mark All Read</Btn>}
-      />
-      <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-        {["all","unread"].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{
-            padding:"6px 16px", borderRadius:100, border:`1.5px solid ${filter===f?COLORS.green:COLORS.faint}`,
-            background:filter===f?COLORS.greenMuted:"transparent", color:filter===f?COLORS.green:COLORS.dark,
-            fontSize:12, fontWeight:600, cursor:"pointer", textTransform:"capitalize", fontFamily:FONTS.sans,
-          }}>{f} {f==="unread"&&unread>0?`(${unread})`:""}</button>
-        ))}
+      <SectionHeader title="Gradebook" subtitle="Your academic performance by subject" action={<Btn variant="green" size="sm">+ Add Marks</Btn>} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 22 }}>
+        <StatCard label="Overall Average" value="84.4%" color={C.green} accent="Excellent" />
+        <StatCard label="Highest Score" value="98%" sub="in Computer Science" color={C.navy} />
+        <StatCard label="Class Rank" value="3rd" sub="of 45 students" color={C.purple} />
+        <StatCard label="Subjects" value={DEMO_LMS.gradebook.length} color={C.amber} />
       </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-        {displayed.length===0 && <EmptyState icon="🔔" title="All caught up!" subtitle="No notifications to show." />}
-        {displayed.map(n => (
-          <div key={n.id} onClick={() => markRead(n.id)} style={{
-            background:n.read?COLORS.surface:"rgba(42,107,74,0.04)",
-            borderRadius:10, border:`1px solid ${n.read?COLORS.border:"rgba(42,107,74,0.18)"}`,
-            padding:"14px 16px", cursor:"pointer", transition:"all 0.18s",
-          }}>
-            <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-              <span style={{ fontSize:20, flexShrink:0, marginTop:1 }}>{typeIcon[n.type]}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                  <span style={{ fontWeight:n.read?500:700, fontSize:13 }}>{n.title}</span>
-                  <span style={{ fontSize:11, color:COLORS.muted }}>{n.time}</span>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 22, marginBottom: 18 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, fontFamily: F.serif }}>Subject-wise Performance</h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {DEMO_LMS.gradebook.map((g, i) => (
+            <div key={i}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{g.subject}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 11, color: C.muted }}>T1: {g.term1} | T2: {g.term2} | T3: {g.term3}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>{g.overall}%</span>
+                  <Badge status={g.grade === "A+" ? "live" : g.grade.startsWith("A") ? "present" : "warning"}>{g.grade}</Badge>
                 </div>
-                <div style={{ fontSize:12, color:COLORS.muted, lineHeight:1.5 }}>{n.message}</div>
               </div>
-              {!n.read && <div style={{ width:8, height:8, borderRadius:"50%", background:COLORS.green, flexShrink:0, marginTop:4 }} />}
+              <ProgressBar value={g.overall} color={g.overall >= 90 ? C.green : g.overall >= 75 ? C.navy : C.amber} />
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
-
-const ReportsModule = memo(function ReportsModule() {
-  const [activeReport, setActiveReport] = useState("attendance");
-  const reports = [
-    { id:"attendance", label:"Attendance Report",    icon:"◈" },
-    { id:"fees",       label:"Fee Collection",       icon:"◎" },
-    { id:"payroll",    label:"Payroll Summary",      icon:"◐" },
-    { id:"academic",   label:"Academic Performance", icon:"◑" },
-  ];
-  const attData = DEMO.students.map(s => ({ name:s.name.split(" ")[0], att:s.attendance }));
-  const feeData = DEMO.fees.map(f => ({ name:f.name.split(" ")[0], paid:f.paid, due:f.due }));
-  return (
-    <div>
-      <SectionHeader
-        title="Reports & Analytics"
-        subtitle="Export and analyze school data"
-        action={<Btn variant="green" size="sm">Export PDF</Btn>}
-      />
-      <TabBar tabs={reports} active={activeReport} onChange={setActiveReport} />
-      <div style={{ marginTop:20 }}>
-        {activeReport==="attendance" && (
-          <div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:20 }}>
-              <StatCard label="Avg Attendance"       value="93.4%" color={COLORS.green}  />
-              <StatCard label="Perfect Attendance"   value="2"     sub="students" color={COLORS.navy} />
-              <StatCard label="Below 85%"            value="2"     sub="at risk"  color={COLORS.red}  />
-              <StatCard label="Today's Rate"         value={`${Math.round((DEMO.todayAttendance.present/DEMO.todayAttendance.total)*100)}%`} color={COLORS.purple} />
-            </div>
-            <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-              <div style={{ fontWeight:600, fontSize:13, marginBottom:16 }}>Student-wise Attendance</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {attData.sort((a,b)=>b.att-a.att).map((s,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:12 }}>
-                    <span style={{ fontSize:12, color:COLORS.muted, width:80, flexShrink:0, textAlign:"right" }}>{s.name}</span>
-                    <div style={{ flex:1, height:20, background:"rgba(28,27,23,0.06)", borderRadius:4, position:"relative", overflow:"hidden" }}>
-                      <div style={{ height:"100%", borderRadius:4, transition:"width 0.8s ease", width:`${s.att}%`,
-                        background:s.att>=90?`linear-gradient(to right,${COLORS.green},${COLORS.greenLight})`:s.att>=75?`linear-gradient(to right,${COLORS.amber},#F59E0B)`:`linear-gradient(to right,${COLORS.red},#EF4444)` }} />
-                    </div>
-                    <span style={{ fontSize:12, fontWeight:700, width:38, flexShrink:0, color:s.att>=90?COLORS.green:s.att>=75?COLORS.amber:COLORS.red }}>{s.att}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        {activeReport==="fees" && (
-          <div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:20 }}>
-              <StatCard label="Total Annual" value={fmtINR(DEMO.fees.reduce((s,f)=>s+f.annual,0))} color={COLORS.navy}   />
-              <StatCard label="Collected"    value={fmtINR(DEMO.fees.reduce((s,f)=>s+f.paid,0))}   color={COLORS.green}  />
-              <StatCard label="Pending"      value={fmtINR(DEMO.fees.reduce((s,f)=>s+f.due,0))}    color={COLORS.red}    />
-              <StatCard label="Collection %" value="81%"                                             color={COLORS.purple} />
-            </div>
-            <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-              <div style={{ fontWeight:600, fontSize:13, marginBottom:16 }}>Fee Collection by Student</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {feeData.map((f,i) => {
-                  const total = f.paid+f.due;
-                  const pct   = total>0?Math.round((f.paid/total)*100):0;
-                  return (
-                    <div key={i} style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <span style={{ fontSize:12, color:COLORS.muted, width:80, flexShrink:0, textAlign:"right" }}>{f.name}</span>
-                      <div style={{ flex:1, height:20, background:"rgba(28,27,23,0.06)", borderRadius:4, overflow:"hidden" }}>
-                        <div style={{ height:"100%", width:`${pct}%`, background:`linear-gradient(to right,${COLORS.green},${COLORS.greenLight})`, borderRadius:4, transition:"width 0.8s ease" }} />
-                      </div>
-                      <span style={{ fontSize:12, fontWeight:700, width:38, flexShrink:0, color:pct===100?COLORS.green:pct>50?COLORS.amber:COLORS.red }}>{pct}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-        {activeReport==="payroll" && (
-          <div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:14, marginBottom:20 }}>
-              <StatCard label="Gross Payroll" value={fmtINR(DEMO.payroll.reduce((s,p)=>s+p.salary,0))} color={COLORS.navy}   />
-              <StatCard label="Net Payable"   value={fmtINR(DEMO.payroll.reduce((s,p)=>s+p.net,0))}    color={COLORS.green}  />
-              <StatCard label="Deductions"    value={fmtINR(DEMO.payroll.reduce((s,p)=>s+p.deductions+p.lop,0))} color={COLORS.amber} />
-              <StatCard label="Processed"     value={`${DEMO.payroll.filter(p=>p.status==="Processed").length}/6`} color={COLORS.purple} />
-            </div>
-            <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-              <div style={{ fontWeight:600, fontSize:13, marginBottom:16 }}>Payroll Breakdown</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                {DEMO.payroll.map((p,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:14 }}>
-                    <Avatar name={p.name} size={28} color={COLORS.navy} />
-                    <span style={{ flex:1, fontSize:13, fontWeight:500 }}>{p.name.split(" ").slice(1).join(" ")}</span>
-                    <div style={{ textAlign:"right" }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:COLORS.green }}>{fmtINR(p.net)}</div>
-                      <div style={{ fontSize:10, color:COLORS.muted }}>{p.present} days</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        {activeReport==="academic" && (
-          <div>
-            <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-              <div style={{ fontWeight:600, fontSize:13, marginBottom:6 }}>Assignment Completion Rate</div>
-              <p style={{ fontSize:12, color:COLORS.muted, marginBottom:16 }}>% of students submitting on time</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                {DEMO.assignments.map((a,i) => {
-                  const pct = Math.round((a.submitted/a.total)*100);
-                  return (
-                    <div key={i}>
-                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                        <span style={{ fontSize:12 }}>{a.title}</span>
-                        <span style={{ fontSize:12, fontWeight:600, color:pct>80?COLORS.green:COLORS.amber }}>{pct}%</span>
-                      </div>
-                      <ProgressBar value={pct} color={pct>80?COLORS.green:COLORS.amber} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div style={{ marginTop:16, background:"rgba(42,107,74,0.06)", border:`1px solid rgba(42,107,74,0.15)`, borderRadius:10, padding:"14px 18px" }}>
-              <p style={{ fontSize:13, color:"#1B4D3E", lineHeight:1.7 }}>
-                📊 <strong>Upcoming Exams:</strong> Unit Test I on June 20–22. Recommend sending revision reminders to Class X-A and IX-B.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-});
-
-const DashboardOverview = memo(function DashboardOverview() {
-  const { present, late, absent, total } = DEMO.todayAttendance;
-  const attPct       = Math.round((present/total)*100);
-  const feeCollected = DEMO.fees.reduce((s,f)=>s+f.paid,0);
-  const feePending   = DEMO.fees.reduce((s,f)=>s+f.due,0);
-  const feeTotal     = feeCollected+feePending;
-  const feePct       = Math.round((feeCollected/feeTotal)*100);
-  return (
-    <div>
-      <SectionHeader title="School Overview" subtitle="Wednesday, June 3, 2026 · Live dashboard" />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:14, marginBottom:24 }}>
-        <StatCard label="Present Today"   value={present}          sub={`of ${total}`} color={COLORS.green}  />
-        <StatCard label="Late Today"      value={late}             sub="students"      color={COLORS.amber}  />
-        <StatCard label="Absent Today"    value={absent}           sub="students"      color={COLORS.red}    />
-        <StatCard label="Attendance Rate" value={`${attPct}%`}     sub="today"         color={COLORS.navy}   />
-        <StatCard label="Fee Collected"   value={fmtINR(feeCollected)} sub="this year" color={COLORS.green}  />
-        <StatCard label="Fee Pending"     value={fmtINR(feePending)}   sub="outstanding" color={COLORS.amber} />
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
-        <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-          <div style={{ fontSize:13, fontWeight:600, marginBottom:14, fontFamily:FONTS.serif }}>Weekly Attendance Trend</div>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:10, height:90 }}>
-            {DEMO.weeklyTrend.map((d,i) => (
-              <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:COLORS.green }}>{d.pct}%</span>
-                <div style={{ width:"100%", background:"rgba(42,107,74,0.1)", borderRadius:4, height:64, position:"relative" }}>
-                  <div style={{ position:"absolute", bottom:0, left:0, right:0, background:`linear-gradient(to top,${COLORS.green},${COLORS.greenLight})`, borderRadius:4, height:`${d.pct}%`, transition:"height 1s ease" }} />
-                </div>
-                <span style={{ fontSize:10, color:COLORS.muted }}>{d.day}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-          <div style={{ fontSize:13, fontWeight:600, marginBottom:14, fontFamily:FONTS.serif }}>Fee Collection Rate</div>
-          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-            <div style={{ position:"relative", width:80, height:80, flexShrink:0 }}>
-              <svg viewBox="0 0 36 36" style={{ transform:"rotate(-90deg)", width:80, height:80 }}>
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(28,27,23,0.06)" strokeWidth="3.5" />
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke={COLORS.green} strokeWidth="3.5"
-                  strokeDasharray={`${feePct} ${100-feePct}`} strokeLinecap="round" />
-              </svg>
-              <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:COLORS.green }}>{feePct}%</div>
-            </div>
-            <div>
-              <div style={{ fontSize:12, color:COLORS.muted, marginBottom:6 }}>Collected</div>
-              <div style={{ fontWeight:700, fontSize:16, color:COLORS.green, fontFamily:FONTS.serif }}>{fmtINR(feeCollected)}</div>
-              <div style={{ fontSize:12, color:COLORS.muted, marginTop:8, marginBottom:4 }}>Pending</div>
-              <div style={{ fontWeight:700, fontSize:14, color:COLORS.red }}>{fmtINR(feePending)}</div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
-      <div style={{ background:COLORS.surface, borderRadius:12, border:`1px solid ${COLORS.border}`, padding:20 }}>
-        <div style={{ fontSize:13, fontWeight:600, marginBottom:14, fontFamily:FONTS.serif }}>Recent Activity</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          {DEMO.recentActivity.map((a,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-              <span style={{ fontSize:16, flexShrink:0, marginTop:1 }}>{a.icon}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, color:COLORS.dark, lineHeight:1.4 }}>{a.text}</div>
-                <div style={{ fontSize:11, color:COLORS.muted, marginTop:2 }}>{a.time}</div>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 22 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, fontFamily: F.serif }}>🏆 Class Top Performers</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
+          {DEMO_LMS.topPerformers.map((p, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: C.bg, borderRadius: 10 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: C.amber, minWidth: 24 }}>#{i + 1}</div>
+              <Avatar name={p.name} size={36} color={C.green} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>{p.class} · {p.avg}%</div>
               </div>
             </div>
           ))}
         </div>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))", gap:10, marginTop:16 }}>
-        {[
-          { icon:"◈", label:"Take Attendance", color:COLORS.green  },
-          { icon:"◇", label:"Add Student",     color:COLORS.navy   },
-          { icon:"◎", label:"Record Fee",      color:COLORS.purple },
-          { icon:"🔔", label:"Send Alert",     color:"#7A3A00"     },
-        ].map((q,i) => (
-          <div key={i}
-            style={{ background:COLORS.surface, borderRadius:10, border:`1px solid ${COLORS.border}`, padding:"14px 12px", textAlign:"center", cursor:"pointer", transition:"all 0.18s" }}
-            onMouseEnter={e=>{e.currentTarget.style.background=COLORS.bg;e.currentTarget.style.transform="translateY(-2px)";}}
-            onMouseLeave={e=>{e.currentTarget.style.background=COLORS.surface;e.currentTarget.style.transform="";}}>
-            <div style={{ fontSize:22, marginBottom:6 }}>{q.icon}</div>
-            <div style={{ fontSize:11, fontWeight:600, color:q.color, lineHeight:1.3 }}>{q.label}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 });
 
-// ==================== DEMO DASHBOARD SHELL ====================
-// FIX 9: Removed <Suspense> since moduleMap values are plain JSX, not React.lazy().
-const DemoDashboard = memo(function DemoDashboard({ user, trialExpiryDate, onClose, onSignOut, isFullPage = false }) {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [daysLeft, setDaysLeft]   = useState(7);
-  const [expired, setExpired]     = useState(false);
-  const [contactStatus, setContactStatus] = useState("idle");
-  const [contactForm, setContactForm]     = useState({ schoolName:"", contactPerson:"", mobile:"", email:"", students:"", message:"" });
-  const [sidebarOpen, setSidebarOpen]     = useState(true);
-  const unreadNotifs = DEMO.notifications.filter(n => !n.read).length;
+const LMSModule = memo(() => {
+  const [tab, setTab] = useState("dashboard");
+  const { open: courseOpen, data: courseData, show: showCourse, hide: hideCourse } = useModal();
+  const { open: quizOpen, data: quizData, show: showQuiz, hide: hideQuiz } = useModal();
+  const { open: liveOpen, data: liveData, show: showLive, hide: hideLive } = useModal();
+  const [courses, setCourses] = useState(DEMO_LMS.courses);
 
-  useEffect(() => {
-    const expiry = toDate(trialExpiryDate);
-    if (!expiry) return;
-    const left = Math.ceil((expiry - new Date()) / (1000*60*60*24));
-    if (left <= 0) setExpired(true);
-    else setDaysLeft(left);
-  }, [trialExpiryDate]);
+  const handleEnroll = useCallback((course) => {
+    setCourses(prev => prev.map(c => c.id === course.id ? { ...c, enrolled2: true, progress: 0 } : c));
+  }, []);
 
-  const handleContactSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    setContactStatus("sending");
-    try {
-      await addDoc(collection(db,"salesLeads"), {
-        ...contactForm, source:"demo_expired", uid:user?.uid, createdAt:serverTimestamp(),
-      });
-      try {
-        const p = new URLSearchParams({ ...contactForm, source:"demo_expired", timestamp:new Date().toISOString() });
-        await fetch(`${INQUIRY_SHEET_URL}?${p.toString()}`, { method:"GET", mode:"no-cors" });
-      } catch { /* non-critical */ }
-      setContactStatus("success");
-    } catch (err) {
-      console.error("[NexaAttend] Contact form submission failed:", err);
-      setContactStatus("error");
-    }
-  }, [contactForm, user]);
-
-  // FIX 9: moduleMap contains plain JSX — no Suspense needed.
-  const moduleMap = useMemo(() => ({
-    overview:      <DashboardOverview />,
-    attendance:    <AttendanceModule />,
-    students:      <StudentModule />,
-    staff:         <StaffModule />,
-    leave:         <LeaveModule />,
-    payroll:       <PayrollModule />,
-    fees:          <FeeModule />,
-    exams:         <ExamModule />,
-    assignments:   <AssignmentModule />,
-    parents:       <ParentPortal />,
-    notifications: <NotificationCenter />,
-    reports:       <ReportsModule />,
-  }), []);
-
-  if (expired && contactStatus !== "success") {
-    const iSt = { padding:"10px 14px", border:`1.5px solid ${COLORS.faint}`, borderRadius:8, fontSize:14, fontFamily:FONTS.sans, background:COLORS.bg, outline:"none", width:"100%", boxSizing:"border-box" };
-    return (
-      <div style={{ padding:40, maxWidth:520, margin:"0 auto", textAlign:"center" }}>
-        <div style={{ fontSize:52, marginBottom:16 }}>⏰</div>
-        <h2 style={{ fontFamily:FONTS.serif, fontSize:26, marginBottom:8 }}>Your trial has ended</h2>
-        <p style={{ color:COLORS.muted, marginBottom:28, lineHeight:1.7 }}>Contact our team to continue using NexaAttend at your school.</p>
-        <form onSubmit={handleContactSubmit} style={{ display:"flex", flexDirection:"column", gap:10, textAlign:"left" }}>
-          {[["schoolName","School Name"],["contactPerson","Your Name"],["mobile","Mobile Number"],["email","Email"],["students","No. of Students"]].map(([k,p]) => (
-            <input key={k} placeholder={p} required value={contactForm[k]}
-              onChange={e=>setContactForm(f=>({...f,[k]:e.target.value}))} style={iSt} />
-          ))}
-          <textarea placeholder="Message (optional)" rows={3} value={contactForm.message}
-            onChange={e=>setContactForm(f=>({...f,message:e.target.value}))} style={{...iSt,resize:"vertical"}} />
-          <button type="submit" disabled={contactStatus==="sending"} style={{ padding:13, background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", fontSize:14 }}>
-            {contactStatus==="sending"?"Sending…":"Contact Sales Team"}
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 4, background: C.bg, borderRadius: 10, padding: 4, marginBottom: 22, overflowX: "auto" }}>
+        {LMS_TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: "0 0 auto", padding: "8px 14px", borderRadius: 7, border: "none", background: tab === t.id ? C.surface : "transparent", color: tab === t.id ? C.dark : C.muted, fontFamily: F.sans, fontSize: 12, fontWeight: tab === t.id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>
+            <span style={{ marginRight: 6 }}>{t.icon}</span>{t.label}
           </button>
-        </form>
+        ))}
       </div>
-    );
-  }
+      {tab === "dashboard" && <LMSDashboard courses={courses} onOpenCourse={showCourse} onOpenLiveClass={(lc, c) => showLive({ live: lc, course: c })} onOpenQuiz={showQuiz} />}
+      {tab === "courses" && <LMSCourses courses={courses} onOpenCourse={showCourse} onEnroll={handleEnroll} />}
+      {tab === "learning" && <LMSMyLearning courses={courses} onOpenCourse={showCourse} onOpenQuiz={showQuiz} />}
+      {tab === "quizzes" && <LMSQuizzes onOpenQuiz={showQuiz} courses={courses} />}
+      {tab === "live" && <LMSLiveClasses onOpenLiveClass={(lc, c) => showLive({ live: lc, course: c })} courses={courses} />}
+      {tab === "library" && <LMSLibrary />}
+      {tab === "gradebook" && <LMSGradebook />}
 
-  if (contactStatus==="success") {
-    return (
-      <div style={{ padding:"60px 40px", textAlign:"center" }}>
-        <div style={{ width:64, height:64, borderRadius:"50%", background:"rgba(42,107,74,0.1)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={COLORS.green} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </div>
-        <h3 style={{ fontFamily:FONTS.serif, fontSize:22, marginBottom:8 }}>We'll be in touch!</h3>
-        <p style={{ color:COLORS.muted }}>Our team will call you within 24 hours.</p>
-      </div>
-    );
-  }
+      <CourseDetailModal open={courseOpen} onClose={hideCourse} course={courseData} onEnroll={handleEnroll} />
+      <QuizPlayerModal open={quizOpen} onClose={hideQuiz} quiz={quizData} />
+      <LiveClassModal open={liveOpen} onClose={hideLive} liveClass={liveData?.live} course={liveData?.course} />
+    </div>
+  );
+});
 
+// ==================== EXISTING MODULES ====================
+const AttendanceModule = memo(() => {
+  const { present, late, absent, total } = DEMO.todayAttendance;
   return (
-    <div className="nexa-demo-shell" style={{ display:"flex", height:isFullPage?"calc(100vh - 62px)":"90vh", background:COLORS.bg, borderRadius:isFullPage?0:24, overflow:"hidden" }}>
-      {/* Desktop Sidebar */}
-      <div className="nexa-sidebar" style={{ width:sidebarOpen?220:64, background:"#1C1B17", display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.25s cubic-bezier(0.16,1,0.3,1)", overflowX:"hidden" }}>
-        <div style={{ padding:"18px 16px 14px", borderBottom:"1px solid rgba(247,245,239,0.07)", display:"flex", alignItems:"center", gap:10, minWidth:220 }}>
-          <div style={{ width:32, height:32, background:COLORS.green, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="15" height="15" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/>
-              <path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </div>
-          {sidebarOpen && (
-            <div style={{ overflow:"hidden", whiteSpace:"nowrap" }}>
-              <div style={{ fontFamily:FONTS.serif, fontSize:15, color:"#F7F5EF" }}>NexaAttend</div>
-              <div style={{ fontSize:9, letterSpacing:"0.1em", color:"rgba(247,245,239,0.35)", textTransform:"uppercase" }}>Demo Portal</div>
-            </div>
-          )}
-        </div>
-        <div style={{ padding:"12px 14px", borderBottom:"1px solid rgba(247,245,239,0.07)", minWidth:220 }}>
-          {user?.photoURL && <img src={user.photoURL} alt="profile" style={{ width:28, height:28, borderRadius:"50%", marginBottom:6 }} />}
-          {sidebarOpen && (
-            <>
-              <div style={{ fontSize:11, fontWeight:600, color:"#F7F5EF" }}>{user?.displayName || "Demo User"}</div>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:daysLeft>3?"#5AC87A":COLORS.amber }} />
-                <span style={{ fontSize:10, color:"rgba(247,245,239,0.4)" }}>{daysLeft}d trial left</span>
+    <div>
+      <SectionHeader title="Today's Attendance" subtitle={`Wednesday, June 3, 2026 · ${total} students enrolled`} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Present" value={present} color={C.green} />
+        <StatCard label="Late" value={late} color={C.amber} />
+        <StatCard label="Absent" value={absent} color={C.red} />
+        <StatCard label="Total" value={total} color={C.navy} />
+      </div>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Weekly Trend</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 80 }}>
+          {DEMO.weeklyTrend.map((d, i) => (
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: C.green }}>{d.pct}%</span>
+              <div style={{ width: "100%", background: "rgba(42,107,74,0.1)", borderRadius: 4, height: 56, position: "relative" }}>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: `linear-gradient(to top,${C.green},${C.greenLight})`, borderRadius: 4, height: `${d.pct}%` }} />
               </div>
-            </>
-          )}
+              <span style={{ fontSize: 10, color: C.muted }}>{d.day}</span>
+            </div>
+          ))}
         </div>
-        <nav style={{ flex:1, padding:"10px 8px", overflowY:"auto", overflowX:"hidden" }}>
+      </div>
+    </div>
+  );
+});
+
+const StudentModule = memo(() => {
+  const [students, setStudents] = useState(DEMO.students);
+  const { query, setQuery, filtered } = useSearch(students, ["name", "class", "id", "parent"]);
+  const { open, data, show, hide } = useModal();
+  const columns = useMemo(() => [
+    { key: "name", label: "Student", render: (v, r) => <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={v} size={30} /><div><div style={{ fontWeight: 600, fontSize: 13 }}>{v}</div><div style={{ fontSize: 11, color: C.muted }}>{r.id}</div></div></div> },
+    { key: "class", label: "Class" },
+    { key: "rollNo", label: "Roll" },
+    { key: "parent", label: "Parent" },
+    { key: "attendance", label: "Attendance", render: (v) => <span style={{ fontWeight: 600, color: v > 90 ? C.green : C.amber }}>{v}%</span> },
+    { key: "fees", label: "Fees", render: (v) => <Badge status={v}>{v}</Badge> },
+  ], []);
+  return (
+    <div>
+      <SectionHeader title="Student Management" subtitle={`${students.length} students enrolled`} action={<Btn variant="green" size="sm">+ Add Student</Btn>} />
+      <div style={{ marginBottom: 14 }}><SearchBar value={query} onChange={setQuery} placeholder="Search students…" /></div>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr style={{ background: "rgba(28,27,23,0.02)" }}>{columns.map(c => <th key={c.key} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase" }}>{c.label}</th>)}</tr></thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr key={row.id} onClick={() => show(row)} style={{ borderTop: `1px solid rgba(28,27,23,0.04)`, cursor: "pointer" }}>
+                {columns.map(c => <td key={c.key} style={{ padding: "11px 16px", fontSize: 13 }}>{c.render ? c.render(row[c.key], row) : row[c.key]}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <StudentModal open={open} onClose={hide} student={data} />
+    </div>
+  );
+});
+
+const StaffModule = memo(() => {
+  const { query, setQuery, filtered } = useSearch(DEMO.staff, ["name", "role", "dept"]);
+  const { open, data, show, hide } = useModal();
+  const columns = useMemo(() => [
+    { key: "name", label: "Staff", render: (v, r) => <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={v} size={30} color={C.navy} /><div><div style={{ fontWeight: 600 }}>{v}</div><div style={{ fontSize: 11, color: C.muted }}>{r.id}</div></div></div> },
+    { key: "role", label: "Role" },
+    { key: "dept", label: "Department" },
+    { key: "salary", label: "Salary", render: (v) => <span style={{ fontWeight: 600, color: C.green }}>{fmtINR(v)}</span> },
+    { key: "attendance", label: "Attendance", render: (v) => <span style={{ fontWeight: 600 }}>{v}%</span> },
+    { key: "status", label: "Status", render: (v) => <Badge status={v}>{v}</Badge> },
+  ], []);
+  return (
+    <div>
+      <SectionHeader title="Staff & HR" subtitle={`${DEMO.staff.length} staff members`} />
+      <div style={{ marginBottom: 14 }}><SearchBar value={query} onChange={setQuery} placeholder="Search staff…" /></div>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr style={{ background: "rgba(28,27,23,0.02)" }}>{columns.map(c => <th key={c.key} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase" }}>{c.label}</th>)}</tr></thead>
+          <tbody>{filtered.map((row, i) => <tr key={row.id} onClick={() => show(row)} style={{ borderTop: `1px solid rgba(28,27,23,0.04)`, cursor: "pointer" }}>{columns.map(c => <td key={c.key} style={{ padding: "11px 16px", fontSize: 13 }}>{c.render ? c.render(row[c.key], row) : row[c.key]}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+      <Modal open={open} onClose={hide} title="Staff Profile">
+        {data && <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, background: C.bg, borderRadius: 10 }}><Avatar name={data.name} size={56} color={C.navy} /><div><div style={{ fontSize: 18, fontWeight: 700 }}>{data.name}</div><div style={{ fontSize: 13, color: C.muted }}>{data.role} · {data.dept}</div></div></div>}
+      </Modal>
+    </div>
+  );
+});
+
+const LeaveModule = memo(() => {
+  const [leaves] = useState(DEMO.leaveRequests);
+  return (
+    <div>
+      <SectionHeader title="Leave Management" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {leaves.map(l => (
+          <div key={l.id} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Avatar name={l.name} size={38} color={C.navy} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
+                <div style={{ fontSize: 12, color: C.muted }}>{l.type} · {fmtDate(l.from)} – {fmtDate(l.to)} · {l.days}d</div>
+              </div>
+            </div>
+            <Badge status={l.status}>{l.status}</Badge>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+const PayrollModule = memo(() => {
+  const totals = DEMO.payroll.reduce((s, p) => s + p.net, 0);
+  return (
+    <div>
+      <SectionHeader title="Payroll" subtitle="Monthly payroll" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 20 }}>
+        <StatCard label="Total Net" value={fmtINR(totals)} color={C.green} />
+        <StatCard label="Processed" value={DEMO.payroll.filter(p => p.status === "Processed").length} color={C.navy} />
+        <StatCard label="Pending" value={DEMO.payroll.filter(p => p.status === "Pending").length} color={C.amber} />
+      </div>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr style={{ background: "rgba(28,27,23,0.02)" }}>{["Employee", "Salary", "Present", "Net Pay", "Status"].map(h => <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase" }}>{h}</th>)}</tr></thead>
+          <tbody>{DEMO.payroll.map(p => <tr key={p.id} style={{ borderTop: `1px solid rgba(28,27,23,0.04)` }}><td style={{ padding: "11px 16px", fontSize: 13 }}>{p.name}</td><td style={{ padding: "11px 16px", fontSize: 13 }}>{fmtINR(p.salary)}</td><td style={{ padding: "11px 16px", fontSize: 13 }}>{p.present}</td><td style={{ padding: "11px 16px", fontSize: 13, fontWeight: 700, color: C.green }}>{fmtINR(p.net)}</td><td style={{ padding: "11px 16px" }}><Badge status={p.status}>{p.status}</Badge></td></tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+});
+
+const FeeModule = memo(() => {
+  const collected = DEMO.fees.reduce((s, f) => s + f.paid, 0);
+  const pending = DEMO.fees.reduce((s, f) => s + f.due, 0);
+  return (
+    <div>
+      <SectionHeader title="Fee Management" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 20 }}>
+        <StatCard label="Collected" value={fmtINR(collected)} color={C.green} />
+        <StatCard label="Pending" value={fmtINR(pending)} color={C.red} />
+        <StatCard label="Defaulters" value={DEMO.fees.filter(f => f.due > 0).length} color={C.amber} />
+      </div>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr style={{ background: "rgba(28,27,23,0.02)" }}>{["Student", "Class", "Annual", "Paid", "Due", "Status"].map(h => <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase" }}>{h}</th>)}</tr></thead>
+          <tbody>{DEMO.fees.map(f => <tr key={f.id} style={{ borderTop: `1px solid rgba(28,27,23,0.04)` }}><td style={{ padding: "11px 16px", fontSize: 13 }}>{f.name}</td><td style={{ padding: "11px 16px", fontSize: 13 }}>{f.class}</td><td style={{ padding: "11px 16px", fontSize: 13 }}>{fmtINR(f.annual)}</td><td style={{ padding: "11px 16px", fontSize: 13, color: C.green, fontWeight: 600 }}>{fmtINR(f.paid)}</td><td style={{ padding: "11px 16px", fontSize: 13, color: f.due > 0 ? C.red : C.muted, fontWeight: f.due > 0 ? 700 : 400 }}>{f.due > 0 ? fmtINR(f.due) : "—"}</td><td style={{ padding: "11px 16px" }}><Badge status={f.status}>{f.status}</Badge></td></tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+});
+
+const ExamModule = memo(() => (
+  <div>
+    <SectionHeader title="Exam Schedule" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {DEMO.exams.map(e => (
+        <div key={e.id} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 18, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.serif }}>{e.name}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{e.date} · {e.classes} · Max: {e.maxMarks}</div>
+          </div>
+          <Badge status={e.status}>{e.status}</Badge>
+        </div>
+      ))}
+    </div>
+  </div>
+));
+
+const AssignmentModule = memo(() => (
+  <div>
+    <SectionHeader title="Assignments" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {DEMO.assignments.map(a => {
+        const pct = Math.round((a.submitted / a.total) * 100);
+        return (
+          <div key={a.id} style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{a.title}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{a.class} · {a.teacher} · Due: {a.due}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: C.green }}>{a.submitted}/{a.total}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>submitted</div>
+              </div>
+            </div>
+            <ProgressBar value={pct} color={pct === 100 ? C.green : pct > 70 ? C.amber : C.red} />
+          </div>
+        );
+      })}
+    </div>
+  </div>
+));
+
+const ParentPortal = memo(() => {
+  const s = DEMO.students[0];
+  return (
+    <div>
+      <SectionHeader title="Parent Portal" subtitle={`View for ${s.name}`} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+            <Avatar name={s.name} size={48} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{s.name}</div>
+              <div style={{ fontSize: 13, color: C.muted }}>Class {s.class} · Roll #{s.rollNo}</div>
+            </div>
+          </div>
+          {[["Attendance", `${s.attendance}%`], ["Fees", s.fees], ["Status", s.status]].map(([k, v]) => (
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 13, color: C.muted }}>{k}</span><span style={{ fontSize: 13, fontWeight: 600 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 20 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14, fontFamily: F.serif }}>Recent Attendance</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d, i) => (
+              <div key={d} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", margin: "0 auto 6px", display: "flex", alignItems: "center", justifyContent: "center", background: i === 4 ? "rgba(245,158,11,0.15)" : "rgba(42,107,74,0.12)", border: `2px solid ${i === 4 ? C.amber : C.green}` }}><span style={{ fontSize: 13 }}>{i === 4 ? "⚠" : "✓"}</span></div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: C.muted }}>{d}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const NotificationCenter = memo(() => {
+  const [notifs, setNotifs] = useState(DEMO.notifications);
+  return (
+    <div>
+      <SectionHeader title="Notification Center" action={<Btn variant="outline" size="sm" onClick={() => setNotifs(n => n.map(x => ({ ...x, read: true })))}>Mark All Read</Btn>} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {notifs.map(n => (
+          <div key={n.id} style={{ background: n.read ? C.surface : "rgba(42,107,74,0.04)", borderRadius: 10, border: `1px solid ${n.read ? C.border : "rgba(42,107,74,0.18)"}`, padding: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontWeight: n.read ? 500 : 700, fontSize: 13 }}>{n.title}</span>
+              <span style={{ fontSize: 11, color: C.muted }}>{n.time}</span>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{n.message}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+const ReportsModule = memo(() => (
+  <div>
+    <SectionHeader title="Reports & Analytics" />
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 20 }}>
+      <StatCard label="Avg Attendance" value="93.4%" color={C.green} />
+      <StatCard label="Today's Rate" value="93%" color={C.navy} />
+      <StatCard label="Fees Collected" value={fmtINR(DEMO.fees.reduce((s, f) => s + f.paid, 0))} color={C.green} />
+    </div>
+    <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 20 }}>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 16 }}>Student-wise Attendance</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {DEMO.students.sort((a, b) => b.attendance - a.attendance).map(s => (
+          <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 12, color: C.muted, width: 80, textAlign: "right" }}>{s.name.split(" ")[0]}</span>
+            <div style={{ flex: 1, height: 18, background: "rgba(28,27,23,0.06)", borderRadius: 4 }}>
+              <div style={{ height: "100%", width: `${s.attendance}%`, background: s.attendance >= 90 ? `linear-gradient(to right,${C.green},${C.greenLight})` : C.amber, borderRadius: 4 }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, width: 38, color: s.attendance >= 90 ? C.green : C.amber }}>{s.attendance}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+));
+
+const DashboardOverview = memo(() => {
+  const { present, total } = DEMO.todayAttendance;
+  const feeCollected = DEMO.fees.reduce((s, f) => s + f.paid, 0);
+  return (
+    <div>
+      <SectionHeader title="School Overview" subtitle="Live dashboard" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Present Today" value={present} sub={`of ${total}`} color={C.green} />
+        <StatCard label="Attendance Rate" value={`${Math.round((present / total) * 100)}%`} color={C.navy} />
+        <StatCard label="Fee Collected" value={fmtINR(feeCollected)} color={C.green} />
+        <StatCard label="Total Students" value={DEMO.students.length} color={C.purple} />
+      </div>
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, padding: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, fontFamily: F.serif }}>Recent Activity</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {DEMO.recentActivity.map((a, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <span style={{ fontSize: 16 }}>{a.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13 }}>{a.text}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{a.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ==================== DASHBOARD SHELL ====================
+const DemoDashboard = memo(({ user, trialExpiryDate, onSignOut }) => {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const moduleMap = useMemo(() => ({
+    overview: <DashboardOverview />, attendance: <AttendanceModule />, students: <StudentModule />,
+    staff: <StaffModule />, leave: <LeaveModule />, payroll: <PayrollModule />, fees: <FeeModule />,
+    exams: <ExamModule />, assignments: <AssignmentModule />, lms: <LMSModule />,
+    parents: <ParentPortal />, notifications: <NotificationCenter />, reports: <ReportsModule />,
+  }), []);
+  const unreadNotifs = DEMO.notifications.filter(n => !n.read).length;
+  return (
+    <div className="nexa-demo-shell" style={{ display: "flex", height: "calc(100vh - 62px)", background: C.bg, overflow: "hidden" }}>
+      <div className="nexa-sidebar" style={{ width: sidebarOpen ? 220 : 64, background: "#1C1B17", display: "flex", flexDirection: "column", flexShrink: 0, transition: "width 0.25s" }}>
+        <div style={{ padding: "18px 16px", borderBottom: "1px solid rgba(247,245,239,0.07)" }}>
+          <div style={{ fontFamily: F.serif, fontSize: 15, color: "#F7F5EF" }}>{sidebarOpen && "NexaAttend"}</div>
+          {sidebarOpen && <div style={{ fontSize: 9, letterSpacing: "0.1em", color: "rgba(247,245,239,0.35)", textTransform: "uppercase" }}>Demo Portal</div>}
+        </div>
+        <nav style={{ flex: 1, padding: "10px 8px", overflowY: "auto" }}>
           {NAV_TABS.map(t => {
-            const isCurrent  = activeTab===t.id;
-            const showBadge  = t.id==="notifications"&&unreadNotifs>0;
+            const isCurrent = activeTab === t.id;
             return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} title={!sidebarOpen?t.label:""} style={{
-                width:"100%", display:"flex", alignItems:"center", gap:10,
-                padding:"9px 10px", borderRadius:8, border:"none", cursor:"pointer",
-                background:isCurrent?"rgba(247,245,239,0.1)":"transparent",
-                color:isCurrent?"#F7F5EF":"rgba(247,245,239,0.4)",
-                fontSize:12, fontWeight:isCurrent?600:400, fontFamily:FONTS.sans,
-                marginBottom:2, borderLeft:`2px solid ${isCurrent?COLORS.greenLight:"transparent"}`,
-                transition:"all 0.15s", whiteSpace:"nowrap", minWidth:0, position:"relative",
-              }}>
-                <span style={{ fontSize:13, flexShrink:0 }}>{t.icon}</span>
-                {sidebarOpen && <span style={{ overflow:"hidden", textOverflow:"ellipsis" }}>{t.label}</span>}
-                {showBadge&&sidebarOpen && (
-                  <span style={{ marginLeft:"auto", background:COLORS.red, color:"#fff", borderRadius:100, fontSize:10, padding:"1px 6px", fontWeight:700 }}>{unreadNotifs}</span>
-                )}
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: isCurrent ? "rgba(247,245,239,0.1)" : "transparent", color: isCurrent ? "#F7F5EF" : "rgba(247,245,239,0.4)", fontSize: 12, fontWeight: isCurrent ? 600 : 400, fontFamily: F.sans, marginBottom: 2, borderLeft: `2px solid ${isCurrent ? C.greenLight : "transparent"}` }}>
+                <span style={{ fontSize: 13 }}>{t.icon}</span>
+                {sidebarOpen && <span>{t.label}</span>}
+                {t.id === "notifications" && unreadNotifs > 0 && sidebarOpen && <span style={{ marginLeft: "auto", background: C.red, color: "#fff", borderRadius: 100, fontSize: 10, padding: "1px 6px" }}>{unreadNotifs}</span>}
               </button>
             );
           })}
         </nav>
-        <div style={{ padding:"10px 8px", borderTop:"1px solid rgba(247,245,239,0.07)", minWidth:220 }}>
-          {sidebarOpen && (
-            <div style={{ background:"rgba(90,200,122,0.08)", border:"1px solid rgba(90,200,122,0.18)", borderRadius:8, padding:"8px 10px", marginBottom:8 }}>
-              <div style={{ fontSize:9, color:"rgba(247,245,239,0.4)", marginBottom:2 }}>Sample data only</div>
-              <div style={{ fontSize:10, color:COLORS.greenLight, fontWeight:700 }}>This is a live demo</div>
-            </div>
-          )}
-          <button onClick={() => setSidebarOpen(o=>!o)} style={{ width:"100%", padding:"8px", background:"rgba(247,245,239,0.05)", border:"1px solid rgba(247,245,239,0.08)", borderRadius:8, color:"rgba(247,245,239,0.4)", fontSize:11, cursor:"pointer", marginBottom:6, fontFamily:FONTS.sans }}>
-            {sidebarOpen?"⟨ Collapse":"⟩"}
-          </button>
-          <button onClick={onSignOut} style={{ width:"100%", padding:"8px", background:"rgba(247,245,239,0.05)", border:"1px solid rgba(247,245,239,0.08)", borderRadius:8, color:"rgba(247,245,239,0.4)", fontSize:11, cursor:"pointer", fontFamily:FONTS.sans }}>
-            {sidebarOpen?"Sign out":"↩"}
-          </button>
-          {!isFullPage&&sidebarOpen && (
-            <button onClick={onClose} style={{ width:"100%", padding:"7px", background:"transparent", border:"none", color:"rgba(247,245,239,0.25)", fontSize:11, cursor:"pointer", marginTop:4, fontFamily:FONTS.sans }}>
-              ✕ Close demo
-            </button>
-          )}
+        <div style={{ padding: "10px 8px", borderTop: "1px solid rgba(247,245,239,0.07)" }}>
+          <button onClick={() => setSidebarOpen(o => !o)} style={{ width: "100%", padding: "8px", background: "rgba(247,245,239,0.05)", border: "1px solid rgba(247,245,239,0.08)", borderRadius: 8, color: "rgba(247,245,239,0.4)", fontSize: 11, cursor: "pointer", marginBottom: 6, fontFamily: F.sans }}>{sidebarOpen ? "⟨ Collapse" : "⟩"}</button>
+          <button onClick={onSignOut} style={{ width: "100%", padding: "8px", background: "rgba(247,245,239,0.05)", border: "1px solid rgba(247,245,239,0.08)", borderRadius: 8, color: "rgba(247,245,239,0.4)", fontSize: 11, cursor: "pointer", fontFamily: F.sans }}>{sidebarOpen ? "Sign out" : "↩"}</button>
         </div>
       </div>
-
-      {/* Main panel */}
-      <div className="nexa-main-panel" style={{ flex:1, overflowY:"auto", background:COLORS.bg, minWidth:0 }}>
-        <div className="nexa-demo-main-header" style={{ padding:"14px 24px", background:COLORS.surface, borderBottom:`1px solid ${COLORS.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
-          <div>
-            <h2 style={{ fontSize:16, fontWeight:700, color:COLORS.dark, fontFamily:FONTS.serif }}>
-              {NAV_TABS.find(t=>t.id===activeTab)?.label}
-            </h2>
-            <p style={{ fontSize:11, color:COLORS.muted, marginTop:1 }}>June 3, 2026 · Demo Environment</p>
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6, background:COLORS.greenMuted, border:`1px solid rgba(42,107,74,0.18)`, borderRadius:100, padding:"5px 12px" }}>
-              <span style={{ width:6, height:6, borderRadius:"50%", background:COLORS.green }} />
-              <span style={{ fontSize:10, fontWeight:700, color:"#1B5C3A", letterSpacing:"0.07em" }}>DEMO</span>
+      <div style={{ flex: 1, overflowY: "auto", minWidth: 0 }}>
+        <div style={{ padding: "14px 24px", background: C.surface, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: C.dark, fontFamily: F.serif }}>{NAV_TABS.find(t => t.id === activeTab)?.label}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.greenMuted, borderRadius: 100, padding: "5px 12px" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#1B5C3A" }}>DEMO</span>
             </div>
           </div>
         </div>
-        {/* FIX 9: No Suspense wrapper — modules are plain JSX, not lazy-loaded */}
-        <div className="nexa-demo-content" style={{ padding:"22px 24px" }}>
-          {moduleMap[activeTab] || <EmptyState title="Coming soon" />}
-        </div>
-      </div>
-
-      {/* Mobile Bottom Navigation */}
-      <div className="nexa-bottom-nav" style={{
-        display:"none", position:"fixed", bottom:0, left:0, right:0, zIndex:50,
-        background:"#1C1B17", borderTop:"1px solid rgba(247,245,239,0.08)",
-        overflowX:"auto", padding:"6px 4px",
-        WebkitOverflowScrolling:"touch",
-      }}>
-        <div style={{ display:"flex", gap:0, minWidth:"max-content", margin:"0 auto" }}>
-          {NAV_TABS.map(t => {
-            const isCurrent = activeTab===t.id;
-            const showBadge = t.id==="notifications"&&unreadNotifs>0;
-            return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                display:"flex", flexDirection:"column", alignItems:"center", gap:3,
-                padding:"6px 12px", border:"none", background:"transparent",
-                color:isCurrent?"#F7F5EF":"rgba(247,245,239,0.35)",
-                cursor:"pointer", fontFamily:FONTS.sans, position:"relative", minWidth:60,
-              }}>
-                <span style={{ fontSize:16, lineHeight:1 }}>{t.icon}</span>
-                <span style={{ fontSize:9, fontWeight:isCurrent?700:400, whiteSpace:"nowrap" }}>{t.label}</span>
-                {isCurrent && <div style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)", width:20, height:2, background:COLORS.greenLight, borderRadius:2 }} />}
-                {showBadge && <div style={{ position:"absolute", top:4, right:8, background:COLORS.red, borderRadius:100, width:7, height:7 }} />}
-              </button>
-            );
-          })}
-          <button onClick={onSignOut} style={{
-            display:"flex", flexDirection:"column", alignItems:"center", gap:3,
-            padding:"6px 12px", border:"none", background:"transparent",
-            color:"rgba(247,245,239,0.35)", cursor:"pointer", fontFamily:FONTS.sans, minWidth:60,
-          }}>
-            <span style={{ fontSize:16, lineHeight:1 }}>↩</span>
-            <span style={{ fontSize:9, whiteSpace:"nowrap" }}>Sign Out</span>
-          </button>
-        </div>
+        <div style={{ padding: "22px 24px" }}>{moduleMap[activeTab]}</div>
       </div>
     </div>
   );
 });
 
-// ==================== FULL-PAGE DEMO WRAPPER ====================
-const DemoPage = memo(function DemoPage({ user, trialExpiryDate, onSignOut, onBack }) {
-  const hasLogged = useRef(false);
-  useEffect(() => {
-    if (!user || hasLogged.current) return;
-    hasLogged.current = true;
-    const payload = {
-      event:       "demo_visit",
-      name:        user.displayName  || "Unknown",
-      email:       user.email        || "Unknown",
-      uid:         user.uid,
-      timestamp:   new Date().toISOString(),
-      trialExpiry: trialExpiryDate
-        ? (toDate(trialExpiryDate)?.toISOString() ?? "unknown")
-        : "unknown",
-      userAgent:   navigator.userAgent,
-    };
-    logDemoVisitToSheets(payload).then(result => {
-      if (!result.success) console.warn("[NexaAttend] Sheets logging ultimately failed:", result.error);
-    });
-  }, [user, trialExpiryDate]);
-
-  return (
-    <div style={{ minHeight:"100vh", background:COLORS.bg }}>
-      <MobileCSSInjector />
-      <div style={{ position:"sticky", top:0, background:COLORS.surface, borderBottom:`1px solid ${COLORS.border}`, padding:"12px 24px", display:"flex", alignItems:"center", gap:14, zIndex:20, height:62, boxSizing:"border-box" }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:COLORS.green }}>←</button>
-        <div>
-          <div style={{ fontFamily:FONTS.serif, fontSize:18, fontWeight:600 }}>NexaAttend Demo</div>
-          <div style={{ fontSize:11, color:COLORS.muted }}>Live trial dashboard</div>
-        </div>
-        <button onClick={onSignOut} style={{ marginLeft:"auto", background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:6, padding:"8px 16px", fontSize:13, fontWeight:500, cursor:"pointer" }}>
-          Sign Out
-        </button>
+const DemoPage = memo(({ user, onSignOut, onBack }) => (
+  <div style={{ minHeight: "100vh", background: C.bg }}>
+    <div style={{ position: "sticky", top: 0, background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", gap: 14, zIndex: 20, height: 62, boxSizing: "border-box" }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: C.green }}>←</button>
+      <div>
+        <div style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 600 }}>NexaAttend Demo</div>
+        <div style={{ fontSize: 11, color: C.muted }}>Live trial dashboard</div>
       </div>
-      <DemoDashboard user={user} trialExpiryDate={trialExpiryDate} onClose={onBack} onSignOut={onSignOut} isFullPage={true} />
+      <button onClick={onSignOut} style={{ marginLeft: "auto", background: C.dark, color: "#F7F5EF", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Sign Out</button>
     </div>
-  );
-});
+    <DemoDashboard user={user} onSignOut={onSignOut} />
+  </div>
+));
 
 // ==================== INQUIRY FORM ====================
-const InquiryForm = memo(function InquiryForm() {
-  const [step, setStep]       = useState(1);
-  const [form, setForm]       = useState({
-    name:"", role:"", school:"", city:"",
-    phone:"", email:"", students:"", board:"",
-    plan:"Standard (up to 600 students — ₹9,000/mo)",
-    hear:"", message:"",
-  });
-  const [errors, setErrors]   = useState({});
-  const [status, setStatus]   = useState("idle");
-  const [focused, setFocused] = useState(null);
+const InquiryForm = memo(() => {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({ name: "", role: "", school: "", city: "", phone: "", email: "", students: "", plan: "Standard", hear: "" });
+  const [status, setStatus] = useState("idle");
+  const setF = useCallback(k => e => setForm(f => ({ ...f, [k]: e.target.value })), []);
 
-  const setF = useCallback(k => e => {
-    setForm(f => ({...f,[k]:e.target.value}));
-    if (errors[k]) setErrors(p => { const n={...p}; delete n[k]; return n; });
-  }, [errors]);
-
-  const validate = useCallback(() => {
-    const errs = {};
-    if (step===1) {
-      if (!form.name.trim()) errs.name="Required";
-      if (!form.role) errs.role="Required";
-      if (!form.phone.trim()||!/^\+?[\d\s\-]{10,15}$/.test(form.phone.replace(/\s/g,""))) errs.phone="Valid 10-digit number";
-      if (form.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email="Invalid email";
-    }
-    if (step===2) {
-      if (!form.school.trim()) errs.school="Required";
-      if (!form.city.trim())   errs.city="Required";
-      if (!form.students)      errs.students="Required";
-    }
-    return errs;
-  }, [step, form]);
-
-  const next = useCallback(() => {
-    const e = validate();
-    setErrors(e);
-    if (!Object.keys(e).length) setStep(s=>s+1);
-  }, [validate]);
-
-  const submit = useCallback(async () => {
-    setStatus("sending");
-    const lead = { ...form, timestamp:new Date().toISOString() };
-    try {
-      await addDoc(collection(db,"salesLeads"), { ...lead, createdAt:serverTimestamp() });
-      try {
-        await fetch(`${INQUIRY_SHEET_URL}?${new URLSearchParams(lead)}`, { method:"GET", mode:"no-cors" });
-      } catch { /* non-critical */ }
-      setStatus("success");
-    } catch (err) {
-      console.error("[NexaAttend] Inquiry form submission failed:", err);
-      setStatus("error");
-    }
-  }, [form]);
-
-  const iSt = useCallback((k) => ({
-    width:"100%", padding:"10px 13px", fontSize:14, fontFamily:FONTS.sans,
-    background:focused===k?"#FFFFFF":COLORS.bg, color:COLORS.dark,
-    border:`1.5px solid ${errors[k]?COLORS.red:focused===k?COLORS.green:COLORS.faint}`,
-    borderRadius:8, outline:"none", transition:"all 0.2s", boxSizing:"border-box",
-    boxShadow:focused===k&&!errors[k]?"0 0 0 3px rgba(42,107,74,0.1)":errors[k]?"0 0 0 3px rgba(122,26,26,0.08)":"none",
-  }), [focused, errors]);
-
-  const lSt = { fontSize:11, fontWeight:600, color:COLORS.muted, marginBottom:5, display:"block", letterSpacing:"0.03em" };
-  const eSt = { fontSize:11.5, color:"#C0392B", marginTop:3 };
-  const sOpt = useCallback((k) => ({ ...iSt(k), appearance:"none", WebkitAppearance:"none",
-    backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231C1B17' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-    backgroundRepeat:"no-repeat", backgroundPosition:"right 13px center", paddingRight:36, cursor:"pointer",
-  }), [iSt]);
-
-  const planOpts = [
-    { v:"Basic (up to 300 students — ₹6,000/mo)",    l:"Basic",    sub:"Up to 300",  price:"₹6,000/mo",  c:COLORS.navy   },
-    { v:"Standard (up to 600 students — ₹9,000/mo)", l:"Standard", sub:"Up to 600",  price:"₹9,000/mo",  c:COLORS.green  },
-    { v:"Premium (up to 999 students — ₹12,000/mo)", l:"Premium",  sub:"Up to 999",  price:"₹12,000/mo", c:COLORS.purple },
-  ];
-
-  if (status==="success") return (
-    <div style={{ textAlign:"center", padding:"56px 32px" }}>
-      <div style={{ width:68, height:68, borderRadius:"50%", background:"rgba(42,107,74,0.1)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 18px" }}>
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={COLORS.green} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      </div>
-      <h3 style={{ fontFamily:FONTS.serif, fontSize:22, marginBottom:8 }}>Inquiry received!</h3>
-      <p style={{ fontSize:14, color:COLORS.muted, lineHeight:1.8, maxWidth:360, margin:"0 auto 24px" }}>
-        Thank you, {form.name}! Our team will contact you at {form.phone} within 24 hours.
-      </p>
-      <a href="https://wa.me/919974724656" style={{ display:"inline-flex", alignItems:"center", gap:8, background:COLORS.dark, color:"#F7F5EF", borderRadius:8, padding:"11px 22px", fontSize:14, fontWeight:600, textDecoration:"none" }}>💬 Message on WhatsApp</a>
-    </div>
-  );
-
-  if (status==="error") return (
-    <div style={{ textAlign:"center", padding:"44px 32px" }}>
-      <div style={{ fontSize:38, marginBottom:14 }}>⚠️</div>
-      <h3 style={{ fontSize:19, fontWeight:600, marginBottom:8 }}>Couldn't send right now</h3>
-      <p style={{ fontSize:13, color:COLORS.muted, marginBottom:22, lineHeight:1.8 }}>Please reach us on WhatsApp instead.</p>
-      <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-        <a href="https://wa.me/919974724656" style={{ display:"inline-flex", gap:7, background:COLORS.green, color:"#F7F5EF", borderRadius:8, padding:"11px 18px", fontSize:13, fontWeight:600, textDecoration:"none" }}>💬 WhatsApp Us</a>
-        <button onClick={()=>setStatus("idle")} style={{ background:"none", border:`1.5px solid ${COLORS.faint}`, borderRadius:8, padding:"10px 18px", fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:FONTS.sans }}>Try Again</button>
-      </div>
-    </div>
-  );
+  if (status === "success") return <div style={{ textAlign: "center", padding: "40px 20px" }}><div style={{ fontSize: 50 }}>✓</div><h3 style={{ fontFamily: F.serif, fontSize: 22, marginTop: 12 }}>Thank you!</h3><p style={{ color: C.muted, marginTop: 6 }}>We'll contact you within 24 hours.</p></div>;
 
   return (
-    <div style={{ background:COLORS.surface, borderRadius:16, border:`1px solid ${COLORS.border}`, overflow:"hidden", boxShadow:"0 4px 24px rgba(28,27,23,0.06)" }}>
-      <div style={{ padding:"22px 26px 18px", borderBottom:`1px solid ${COLORS.border}`, background:"linear-gradient(135deg,#FAFAF8,#F7F5EF)" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
-          <div style={{ width:38, height:38, background:COLORS.green, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="7" r="3.5" stroke="#F7F5EF" strokeWidth="1.5"/><path d="M2 16c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#F7F5EF" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </div>
-          <div>
-            <div style={{ fontSize:16, fontWeight:700, color:COLORS.dark, fontFamily:FONTS.serif }}>Book a Free Demo</div>
-            <div style={{ fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase", color:COLORS.green, fontWeight:600 }}>NexaAttend · School Inquiry</div>
-          </div>
-          <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6, background:COLORS.greenMuted, border:`1px solid rgba(42,107,74,0.18)`, borderRadius:100, padding:"4px 12px" }}>
-            <span style={{ width:6, height:6, borderRadius:"50%", background:COLORS.green }} />
-            <span style={{ fontSize:9, fontWeight:700, color:"#1B5C3A", letterSpacing:"0.07em" }}>FREE · NO OBLIGATION</span>
-          </div>
-        </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          {["About You","Your School","Choose Plan"].map((label,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                <div style={{ width:20, height:20, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700,
-                  background:step>i+1?COLORS.green:step===i+1?COLORS.dark:"rgba(28,27,23,0.08)",
-                  color:step>=i+1?"#F7F5EF":"rgba(28,27,23,0.35)" }}>
-                  {step>i+1?"✓":i+1}
-                </div>
-                <span style={{ fontSize:11, fontWeight:step===i+1?600:400, color:step===i+1?COLORS.dark:COLORS.muted }}>{label}</span>
-              </div>
-              {i<2&&<div style={{ width:20, height:1, background:step>i+1?COLORS.green:COLORS.faint }} />}
-            </div>
-          ))}
-        </div>
+    <div style={{ background: C.surface, borderRadius: 16, border: `1px solid ${C.border}`, padding: 24 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        {[1, 2, 3].map(i => <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: step >= i ? C.green : C.faint }} />)}
       </div>
-      <div style={{ padding:"22px 26px 26px" }}>
-        {step===1 && (
-          <div className="nexa-inquiry-form-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            {[["name","Full Name"],["role",null],["phone","Mobile Number"],["email","Email (optional)"]].map(([k,p]) => (
-              <div key={k}>
-                <label style={lSt}>{p||"Your Role"}{k!=="email"&&<span style={{color:"#C0392B"}}> *</span>}</label>
-                {k==="role"?(
-                  <select value={form.role} onChange={setF("role")} onFocus={()=>setFocused("role")} onBlur={()=>setFocused(null)} style={sOpt("role")}>
-                    <option value="">Select role…</option>
-                    {["Principal / Headmaster","School Owner / Trustee","Administrator","IT Coordinator","Teacher / HOD","Finance Manager","Other"].map(o=><option key={o}>{o}</option>)}
-                  </select>
-                ):(
-                  <div style={{ position:"relative" }}>
-                    {k==="phone"&&<span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:12, color:COLORS.muted, pointerEvents:"none" }}>+91</span>}
-                    <input type={k==="email"?"email":"text"} placeholder={p} value={form[k]} onChange={setF(k)} onFocus={()=>setFocused(k)} onBlur={()=>setFocused(null)} style={{...iSt(k),paddingLeft:k==="phone"?44:undefined}} />
-                  </div>
-                )}
-                {errors[k]&&<span style={eSt}>{errors[k]}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-        {step===2 && (
-          <div className="nexa-inquiry-form-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            {[["school","School Name"],["city","City / District"],["students",null],["board",null],["hear",null]].map(([k,p]) => (
-              <div key={k}>
-                <label style={lSt}>{p||{students:"Total Students",board:"School Board",hear:"How did you hear about us?"}[k]}{["school","city","students"].includes(k)&&<span style={{color:"#C0392B"}}> *</span>}</label>
-                {["students","board","hear"].includes(k)?(
-                  <select value={form[k]} onChange={setF(k)} onFocus={()=>setFocused(k)} onBlur={()=>setFocused(null)} style={sOpt(k)}>
-                    <option value="">Select…</option>
-                    {k==="students"&&["Under 100","100–200","200–300","300–500","500–600","600–800","800–999","1000+"].map(o=><option key={o}>{o}</option>)}
-                    {k==="board"   &&["CBSE","GSEB (Gujarat Board)","ICSE / ISC","IB","Cambridge (IGCSE)","State Board (Other)","Private / Autonomous","Other"].map(o=><option key={o}>{o}</option>)}
-                    {k==="hear"   &&["Google Search","WhatsApp / Word of Mouth","LinkedIn","Instagram / Facebook","Another School Recommended","Newspaper / Advertisement","Education Conference / Event","Other"].map(o=><option key={o}>{o}</option>)}
-                  </select>
-                ):(
-                  <input type="text" placeholder={p} value={form[k]} onChange={setF(k)} onFocus={()=>setFocused(k)} onBlur={()=>setFocused(null)} style={iSt(k)} />
-                )}
-                {errors[k]&&<span style={eSt}>{errors[k]}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-        {step===3 && (
-          <div>
-            <div className="nexa-inquiry-plan-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:14 }}>
-              {planOpts.map(opt => {
-                const sel=form.plan===opt.v;
-                return (
-                  <button key={opt.v} type="button" onClick={()=>setForm(f=>({...f,plan:opt.v}))} style={{
-                    padding:"13px 10px", borderRadius:10, border:`2px solid ${sel?opt.c:COLORS.faint}`,
-                    background:sel?`${opt.c}10`:COLORS.bg, cursor:"pointer", textAlign:"left", transition:"all 0.18s", position:"relative", fontFamily:FONTS.sans,
-                  }}>
-                    {sel&&<div style={{ position:"absolute", top:-8, right:-8, width:18, height:18, borderRadius:"50%", background:opt.c, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></div>}
-                    <div style={{ fontSize:13, fontWeight:700, color:sel?opt.c:COLORS.dark, marginBottom:2 }}>{opt.l}</div>
-                    <div style={{ fontSize:10, color:COLORS.muted, marginBottom:3 }}>{opt.sub} students</div>
-                    <div style={{ fontSize:12, fontWeight:600, color:sel?opt.c:"rgba(28,27,23,0.55)" }}>{opt.price}</div>
-                  </button>
-                );
-              })}
-            </div>
-            <p style={{ fontSize:11, color:COLORS.muted, marginBottom:12, lineHeight:1.6 }}>Every plan includes a <strong>free 7-day trial</strong>. Setup: <strong style={{color:COLORS.green}}>₹45,000</strong> <span style={{textDecoration:"line-through"}}>₹75,000</span>.</p>
-            <textarea placeholder="Anything you'd like us to know?" value={form.message} onChange={setF("message")} onFocus={()=>setFocused("message")} onBlur={()=>setFocused(null)} rows={3} style={{...iSt("message"),resize:"vertical",minHeight:76,lineHeight:1.65}} />
-          </div>
-        )}
-        <div style={{ display:"flex", gap:10, marginTop:20 }}>
-          {step>1&&<button onClick={()=>setStep(s=>s-1)} style={{ padding:"11px 18px", background:"transparent", border:`1.5px solid ${COLORS.faint}`, borderRadius:9, fontSize:13, fontWeight:500, cursor:"pointer", color:COLORS.dark, fontFamily:FONTS.sans }}>← Back</button>}
-          {step<3?(
-            <button onClick={next}
-              onMouseEnter={e=>e.currentTarget.style.background=COLORS.green}
-              onMouseLeave={e=>e.currentTarget.style.background=COLORS.dark}
-              style={{ flex:1, padding:"12px 22px", background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:9, fontSize:14, fontWeight:700, fontFamily:FONTS.sans, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7, transition:"background 0.2s" }}>
-              Continue <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-          ):(
-            <button onClick={submit} disabled={status==="sending"}
-              onMouseEnter={e=>{if(status!=="sending")e.currentTarget.style.background=COLORS.green;}}
-              onMouseLeave={e=>{if(status!=="sending")e.currentTarget.style.background=COLORS.dark;}}
-              style={{ flex:1, padding:"12px 22px", background:status==="sending"?"rgba(28,27,23,0.5)":COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:9, fontSize:14, fontWeight:700, fontFamily:FONTS.sans, cursor:status==="sending"?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7, transition:"background 0.2s" }}>
-              {status==="sending"?"Sending…":<>Book My Free Demo <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></>}
-            </button>
-          )}
-        </div>
-        <p style={{ fontSize:11, color:"rgba(28,27,23,0.35)", textAlign:"center", marginTop:10 }}>🔒 Your information is never shared with third parties.</p>
+      {step === 1 && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <input placeholder="Name *" value={form.name} onChange={setF("name")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }} />
+        <select value={form.role} onChange={setF("role")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }}><option value="">Select role…</option><option>Principal</option><option>Owner</option><option>Admin</option></select>
+        <input placeholder="Phone *" value={form.phone} onChange={setF("phone")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }} />
+        <input placeholder="Email" value={form.email} onChange={setF("email")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }} />
+      </div>}
+      {step === 2 && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <input placeholder="School Name *" value={form.school} onChange={setF("school")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }} />
+        <input placeholder="City *" value={form.city} onChange={setF("city")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }} />
+        <select value={form.students} onChange={setF("students")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }}><option value="">No. of students *</option><option>Under 100</option><option>100-300</option><option>300-600</option><option>600+</option></select>
+        <select value={form.hear} onChange={setF("hear")} style={{ padding: "10px 12px", border: `1.5px solid ${C.faint}`, borderRadius: 8, fontSize: 13, fontFamily: F.sans }}><option value="">How did you hear?</option><option>Google</option><option>WhatsApp</option><option>Reference</option></select>
+      </div>}
+      {step === 3 && <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+        {[{ v: "Basic", p: "₹6,000/mo" }, { v: "Standard", p: "₹9,000/mo" }, { v: "Premium", p: "₹12,000/mo" }].map(opt => (
+          <button key={opt.v} onClick={() => setForm(f => ({ ...f, plan: opt.v }))} style={{ padding: 16, border: `2px solid ${form.plan === opt.v ? C.green : C.faint}`, background: form.plan === opt.v ? C.greenMuted : C.bg, borderRadius: 10, cursor: "pointer", textAlign: "left" }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{opt.v}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{opt.p}</div>
+          </button>
+        ))}
+      </div>}
+      <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+        {step > 1 && <button onClick={() => setStep(s => s - 1)} style={{ padding: "11px 18px", background: "transparent", border: `1.5px solid ${C.faint}`, borderRadius: 9, fontSize: 13, cursor: "pointer" }}>Back</button>}
+        {step < 3 ? <button onClick={() => setStep(s => s + 1)} style={{ flex: 1, padding: "11px", background: C.dark, color: "#F7F5EF", border: "none", borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Continue</button>
+          : <button onClick={async () => { setStatus("sending"); try { await addDoc(collection(db, "salesLeads"), { ...form, createdAt: serverTimestamp() }); } catch {} setStatus("success"); }} style={{ flex: 1, padding: "11px", background: C.dark, color: "#F7F5EF", border: "none", borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Submit</button>}
       </div>
     </div>
   );
 });
 
-// ==================== LEGAL PAGES ====================
-const PrivacyPolicy = memo(function PrivacyPolicy({ onBack }) {
-  return (
-    <div style={{ maxWidth:860, margin:"0 auto", padding:"120px 6% 80px", background:COLORS.bg, minHeight:"100vh" }}>
-      <button onClick={onBack} style={{ background:"none", border:"none", color:COLORS.green, cursor:"pointer", marginBottom:24, fontSize:14 }}>← Back to Home</button>
-      <h1 style={{ fontFamily:FONTS.serif, fontSize:"2.6rem", marginBottom:24 }}>Privacy Policy</h1>
-      <div style={{ background:COLORS.surface, borderRadius:16, padding:32, boxShadow:"0 4px 24px rgba(28,27,23,0.06)", lineHeight:1.8, color:COLORS.muted }}>
-        <p style={{ marginBottom:14 }}><strong>Last Updated:</strong> June 1, 2026</p>
-        <p>When you sign in using Google OAuth, we collect: name, email address, and profile picture. This is used only for authentication, demo account creation, platform access, and support. We never sell or share your data. Contact: <a href="mailto:tishy5327@gmail.com" style={{ color:COLORS.green }}>tishy5327@gmail.com</a></p>
-      </div>
-    </div>
-  );
-});
-
-const TermsOfService = memo(function TermsOfService({ onBack }) {
-  return (
-    <div style={{ maxWidth:860, margin:"0 auto", padding:"120px 6% 80px", background:COLORS.bg, minHeight:"100vh" }}>
-      <button onClick={onBack} style={{ background:"none", border:"none", color:COLORS.green, cursor:"pointer", marginBottom:24, fontSize:14 }}>← Back to Home</button>
-      <h1 style={{ fontFamily:FONTS.serif, fontSize:"2.6rem", marginBottom:24 }}>Terms of Service</h1>
-      <div style={{ background:COLORS.surface, borderRadius:16, padding:32, boxShadow:"0 4px 24px rgba(28,27,23,0.06)", lineHeight:1.8, color:COLORS.muted }}>
-        <p style={{ marginBottom:14 }}><strong>Last Updated:</strong> June 1, 2026</p>
-        <ol style={{ marginLeft:22 }}>
-          {[
-            "Platform is for demonstration, educational, and management purposes.",
-            "Users must not misuse, disrupt, copy, or gain unauthorized access.",
-            "Demo access may be limited or revoked at any time.",
-            "All IP belongs to Nova Teach ERP.",
-            "We are not liable for service interruptions.",
-            "Continued use indicates acceptance.",
-          ].map((t,i) => <li key={i} style={{ marginBottom:8 }}>{t}</li>)}
-        </ol>
-        <p style={{ marginTop:14 }}>Contact: <a href="mailto:tishy5327@gmail.com" style={{ color:COLORS.green }}>tishy5327@gmail.com</a></p>
-      </div>
-    </div>
-  );
-});
-
-// ==================== FIRESTORE PROFILE SYNC ====================
-// FIX 6: syncUserProfile now races against a 5-second timeout so that a slow or
-// offline Firestore never leaves the user stuck on the "Loading trial…" spinner.
-async function syncUserProfile(fbUser, setExpiry, currentUidRef) {
-  // Race Firestore getDoc against a 5-second timeout.
-  const TIMEOUT_MS = 5000;
-
-  const withTimeout = (promise, ms) => {
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Firestore timeout")), ms)
-    );
-    return Promise.race([promise, timeout]);
-  };
-
-  try {
-    if (currentUidRef.current !== fbUser.uid) {
-      console.log("[NexaAttend] syncUserProfile aborted (pre-check) — user changed");
-      return;
-    }
-
-    const ref  = doc(db, "users", fbUser.uid);
-    // FIX 6: Wrap getDoc in a timeout race so Firestore slowness can't block forever.
-    const snap = await withTimeout(getDoc(ref), TIMEOUT_MS);
-
-    if (currentUidRef.current !== fbUser.uid) {
-      console.log("[NexaAttend] syncUserProfile aborted (post-getDoc) — user changed");
-      return;
-    }
-
-    let exp;
-    if (!snap.exists()) {
-      exp = new Date();
-      exp.setDate(exp.getDate() + 7);
-      // setDoc is best-effort — don't let it block setting the expiry
-      setDoc(ref, {
-        uid:             fbUser.uid,
-        displayName:     fbUser.displayName,
-        email:           fbUser.email,
-        photoURL:        fbUser.photoURL,
-        firstLoginDate:  new Date().toISOString(),
-        trialExpiryDate: exp.toISOString(),
-        lastLogin:       new Date().toISOString(),
-      }, { merge: true }).catch(e =>
-        console.warn("[NexaAttend] setDoc failed (non-fatal):", e.message)
-      );
-      console.log("[NexaAttend] New user created. Trial expires:", exp.toISOString());
-    } else {
-      // Update lastLogin best-effort (don't await so it can't block expiry)
-      setDoc(ref, { lastLogin: new Date().toISOString() }, { merge: true }).catch(e =>
-        console.warn("[NexaAttend] lastLogin update failed (non-fatal):", e.message)
-      );
-      exp = toDate(snap.data().trialExpiryDate);
-      console.log("[NexaAttend] Existing user. Trial expires:", exp);
-    }
-
-    if (currentUidRef.current !== fbUser.uid) {
-      console.log("[NexaAttend] syncUserProfile aborted (post-setDoc) — user changed");
-      return;
-    }
-
-    setExpiry(exp);
-  } catch (err) {
-    console.warn("[NexaAttend] Firestore profile sync failed (applying fallback):", err.message);
-    // FIX 6: Always set a fallback expiry so the user is never stuck.
-    if (currentUidRef.current === fbUser.uid) {
-      const fallbackExp = new Date();
-      fallbackExp.setDate(fallbackExp.getDate() + 7);
-      setExpiry(fallbackExp);
-      console.log("[NexaAttend] Fallback trial expiry set:", fallbackExp.toISOString());
-    }
-  }
-}
-
-// ==================== MAIN APP COMPONENT ====================
+// ==================== MAIN APP ====================
 export default function App() {
   const [hash, setHash] = useState(window.location.hash.slice(1) || "/");
-
-  // FIX 7: hashRef always reflects the latest hash without requiring a closure re-capture.
-  // Used by onAuthStateChanged to decide whether to redirect to /demo.
-  const hashRef = useRef(hash);
-  useEffect(() => { hashRef.current = hash; }, [hash]);
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const nav = useCallback((p) => { window.location.hash = p; }, []);
+  const navScrolled = useScroll();
+  const [activeFaq, setActiveFaq] = useState(null);
+  const [selPlan, setSelPlan] = useState("standard");
+  const plan = useMemo(() => PLANS.find(p => p.id === selPlan), [selPlan]);
 
   useEffect(() => {
-    const fn = () => {
-      const h = window.location.hash.slice(1) || "/";
-      setHash(h);
-      hashRef.current = h;
-    };
+    const fn = () => setHash(window.location.hash.slice(1) || "/");
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
   }, []);
 
-  const nav = useCallback((path) => {
-    console.log("[NexaAttend] nav →", path);
-    window.location.hash = path;
-  }, []);
-
-  // ── Auth state ──
-  const [user,            setUser]            = useState(null);
-  const [trialExpiry,     setExpiry]          = useState(null);
-  const [authReady,       setAuthReady]       = useState(false);
-  const [authError,       setAuthError]       = useState(null);
-  const [signingIn,       setSigningIn]       = useState(false);
-
-  // ── Landing page state ──
-  const navScrolled = useScroll();
-  const [logIdx,    setLogIdx]    = useState(3);
-  const [activeFaq, setActiveFaq] = useState(null);
-  const [selPlan,   setSelPlan]   = useState("standard");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const currentUidRef = useRef(null);
-
-  // ── FIX 1+2+3+4: Single unified auth listener ──
-  //
-  // WHAT CHANGED vs v4.0:
-  //   REMOVED: the standalone getRedirectResult() useEffect — it raced with
-  //   onAuthStateChanged and printed "Auth resolved — signed out" before the session
-  //   was hydrated from the redirect credential.
-  //
-  //   ADDED: Inside onAuthStateChanged, when fbUser is present AND the current hash
-  //   is "/" (meaning the user just landed from an OAuth redirect or opened a fresh
-  //   tab while logged in), call nav("/demo") to route them to the dashboard.
-  //
-  //   KEPT: getRedirectResult() is called ONCE inside the listener so its result is
-  //   processed in the same async context as the auth state change. If it returns a
-  //   user we log it; the actual user object comes from onAuthStateChanged, which is
-  //   the canonical source.
   useEffect(() => {
-    // Call getRedirectResult once on mount to consume any pending redirect.
-    // This is fire-and-forget; the real session is established via onAuthStateChanged.
-    getRedirectResult(auth)
-      .then(result => {
-        if (result?.user) {
-          console.log("[NexaAttend] getRedirectResult → redirect sign-in completed for:", result.user.email);
-          // onAuthStateChanged will fire right after and handle state + routing.
-        } else {
-          console.log("[NexaAttend] getRedirectResult → no pending redirect.");
-        }
-      })
-      .catch(err => {
-        console.error("[NexaAttend] getRedirectResult error:", err.code, err.message);
-        // Map to user-friendly messages
-        const friendly = {
-          "auth/popup-blocked":           "Your browser blocked the sign-in popup. Please allow popups and try again.",
-          "auth/popup-closed-by-user":    "Sign-in was cancelled. Please try again.",
-          "auth/unauthorized-domain":     "This domain is not authorised for sign-in. Please contact support.",
-          "auth/network-request-failed":  "Network error during sign-in. Check your connection and try again.",
-          "auth/cancelled-popup-request": "Sign-in request was cancelled. Please try again.",
-          "auth/account-exists-with-different-credential": "An account already exists with this email using a different sign-in method.",
-        };
-        setAuthError(friendly[err.code] || `Sign-in error: ${err.message}`);
-      });
-
-    // onAuthStateChanged is the canonical source of truth for the signed-in user.
     const unsub = onAuthStateChanged(auth, (fbUser) => {
-      console.log("[NexaAttend] onAuthStateChanged →", fbUser ? `signed in: ${fbUser.email}` : "signed out");
-
       setUser(fbUser ?? null);
       setAuthReady(true);
-      currentUidRef.current = fbUser?.uid || null;
-
-      if (fbUser) {
-        // FIX 2+3: Navigate to /demo whenever the user is logged in and on the
-        // landing page ("/"). This covers both:
-        //   (a) first sign-in (popup or redirect), and
-        //   (b) returning to the app with an active session.
-        // hashRef.current is used to avoid stale closure issues.
-        const currentHash = hashRef.current;
-        console.log("[NexaAttend] Current hash at auth resolution:", currentHash);
-        if (currentHash === "/" || currentHash === "") {
-          console.log("[NexaAttend] User is on landing page — redirecting to /demo");
-          nav("/demo");
-        }
-        // Sync Firestore profile and set trial expiry (FIX 6: has timeout built in)
-        syncUserProfile(fbUser, setExpiry, currentUidRef);
-      } else {
-        console.log("[NexaAttend] Auth resolved — signed out.");
-        setExpiry(null);
-        // If user was on /demo and got signed out, go back to landing
-        if (hashRef.current === "/demo") {
-          console.log("[NexaAttend] Was on /demo but signed out — redirecting to /");
-          nav("/");
-        }
-      }
+      if (fbUser && (hash === "/" || hash === "")) nav("/demo");
     });
-
     return () => unsub();
-  // nav is stable (useCallback with no deps), so this effect runs exactly once.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hash, nav]);
 
-  // ── Sign out ──
-  const handleSignOut = useCallback(async () => {
+  const signIn = useCallback(async () => {
     try {
-      console.log("[NexaAttend] Signing out…");
-      setUser(null);
-      setExpiry(null);
-      setAuthError(null);
-      nav("/");
-      await firebaseSignOut(auth);
-      console.log("[NexaAttend] Signed out successfully.");
-    } catch (err) {
-      console.error("[NexaAttend] Sign-out failed:", err);
-    }
-  }, [nav]);
-
-  // ── FIX 1: signIn — popup is now PRIMARY ──
-  //
-  // WHY: signInWithRedirect() navigates the tab away from the app entirely. On
-  // return, the browser lands at the bare domain (no hash). Because hash-router
-  // state lives in window.location.hash — which is stripped from OAuth callback
-  // URLs per RFC 3986 — the app could never know it should route to /demo.
-  //
-  // signInWithPopup() keeps the SPA alive in the same tab with no URL change at
-  // all. onAuthStateChanged fires in the same browser session and can read
-  // hashRef.current reliably.
-  //
-  // signInWithRedirect() is kept as a fallback for environments where popups are
-  // blocked (mobile WebViews, etc.) but should only be used intentionally.
-  const signIn = useCallback(async (forceRedirect = false) => {
-    try {
-      setAuthError(null);
       setSigningIn(true);
-
-      if (forceRedirect) {
-        // Redirect flow: store intended destination so we can recover it on return.
-        // (Not used by default — popup is preferred for hash-router SPAs.)
-        console.log("[NexaAttend] Initiating Google redirect sign-in (forceRedirect=true)…");
-        sessionStorage.setItem("nexaattend_post_login_dest", "/demo");
-        await signInWithRedirect(auth, googleProvider);
-        // Execution stops here — page navigates away.
-      } else {
-        console.log("[NexaAttend] Initiating Google popup sign-in…");
-        const result = await signInWithPopup(auth, googleProvider);
-        // FIX 4: result.user is available immediately after popup resolves.
-        // onAuthStateChanged will also fire, but we log here for debugging.
-        console.log("[NexaAttend] Popup sign-in success:", result.user.email);
-        // Routing to /demo is handled by the onAuthStateChanged listener above.
-      }
+      await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      console.error("[NexaAttend] signIn failed:", err.code, err.message);
-      let msg = `Sign-in error: ${err.message}`;
-      if (err.code === "auth/popup-blocked") {
-        msg = "Popup was blocked by your browser. Trying redirect sign-in…";
-        // Auto-fallback to redirect if popup is blocked
-        try {
-          sessionStorage.setItem("nexaattend_post_login_dest", "/demo");
-          await signInWithRedirect(auth, googleProvider);
-          return; // page navigates away
-        } catch (redirectErr) {
-          msg = `Popup blocked and redirect also failed: ${redirectErr.message}`;
-        }
-      } else if (err.code === "auth/popup-closed-by-user") {
-        msg = "Sign-in cancelled. Please try again.";
-      } else if (err.code === "auth/cancelled-popup-request") {
-        // User clicked sign-in twice — silently ignore
-        setSigningIn(false);
-        return;
-      }
-      setAuthError(msg);
+      console.error(err);
     } finally {
       setSigningIn(false);
     }
   }, []);
 
-  // ── Live attendance log ticker ──
-  useEffect(() => {
-    const t = setInterval(() => {
-      setLogIdx(i => (i >= DEMO.attendanceLogs.length ? i : i+1));
-    }, 1900);
-    return () => clearInterval(t);
-  }, []);
+  const signOut = useCallback(async () => { await firebaseSignOut(auth); nav("/"); }, [nav]);
 
-  // ── Page title ──
-  useEffect(() => {
-    document.title = "School ERP Software in India | AI Attendance, Fees & Analytics | Nova Teach";
-  }, []);
+  useEffect(() => { document.title = "School ERP Software | NexaAttend"; }, []);
 
-  const scrollTo = useCallback((id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior:"smooth" });
-  }, []);
-
-  const plan = useMemo(() => PLANS.find(p => p.id===selPlan), [selPlan]);
-
-  // ── Route: legal pages ──
-  if (hash==="/privacy-policy") return <PrivacyPolicy onBack={() => nav("/")} />;
-  if (hash==="/terms")          return <TermsOfService onBack={() => nav("/")} />;
-
-  // ── Route: /demo ──
-  if (hash==="/demo") {
-    // Show loading screen while Firebase resolves initial auth state.
-    if (!authReady) {
-      console.log("[NexaAttend] /demo: authReady=false — showing loading screen");
-      return <AuthLoadingScreen message="Loading your dashboard…" />;
-    }
-    // If user somehow arrives at /demo without being logged in, redirect to home.
-    if (!user) {
-      console.log("[NexaAttend] /demo: no user — redirecting to /");
-      nav("/");
-      return null;
-    }
-    // FIX 5: With the Firestore timeout in syncUserProfile, trialExpiry should
-    // resolve within 5 seconds at most. Show loading in the meantime.
-    if (trialExpiry === null) {
-      console.log("[NexaAttend] /demo: waiting for trialExpiry…");
-      return <AuthLoadingScreen message="Loading your trial information…" />;
-    }
-    console.log("[NexaAttend] /demo: rendering DemoPage for", user.email);
-    return (
-      <DemoPage
-        user={user}
-        trialExpiryDate={trialExpiry}
-        onSignOut={handleSignOut}
-        onBack={() => nav("/")}
-      />
-    );
+  if (hash === "/demo") {
+    if (!authReady) return <AuthLoadingScreen />;
+    if (!user) { nav("/"); return null; }
+    return <DemoPage user={user} onSignOut={signOut} onBack={() => nav("/")} />;
   }
 
-  // ── Route: landing page ──
+  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+
   return (
-    <div style={{ fontFamily:FONTS.sans, background:COLORS.bg, color:COLORS.dark, overflowX:"hidden" }}>
-      <MobileCSSInjector />
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-        * { margin:0; padding:0; box-sizing:border-box; }
-        html { scroll-behavior:smooth; }
-        @keyframes spin        { to { transform:rotate(360deg); } }
-        @keyframes pulse       { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-        @keyframes fadeUp      { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes fadeIn      { from { opacity:0; } to { opacity:1; } }
-        @keyframes slideUp     { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes tickerScroll{ 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }
-        ::-webkit-scrollbar        { width:6px; height:6px; }
-        ::-webkit-scrollbar-track  { background:transparent; }
-        ::-webkit-scrollbar-thumb  { background:rgba(28,27,23,0.18); border-radius:3px; }
-        @media (max-width: 767px) {
-          #hero    { padding: 110px 5% 60px !important; }
-          #modules { padding: 60px 5% !important; }
-          #pricing { padding: 60px 5% !important; }
-          #faq     { padding: 60px 5% !important; }
-          #inquiry { padding: 60px 5% !important; }
-          section  { padding-left: 5% !important; padding-right: 5% !important; }
-          footer   { padding: 40px 5% 24px !important; }
-          .nexa-guarantee-section { padding: 40px 5% !important; }
-          .nexa-how-section       { padding: 60px 5% !important; }
-          .nexa-stats-section     { padding: 50px 5% !important; }
-          .nexa-terminal-section  { padding: 60px 5% !important; }
-        }
-      `}</style>
+    <div style={{ fontFamily: F.sans, background: C.bg, color: C.dark }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap'); * { margin:0; padding:0; box-sizing:border-box; } html { scroll-behavior:smooth; } @keyframes spin { to { transform:rotate(360deg); } } @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } } @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } } @keyframes fadeIn { from { opacity:0; } to { opacity:1; } } @keyframes tickerScroll { 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }`}</style>
 
-      <AuthErrorBanner
-        error={authError}
-        onDismiss={() => setAuthError(null)}
-        onRetryWithPopup={() => signIn(false)}
-      />
-
-      {/* ── Navbar ── */}
-      <nav className={mobileMenuOpen?"nexa-mobile-menu-open":""} style={{
-        position:"fixed", top:0, left:0, right:0, zIndex:100,
-        padding:"0 5%", height:68,
-        background:navScrolled||mobileMenuOpen?"rgba(247,245,239,0.96)":"transparent",
-        backdropFilter:navScrolled||mobileMenuOpen?"blur(14px)":"none",
-        borderBottom:navScrolled||mobileMenuOpen?`1px solid ${COLORS.border}`:"none",
-        transition:"all 0.3s",
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-      }}>
-        <div style={{ fontFamily:FONTS.serif, fontSize:21, fontWeight:600, cursor:"pointer" }} onClick={() => { scrollTo("hero"); setMobileMenuOpen(false); }}>
-          NexaAttend
-          <span style={{ display:"inline-block", width:6, height:6, borderRadius:"50%", background:COLORS.green, marginLeft:4, verticalAlign:"middle", marginBottom:2 }} />
-        </div>
-        {/* Desktop nav links */}
-        <div className="nexa-nav-links" style={{ display:"flex", alignItems:"center", gap:26 }}>
-          {[["Features","modules"],["Pricing","pricing"],["FAQ","faq"],["Contact","inquiry"]].map(([l,id]) => (
-            <button key={id} onClick={() => { scrollTo(id); setMobileMenuOpen(false); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, fontWeight:500, color:COLORS.muted, fontFamily:FONTS.sans, transition:"color 0.2s" }}
-              onMouseEnter={e=>e.target.style.color=COLORS.dark} onMouseLeave={e=>e.target.style.color=COLORS.muted}>{l}</button>
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, padding: "0 5%", height: 68, background: navScrolled ? "rgba(247,245,239,0.96)" : "transparent", backdropFilter: navScrolled ? "blur(14px)" : "none", borderBottom: navScrolled ? `1px solid ${C.border}` : "none", transition: "all 0.3s", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontFamily: F.serif, fontSize: 21, fontWeight: 600, cursor: "pointer" }} onClick={() => scrollTo("hero")}>NexaAttend<span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: C.green, marginLeft: 4 }} /></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          {[["Features", "modules"], ["Pricing", "pricing"], ["FAQ", "faq"]].map(([l, id]) => (
+            <button key={id} onClick={() => scrollTo(id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500, color: C.muted, fontFamily: F.sans }}>{l}</button>
           ))}
+          {user ? <button onClick={() => nav("/demo")} style={{ padding: "9px 18px", background: C.green, color: "#F7F5EF", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Open Dashboard</button>
+            : <button onClick={signIn} disabled={signingIn} style={{ padding: "9px 18px", background: C.dark, color: "#F7F5EF", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: signingIn ? 0.7 : 1 }}>{signingIn ? "Signing in…" : "Try Free Demo"}</button>}
         </div>
-        {/* Desktop CTA */}
-        <div className="nexa-nav-cta">
-          {!authReady ? (
-            <div style={{ width:120, height:36, borderRadius:8, background:"rgba(28,27,23,0.06)", animation:"pulse 1.5s infinite" }} />
-          ) : user ? (
-            <button onClick={() => nav("/demo")} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:COLORS.green, color:"#F7F5EF", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:FONTS.sans }}>
-              {user.photoURL && <img src={user.photoURL} alt="profile" style={{ width:22, height:22, borderRadius:"50%" }} />}
-              Open Dashboard
-            </button>
-          ) : (
-            <button
-              onClick={() => signIn(false)}
-              disabled={signingIn}
-              style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:signingIn?"not-allowed":"pointer", fontFamily:FONTS.sans, transition:"background 0.2s", opacity:signingIn?0.7:1 }}
-              onMouseEnter={e=>{ if(!signingIn) e.currentTarget.style.background=COLORS.green; }}
-              onMouseLeave={e=>{ e.currentTarget.style.background=COLORS.dark; }}>
-              {signingIn ? (
-                <div style={{ width:15, height:15, border:"2px solid rgba(255,255,255,0.3)", borderTop:"2px solid #fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-              )}
-              {signingIn ? "Signing in…" : "Try Free Demo"}
-            </button>
-          )}
-        </div>
-        {/* Hamburger button — hidden on desktop */}
-        <button className="nexa-hamburger" onClick={() => setMobileMenuOpen(o=>!o)} style={{
-          display:"none", flexDirection:"column", gap:5, background:"none", border:"none",
-          cursor:"pointer", padding:6, borderRadius:8,
-        }}>
-          <span style={{ display:"block", width:22, height:2, background:COLORS.dark, borderRadius:2, transition:"all 0.2s", transform:mobileMenuOpen?"rotate(45deg) translate(5px,5px)":"" }} />
-          <span style={{ display:"block", width:22, height:2, background:COLORS.dark, borderRadius:2, transition:"all 0.2s", opacity:mobileMenuOpen?0:1 }} />
-          <span style={{ display:"block", width:22, height:2, background:COLORS.dark, borderRadius:2, transition:"all 0.2s", transform:mobileMenuOpen?"rotate(-45deg) translate(5px,-5px)":"" }} />
-        </button>
-        {/* Mobile menu — rendered via CSS class toggle above */}
-        {mobileMenuOpen && (
-          <div style={{ position:"fixed", inset:0, top:68, background:"rgba(247,245,239,0.97)", backdropFilter:"blur(14px)", zIndex:99, padding:"28px 24px", display:"flex", flexDirection:"column", gap:8 }}>
-            {[["Features","modules"],["Pricing","pricing"],["FAQ","faq"],["Contact","inquiry"]].map(([l,id]) => (
-              <button key={id} onClick={() => { scrollTo(id); setMobileMenuOpen(false); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, fontWeight:600, color:COLORS.dark, fontFamily:FONTS.sans, textAlign:"left", padding:"10px 0", borderBottom:`1px solid ${COLORS.border}` }}>{l}</button>
-            ))}
-            <div style={{ marginTop:16 }}>
-              {user ? (
-                <button onClick={() => { nav("/demo"); setMobileMenuOpen(false); }} style={{ width:"100%", padding:"13px 18px", background:COLORS.green, color:"#F7F5EF", border:"none", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:FONTS.sans, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                  {user.photoURL && <img src={user.photoURL} alt="profile" style={{ width:24, height:24, borderRadius:"50%" }} />}
-                  Open My Dashboard
-                </button>
-              ) : (
-                <button onClick={() => { signIn(false); setMobileMenuOpen(false); }} disabled={signingIn} style={{ width:"100%", padding:"13px 18px", background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:FONTS.sans, display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:signingIn?0.7:1 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-                  {signingIn ? "Signing in…" : "Start 7-Day Free Trial"}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* ── Hero ── */}
-      <section id="hero" style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"130px 6% 90px", textAlign:"center", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 80% 60% at 50% 20%, rgba(42,107,74,0.06) 0%, transparent 70%)", pointerEvents:"none" }} />
-        <FadeIn delay={0}>
-          <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(42,107,74,0.08)", border:"1px solid rgba(42,107,74,0.2)", borderRadius:100, padding:"7px 16px", marginBottom:24 }}>
-            <span style={{ width:7, height:7, borderRadius:"50%", background:COLORS.green, animation:"pulse 2s infinite" }} />
-            <span style={{ fontSize:11, fontWeight:700, color:"#1B5C3A", letterSpacing:"0.09em" }}>NOW LIVE IN 40+ SCHOOLS ACROSS GUJARAT</span>
-          </div>
-        </FadeIn>
-        <FadeIn delay={0.1}>
-          <h1 style={{ fontFamily:FONTS.serif, fontSize:"clamp(2.6rem,6vw,4.8rem)", lineHeight:1.1, color:COLORS.dark, maxWidth:880, marginBottom:24 }}>
-            India's Smartest<br />
-            <span style={{ color:COLORS.green, fontStyle:"italic" }}>School ERP</span> with<br />
-            AI Face Attendance
-          </h1>
-        </FadeIn>
-        <FadeIn delay={0.2}>
-          <p style={{ fontSize:"clamp(1rem,2vw,1.2rem)", color:COLORS.muted, maxWidth:600, lineHeight:1.75, marginBottom:40 }}>
-            Mark 300 students in 60 seconds. Manage fees, staff, exams & reports — all from one offline-first system built for Indian schools.
-          </p>
-        </FadeIn>
-        <FadeIn delay={0.3}>
-          <div className="nexa-hero-cta" style={{ display:"flex", gap:12, flexWrap:"wrap", justifyContent:"center", marginBottom:56 }}>
-            <button onClick={() => signIn(false)} disabled={signingIn} style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 28px", background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:10, fontSize:15, fontWeight:700, cursor:signingIn?"not-allowed":"pointer", fontFamily:FONTS.sans, boxShadow:"0 8px 24px rgba(28,27,23,0.18)", transition:"background 0.2s", opacity:signingIn?0.7:1 }}
-              onMouseEnter={e=>{ if(!signingIn) e.currentTarget.style.background=COLORS.green; }}
-              onMouseLeave={e=>{ e.currentTarget.style.background=COLORS.dark; }}>
-              {signingIn
-                ? <div style={{ width:17, height:17, border:"2px solid rgba(255,255,255,0.3)", borderTop:"2px solid #fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
-                : <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-              }
-              {signingIn ? "Signing in…" : "Start 7-Day Free Trial"}
-            </button>
-            <button onClick={() => scrollTo("inquiry")} style={{ padding:"14px 28px", background:"transparent", color:COLORS.dark, border:`2px solid ${COLORS.faint}`, borderRadius:10, fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:FONTS.sans, transition:"all 0.2s" }}
-              onMouseEnter={e=>{e.currentTarget.style.background=COLORS.dark;e.currentTarget.style.color="#F7F5EF";}}
-              onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=COLORS.dark;}}>
-              Book a Demo →
-            </button>
-          </div>
-        </FadeIn>
-        <FadeIn delay={0.4}>
-          <div className="nexa-hero-stats" style={{ display:"flex", alignItems:"center", gap:32, flexWrap:"wrap", justifyContent:"center" }}>
-            {[["99%+","Face Recognition Accuracy"],["< 60s","Mark 30 Students"],["3 Days","Setup & Training"],["₹0","Hidden Charges"]].map((n,i) => (
-              <div key={i} style={{ textAlign:"center" }}>
-                <div style={{ fontFamily:FONTS.serif, fontSize:"1.8rem", fontWeight:700, color:COLORS.green }}>{n[0]}</div>
-                <div style={{ fontSize:12, color:COLORS.muted, marginTop:3 }}>{n[1]}</div>
-              </div>
-            ))}
-          </div>
-        </FadeIn>
-      </section>
-
-      {/* ── Ticker ── */}
-      <div style={{ background:COLORS.dark, padding:"12px 0", overflow:"hidden", borderTop:"1px solid rgba(247,245,239,0.05)", borderBottom:"1px solid rgba(247,245,239,0.05)" }}>
-        <div style={{ display:"flex", animation:"tickerScroll 28s linear infinite", width:"max-content" }}>
-          {[...Array(2)].map((_,oi) => (
-            <div key={oi} style={{ display:"flex" }}>
-              {["AI Face Recognition","Offline-First","WhatsApp Alerts","Payroll Automation","Fee Management","Staff HR","Exam Scheduling","Parent Portal","Custom Reports","99%+ Accuracy"].map((item,i) => (
-                <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:16, padding:"0 28px", fontSize:11, fontWeight:600, color:"rgba(247,245,239,0.45)", letterSpacing:"0.1em", textTransform:"uppercase", whiteSpace:"nowrap" }}>
-                  <span style={{ width:4, height:4, borderRadius:"50%", background:COLORS.green, flexShrink:0 }} />{item}
-                </span>
-              ))}
-            </div>
+      <section id="hero" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "130px 6% 90px", textAlign: "center" }}>
+        <FadeIn><div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(42,107,74,0.08)", border: "1px solid rgba(42,107,74,0.2)", borderRadius: 100, padding: "7px 16px", marginBottom: 24 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: C.green }} /><span style={{ fontSize: 11, fontWeight: 700, color: "#1B5C3A", letterSpacing: "0.09em" }}>NOW LIVE IN 40+ SCHOOLS</span></div></FadeIn>
+        <FadeIn delay={0.1}><h1 style={{ fontFamily: F.serif, fontSize: "clamp(2.4rem,5.5vw,4.5rem)", lineHeight: 1.1, marginBottom: 24 }}>India's Smartest<br /><span style={{ color: C.green, fontStyle: "italic" }}>School ERP</span> with<br />AI Face Attendance</h1></FadeIn>
+        <FadeIn delay={0.2}><p style={{ fontSize: 18, color: C.muted, maxWidth: 600, lineHeight: 1.7, marginBottom: 40 }}>Mark 300 students in 60 seconds. Manage fees, staff, exams, and learning — all from one offline-first system.</p></FadeIn>
+        <FadeIn delay={0.3}><div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <button onClick={signIn} disabled={signingIn} style={{ padding: "14px 28px", background: C.dark, color: "#F7F5EF", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.sans }}>{signingIn ? "Signing in…" : "Start 7-Day Free Trial"}</button>
+          <button onClick={() => scrollTo("inquiry")} style={{ padding: "14px 28px", background: "transparent", color: C.dark, border: `2px solid ${C.faint}`, borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Book a Demo →</button>
+        </div></FadeIn>
+        <FadeIn delay={0.4}><div style={{ display: "flex", gap: 32, marginTop: 56, flexWrap: "wrap", justifyContent: "center" }}>
+          {[["99%+", "Face Accuracy"], ["< 60s", "30 Students"], ["3 Days", "Setup"], ["₹0", "Hidden Fees"]].map(([n, l], i) => (
+            <div key={i} style={{ textAlign: "center" }}><div style={{ fontFamily: F.serif, fontSize: "1.8rem", fontWeight: 700, color: C.green }}>{n}</div><div style={{ fontSize: 12, color: C.muted }}>{l}</div></div>
           ))}
-        </div>
-      </div>
-
-      {/* ── Stats ── */}
-      <section style={{ padding:"80px 6%", background:COLORS.surface, borderBottom:`1px solid ${COLORS.border}` }}>
-        <div className="nexa-stats-grid" style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:48, textAlign:"center" }}>
-          {[
-            { target:40,    suffix:"+",     label:"Schools Using NexaAttend" },
-            { target:25000, suffix:"+",     label:"Students Tracked Daily"   },
-            { target:99,    suffix:"%",     label:"Attendance Accuracy"       },
-            { target:3,     suffix:" Days", label:"Average Setup Time"        },
-          ].map((s,i) => (
-            <FadeIn key={i} delay={i*0.1}>
-              <div>
-                <div style={{ fontFamily:FONTS.serif, fontSize:"3rem", fontWeight:700, color:COLORS.green, lineHeight:1 }}>
-                  <AnimatedNumber target={s.target} suffix={s.suffix} />
-                </div>
-                <div style={{ fontSize:14, color:COLORS.muted, marginTop:8 }}>{s.label}</div>
-              </div>
-            </FadeIn>
-          ))}
-        </div>
+        </div></FadeIn>
       </section>
 
-      {/* ── Live Terminal ── */}
-      <section style={{ padding:"80px 6%", background:COLORS.bg }}>
-        <div style={{ maxWidth:700, margin:"0 auto" }}>
-          <FadeIn>
-            <div style={{ textAlign:"center", marginBottom:40 }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(42,107,74,0.08)", border:"1px solid rgba(42,107,74,0.2)", borderRadius:100, padding:"6px 14px", marginBottom:16 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:COLORS.greenLight, animation:"pulse 1.5s infinite" }} />
-                <span style={{ fontSize:10, fontWeight:700, color:"#1B5C3A", letterSpacing:"0.1em" }}>LIVE RECOGNITION FEED</span>
+      <section id="modules" style={{ padding: "100px 6%", background: C.surface }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <h2 style={{ fontFamily: F.serif, fontSize: "clamp(2rem,4vw,3rem)", textAlign: "center", marginBottom: 50 }}>Everything you need, <span style={{ fontStyle: "italic", color: C.green }}>in one system</span></h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 22 }}>
+            {MODULES_INFO.map((m, i) => (
+              <div key={i} style={{ background: C.bg, borderRadius: 16, padding: 26, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 28, marginBottom: 14, color: m.color }}>{m.icon}</div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>{m.title}</h3>
+                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {m.features.map((f, j) => <li key={j} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: C.muted }}>✓ {f}</li>)}
+                </ul>
               </div>
-              <h2 style={{ fontFamily:FONTS.serif, fontSize:"clamp(1.8rem,4vw,2.8rem)", color:COLORS.dark }}>Watch students get marked in real time</h2>
-            </div>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <div style={{ background:"#0F0E0B", borderRadius:16, overflow:"hidden", border:"1px solid rgba(247,245,239,0.06)", boxShadow:"0 40px 80px rgba(0,0,0,0.28)" }}>
-              <div style={{ padding:"11px 16px", background:"rgba(247,245,239,0.04)", borderBottom:"1px solid rgba(247,245,239,0.05)", display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ display:"flex", gap:6 }}>
-                  {["#FF5F57","#FFBD2E","#28C840"].map((c,i) => <div key={i} style={{ width:11, height:11, borderRadius:"50%", background:c }} />)}
-                </div>
-                <span style={{ fontFamily:FONTS.mono, fontSize:10, color:"rgba(247,245,239,0.3)", marginLeft:8 }}>nexaattend — live attendance terminal</span>
-                <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ width:6, height:6, borderRadius:"50%", background:COLORS.greenLight, animation:"pulse 1.5s infinite" }} />
-                  <span style={{ fontFamily:FONTS.mono, fontSize:10, color:COLORS.greenLight }}>LIVE</span>
-                </div>
-              </div>
-              <div style={{ padding:"12px", fontFamily:FONTS.mono, fontSize:12 }}>
-                {DEMO.attendanceLogs.slice(0, logIdx).map((l,i) => (
-                  <div key={i} style={{ display:"flex", gap:16, padding:"6px 4px", borderBottom:"1px solid rgba(247,245,239,0.03)", animation:i===logIdx-1?"fadeUp 0.35s ease":"none" }}>
-                    <span style={{ color:"rgba(247,245,239,0.28)", flexShrink:0 }}>{l.time}</span>
-                    <span style={{ color:"#F7F5EF", flex:1 }}>{l.name}</span>
-                    <span style={{ color:"rgba(247,245,239,0.4)", flexShrink:0 }}>{l.cls}</span>
-                    <span style={{ flexShrink:0, fontWeight:700, color:l.status==="present"?"#5AC87A":l.status==="late"?"#F59E0B":"#EF4444" }}>
-                      {l.status==="present"?"✓ PRESENT":l.status==="late"?"⚠ LATE":"✗ ABSENT"}
-                    </span>
-                  </div>
-                ))}
-                {logIdx<DEMO.attendanceLogs.length && (
-                  <div style={{ padding:"7px 4px", color:"rgba(247,245,239,0.2)", animation:"pulse 1s infinite" }}>▋</div>
-                )}
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ── Modules ── */}
-      <section id="modules" style={{ padding:"100px 6%", background:COLORS.surface }}>
-        <div style={{ maxWidth:1200, margin:"0 auto" }}>
-          <FadeIn>
-            <div style={{ textAlign:"center", marginBottom:60 }}>
-              <h2 style={{ fontFamily:FONTS.serif, fontSize:"clamp(2rem,4vw,3rem)", color:COLORS.dark, marginBottom:16 }}>
-                Everything your school needs,<br /><span style={{ fontStyle:"italic", color:COLORS.green }}>in one system</span>
-              </h2>
-              <p style={{ fontSize:16, color:COLORS.muted, maxWidth:540, margin:"0 auto" }}>Built for Indian schools. Offline-first. No monthly subscription for updates.</p>
-            </div>
-          </FadeIn>
-          <div className="nexa-modules-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:22 }}>
-            {MODULES_INFO.map((m,i) => (
-              <FadeIn key={i} delay={i*0.08}>
-                <div style={{ background:COLORS.bg, borderRadius:16, padding:"26px 22px", border:`1px solid ${COLORS.border}`, transition:"transform 0.2s,box-shadow 0.2s", height:"100%" }}
-                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 20px 48px rgba(28,27,23,0.09)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                  <div style={{ width:42, height:42, borderRadius:11, background:`${m.color}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, marginBottom:14, color:m.color }}>{m.icon}</div>
-                  <h3 style={{ fontSize:16, fontWeight:700, marginBottom:12 }}>{m.title}</h3>
-                  <ul style={{ listStyle:"none", display:"flex", flexDirection:"column", gap:8 }}>
-                    {m.features.map((f,j) => (
-                      <li key={j} style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:13, color:COLORS.muted, lineHeight:1.5 }}>
-                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ marginTop:2, flexShrink:0 }}>
-                          <path d="M2.5 7.5l3 3 6-6" stroke={m.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </FadeIn>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Pricing ── */}
-      <section id="pricing" style={{ padding:"100px 6%", background:COLORS.bg }}>
-        <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <FadeIn>
-            <div style={{ textAlign:"center", marginBottom:52 }}>
-              <h2 style={{ fontFamily:FONTS.serif, fontSize:"clamp(2rem,4vw,3rem)", color:COLORS.dark, marginBottom:14 }}>
-                Transparent pricing,<br /><span style={{ fontStyle:"italic", color:COLORS.green }}>no surprises</span>
-              </h2>
-              <p style={{ fontSize:16, color:COLORS.muted }}>One-time setup + monthly SaaS. Free lifetime updates included.</p>
-            </div>
-          </FadeIn>
-          <div className="nexa-pricing-tabs" style={{ display:"flex", justifyContent:"center", gap:8, marginBottom:32 }}>
+      <section id="pricing" style={{ padding: "100px 6%", background: C.bg }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <h2 style={{ fontFamily: F.serif, fontSize: "clamp(2rem,4vw,3rem)", textAlign: "center", marginBottom: 40 }}>Simple <span style={{ fontStyle: "italic", color: C.green }}>pricing</span></h2>
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 30 }}>
             {PLANS.map(p => (
-              <button key={p.id} onClick={() => setSelPlan(p.id)} style={{
-                padding:"10px 24px", borderRadius:100, border:`2px solid ${selPlan===p.id?p.color:COLORS.faint}`,
-                background:selPlan===p.id?p.color:"transparent", color:selPlan===p.id?"#F7F5EF":COLORS.dark,
-                fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:FONTS.sans, transition:"all 0.2s",
-              }}>{p.name}</button>
+              <button key={p.id} onClick={() => setSelPlan(p.id)} style={{ padding: "10px 24px", borderRadius: 100, border: `2px solid ${selPlan === p.id ? p.color : C.faint}`, background: selPlan === p.id ? p.color : "transparent", color: selPlan === p.id ? "#F7F5EF" : C.dark, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{p.name}</button>
             ))}
           </div>
           {plan && (
-            <FadeIn>
-              <div style={{ background:COLORS.surface, borderRadius:20, border:`2px solid ${plan.color}`, padding:"36px 34px", maxWidth:660, margin:"0 auto", boxShadow:`0 20px 60px ${plan.color}18` }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:22, flexWrap:"wrap", gap:10 }}>
-                  <div>
-                    <div style={{ display:"inline-block", background:`${plan.color}18`, color:plan.color, fontSize:10, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", padding:"4px 12px", borderRadius:100, marginBottom:9 }}>{plan.badge}</div>
-                    <h3 style={{ fontFamily:FONTS.serif, fontSize:26, color:COLORS.dark }}>{plan.name} Plan</h3>
-                    <p style={{ fontSize:13, color:COLORS.muted, marginTop:3 }}>Up to {plan.students.toLocaleString("en-IN")} students</p>
-                  </div>
-                  <div style={{ textAlign:"right" }}>
-                    <div style={{ fontFamily:FONTS.serif, fontSize:"2.2rem", color:plan.color, lineHeight:1 }}>₹{plan.monthly.toLocaleString("en-IN")}</div>
-                    <div style={{ fontSize:12, color:COLORS.muted }}>/month</div>
-                  </div>
-                </div>
-                <div style={{ background:"rgba(42,107,74,0.06)", border:"1px solid rgba(42,107,74,0.15)", borderRadius:10, padding:"11px 15px", marginBottom:22 }}>
-                  <span style={{ fontSize:13, color:"#1B4D3E" }}>
-                    One-time setup: <strong style={{ textDecoration:"line-through", color:COLORS.muted, marginRight:7 }}>₹75,000</strong>
-                    <strong style={{ color:COLORS.green, fontSize:17 }}>₹45,000</strong>
-                    <span style={{ marginLeft:8, background:COLORS.green, color:"#fff", fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:100 }}>SAVE ₹30K</span>
-                  </span>
-                </div>
-                <div className="nexa-plan-features" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:24 }}>
-                  {plan.features.map((f,i) => (
-                    <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:7, fontSize:13 }}>
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink:0, marginTop:1 }}>
-                        <circle cx="7" cy="7" r="6.5" fill={`${plan.color}18`}/>
-                        <path d="M4 7l2 2 4-4" stroke={plan.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span style={{ color:COLORS.muted, lineHeight:1.45 }}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-                  <button onClick={() => signIn(false)} disabled={signingIn} style={{ flex:1, minWidth:140, padding:13, background:plan.color, color:"#F7F5EF", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:signingIn?"not-allowed":"pointer", fontFamily:FONTS.sans, opacity:signingIn?0.7:1 }}>
-                    {signingIn ? "Signing in…" : "Start Free Trial →"}
-                  </button>
-                  <button onClick={() => scrollTo("inquiry")} style={{ padding:"13px 18px", background:"transparent", border:`2px solid ${plan.color}`, color:plan.color, borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:FONTS.sans }}>
-                    Book Demo
-                  </button>
-                </div>
-              </div>
-            </FadeIn>
+            <div style={{ background: C.surface, borderRadius: 20, border: `2px solid ${plan.color}`, padding: 32 }}>
+              <h3 style={{ fontFamily: F.serif, fontSize: 26, marginBottom: 6 }}>{plan.name} Plan</h3>
+              <p style={{ fontSize: 13, color: C.muted, marginBottom: 18 }}>Up to {plan.students} students</p>
+              <div style={{ fontFamily: F.serif, fontSize: "2.2rem", color: plan.color }}>₹{plan.monthly.toLocaleString("en-IN")}<span style={{ fontSize: 14, color: C.muted }}>/mo</span></div>
+              <div style={{ background: C.greenMuted, padding: 12, borderRadius: 10, margin: "16px 0", fontSize: 13, color: "#1B4D3E" }}>Setup: <strong style={{ textDecoration: "line-through", color: C.muted }}>₹75,000</strong> <strong style={{ color: C.green, fontSize: 17 }}>₹45,000</strong></div>
+              <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
+                {plan.features.map((f, i) => <li key={i} style={{ fontSize: 13, color: C.muted }}>✓ {f}</li>)}
+              </ul>
+              <button onClick={signIn} disabled={signingIn} style={{ width: "100%", padding: 13, background: plan.color, color: "#F7F5EF", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{signingIn ? "Signing in…" : "Start Free Trial →"}</button>
+            </div>
           )}
         </div>
       </section>
 
-      {/* ── How It Works ── */}
-      <section style={{ padding:"100px 6%", background:COLORS.surface }}>
-        <div style={{ maxWidth:1000, margin:"0 auto" }}>
-          <FadeIn>
-            <div style={{ textAlign:"center", marginBottom:56 }}>
-              <h2 style={{ fontFamily:FONTS.serif, fontSize:"clamp(2rem,4vw,3rem)", color:COLORS.dark, marginBottom:14 }}>
-                Up and running in <span style={{ fontStyle:"italic", color:COLORS.green }}>3 days</span>
-              </h2>
-              <p style={{ fontSize:16, color:COLORS.muted }}>Our team handles everything — you just show up on day 4.</p>
+      <section id="faq" style={{ padding: "100px 6%", background: C.surface }}>
+        <div style={{ maxWidth: 780, margin: "0 auto" }}>
+          <h2 style={{ fontFamily: F.serif, fontSize: "clamp(2rem,4vw,3rem)", textAlign: "center", marginBottom: 40 }}>FAQ</h2>
+          {FAQS.map((f, i) => (
+            <div key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button onClick={() => setActiveFaq(activeFaq === i ? null : i)} style={{ width: "100%", display: "flex", justifyContent: "space-between", padding: "18px 0", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{f.q}</span>
+                <span style={{ fontSize: 20, color: C.green }}>{activeFaq === i ? "−" : "+"}</span>
+              </button>
+              {activeFaq === i && <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, paddingBottom: 18 }}>{f.a}</p>}
             </div>
-          </FadeIn>
-          <div className="nexa-how-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:32 }}>
-            {[
-              { day:"Day 1",  title:"Installation", desc:"Our team visits your school. Hardware and software installed on your own computer.", icon:"💻" },
-              { day:"Day 2",  title:"Enrollment",   desc:"We photograph and enroll all students and staff. 300 faces typically done in one day.", icon:"📸" },
-              { day:"Day 3",  title:"Training",     desc:"Full admin and staff training. You run mock attendance sessions until confident.", icon:"🎓" },
-              { day:"Day 4+", title:"You're Live",  desc:"NexaAttend is fully live. WhatsApp alerts, reports, and dashboards are active.", icon:"🚀" },
-            ].map((s,i) => (
-              <FadeIn key={i} delay={i*0.1}>
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:34, marginBottom:14 }}>{s.icon}</div>
-                  <div style={{ display:"inline-block", background:COLORS.greenMuted, color:COLORS.green, fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:100, marginBottom:9, letterSpacing:"0.08em" }}>{s.day}</div>
-                  <h3 style={{ fontSize:15, fontWeight:700, marginBottom:7 }}>{s.title}</h3>
-                  <p style={{ fontSize:13.5, color:COLORS.muted, lineHeight:1.65 }}>{s.desc}</p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Guarantee ── */}
-      <section style={{ background:COLORS.dark, padding:"60px 6%", textAlign:"center" }}>
-        <FadeIn>
-          <div style={{ maxWidth:680, margin:"0 auto" }}>
-            <div style={{ fontSize:46, marginBottom:14 }}>🛡️</div>
-            <h2 style={{ fontFamily:FONTS.serif, fontSize:"clamp(1.8rem,3.5vw,2.6rem)", color:"#F7F5EF", marginBottom:14 }}>7-Day Full Refund Guarantee</h2>
-            <p style={{ fontSize:15, color:"rgba(247,245,239,0.55)", lineHeight:1.8, marginBottom:26 }}>
-              Use NexaAttend for a full week. If it doesn't save your staff time, eliminate proxy attendance, and make reporting effortless — we refund everything. No conditions, no questions.
-            </p>
-            <button onClick={() => signIn(false)} disabled={signingIn} style={{ padding:"13px 30px", background:COLORS.green, color:"#F7F5EF", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:signingIn?"not-allowed":"pointer", fontFamily:FONTS.sans, transition:"background 0.2s", opacity:signingIn?0.7:1 }}
-              onMouseEnter={e=>{ if(!signingIn) e.currentTarget.style.background=COLORS.greenLight; }}
-              onMouseLeave={e=>{ e.currentTarget.style.background=COLORS.green; }}>
-              {signingIn ? "Signing in…" : "Claim Your Free Trial →"}
-            </button>
-          </div>
-        </FadeIn>
-      </section>
-
-      {/* ── FAQ ── */}
-      <section id="faq" style={{ padding:"100px 6%", background:COLORS.bg }}>
-        <div style={{ maxWidth:780, margin:"0 auto" }}>
-          <FadeIn>
-            <div style={{ textAlign:"center", marginBottom:48 }}>
-              <h2 style={{ fontFamily:FONTS.serif, fontSize:"clamp(2rem,4vw,3rem)", color:COLORS.dark }}>Frequently asked questions</h2>
-            </div>
-          </FadeIn>
-          {FAQS.map((f,i) => (
-            <FadeIn key={i} delay={i*0.03}>
-              <div style={{ borderBottom:`1px solid ${COLORS.border}`, overflow:"hidden" }}>
-                <button onClick={() => setActiveFaq(activeFaq===i?null:i)} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"19px 0", background:"none", border:"none", cursor:"pointer", textAlign:"left", fontFamily:FONTS.sans }}>
-                  <span style={{ fontSize:15, fontWeight:600, color:COLORS.dark, paddingRight:16 }}>{f.q}</span>
-                  <span style={{ fontSize:22, color:COLORS.green, flexShrink:0, transform:activeFaq===i?"rotate(45deg)":"", transition:"transform 0.2s" }}>+</span>
-                </button>
-                <div style={{ maxHeight:activeFaq===i?220:0, overflow:"hidden", transition:"max-height 0.3s ease" }}>
-                  <p style={{ fontSize:14, color:COLORS.muted, lineHeight:1.75, paddingBottom:18, paddingRight:32 }}>{f.a}</p>
-                </div>
-              </div>
-            </FadeIn>
           ))}
         </div>
       </section>
 
-      {/* ── Inquiry ── */}
-      <section id="inquiry" style={{ padding:"100px 6%", background:COLORS.surface }}>
-        <div style={{ maxWidth:680, margin:"0 auto" }}>
-          <FadeIn>
-            <div style={{ textAlign:"center", marginBottom:40 }}>
-              <h2 style={{ fontFamily:FONTS.serif, fontSize:"clamp(2rem,4vw,3rem)", color:COLORS.dark, marginBottom:10 }}>Book your free demo</h2>
-              <p style={{ fontSize:15, color:COLORS.muted }}>Our team will call you within 24 hours to schedule a visit.</p>
-            </div>
-          </FadeIn>
-          <FadeIn delay={0.1}><InquiryForm /></FadeIn>
+      <section id="inquiry" style={{ padding: "100px 6%", background: C.bg }}>
+        <div style={{ maxWidth: 680, margin: "0 auto" }}>
+          <h2 style={{ fontFamily: F.serif, fontSize: "clamp(2rem,4vw,3rem)", textAlign: "center", marginBottom: 30 }}>Book your free demo</h2>
+          <InquiryForm />
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{ background:COLORS.dark, padding:"52px 6% 30px" }}>
-        <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <div className="nexa-footer-grid" style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:44, marginBottom:44 }}>
-            <div>
-              <div style={{ fontFamily:FONTS.serif, fontSize:22, color:"#F7F5EF", marginBottom:10 }}>NexaAttend</div>
-              <p style={{ fontSize:13.5, color:"rgba(247,245,239,0.4)", lineHeight:1.75, maxWidth:320 }}>AI-powered school ERP for India. Offline-first. Built for CBSE, GSEB, ICSE, and all state board schools.</p>
-              <div style={{ marginTop:18, display:"flex", gap:8 }}>
-                <a href="https://wa.me/919974724656" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(247,245,239,0.06)", border:"1px solid rgba(247,245,239,0.1)", borderRadius:8, padding:"7px 13px", fontSize:12, color:"rgba(247,245,239,0.6)", textDecoration:"none" }}>💬 WhatsApp</a>
-                <a href="mailto:tishy5327@gmail.com" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(247,245,239,0.06)", border:"1px solid rgba(247,245,239,0.1)", borderRadius:8, padding:"7px 13px", fontSize:12, color:"rgba(247,245,239,0.6)", textDecoration:"none" }}>✉ Email</a>
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(247,245,239,0.25)", marginBottom:14 }}>Product</div>
-              {["Features","Pricing","Free Trial","Book Demo"].map((item,i) => (
-                <button key={i} onClick={() => scrollTo(["modules","pricing","hero","inquiry"][i])} style={{ display:"block", background:"none", border:"none", cursor:"pointer", fontSize:13.5, color:"rgba(247,245,239,0.45)", marginBottom:9, textAlign:"left", fontFamily:FONTS.sans, padding:0, transition:"color 0.2s" }}
-                  onMouseEnter={e=>e.target.style.color="#F7F5EF"} onMouseLeave={e=>e.target.style.color="rgba(247,245,239,0.45)"}>{item}</button>
-              ))}
-            </div>
-            <div>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(247,245,239,0.25)", marginBottom:14 }}>Legal</div>
-              {[["Privacy Policy","/privacy-policy"],["Terms of Service","/terms"]].map(([l,p],i) => (
-                <button key={i} onClick={() => nav(p)} style={{ display:"block", background:"none", border:"none", cursor:"pointer", fontSize:13.5, color:"rgba(247,245,239,0.45)", marginBottom:9, textAlign:"left", fontFamily:FONTS.sans, padding:0, transition:"color 0.2s" }}
-                  onMouseEnter={e=>e.target.style.color="#F7F5EF"} onMouseLeave={e=>e.target.style.color="rgba(247,245,239,0.45)"}>{l}</button>
-              ))}
-              <div style={{ marginTop:14, fontSize:12, color:"rgba(247,245,239,0.3)", lineHeight:1.6 }}>Ahmedabad, Gujarat<br />India — 380015</div>
-            </div>
-          </div>
-          <div style={{ borderTop:"1px solid rgba(247,245,239,0.07)", paddingTop:22, display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
-            <p style={{ fontSize:12, color:"rgba(247,245,239,0.28)" }}>© 2026 Nova Teach ERP. All rights reserved.</p>
-            <p style={{ fontSize:12, color:"rgba(247,245,239,0.28)" }}>Made in India 🇮🇳 · GST-ready · Works offline</p>
-          </div>
-        </div>
+      <footer style={{ background: C.dark, padding: "40px 6%", textAlign: "center", color: "rgba(247,245,239,0.4)" }}>
+        <p style={{ fontSize: 13 }}>© 2026 Nova Teach ERP. All rights reserved.</p>
       </footer>
-
-      {/* ── Sticky CTA ── */}
-      {authReady && !user && (
-        <div className="nexa-sticky-cta" style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", zIndex:50, animation:"fadeUp 0.5s ease" }}>
-          <button onClick={() => signIn(false)} disabled={signingIn} style={{ display:"flex", alignItems:"center", gap:10, padding:"13px 26px", background:COLORS.dark, color:"#F7F5EF", border:"none", borderRadius:100, fontSize:13, fontWeight:700, cursor:signingIn?"not-allowed":"pointer", fontFamily:FONTS.sans, boxShadow:"0 12px 40px rgba(28,27,23,0.32)", whiteSpace:"nowrap", transition:"background 0.2s", opacity:signingIn?0.7:1, width:"100%", justifyContent:"center" }}
-            onMouseEnter={e=>{ if(!signingIn) e.currentTarget.style.background=COLORS.green; }}
-            onMouseLeave={e=>{ e.currentTarget.style.background=COLORS.dark; }}>
-            {signingIn ? (
-              <div style={{ width:15, height:15, border:"2px solid rgba(255,255,255,0.3)", borderTop:"2px solid #fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-            )}
-            {signingIn ? "Signing in…" : "Try 7-Day Free Demo"}
-            {!signingIn && <span style={{ background:COLORS.green, borderRadius:100, padding:"2px 9px", fontSize:10, fontWeight:700 }}>FREE</span>}
-          </button>
-        </div>
-      )}
-      {authReady && user && hash==="/" && (
-        <div className="nexa-sticky-cta" style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", zIndex:50, animation:"fadeUp 0.5s ease" }}>
-          <button onClick={() => nav("/demo")} style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 22px", background:COLORS.green, color:"#F7F5EF", border:"none", borderRadius:100, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:FONTS.sans, boxShadow:"0 12px 40px rgba(42,107,74,0.3)", whiteSpace:"nowrap", width:"100%", justifyContent:"center" }}>
-            {user.photoURL && <img src={user.photoURL} alt="profile" style={{ width:22, height:22, borderRadius:"50%" }} />}
-            Open My Dashboard →
-          </button>
-        </div>
-      )}
     </div>
   );
-}
+}                      
