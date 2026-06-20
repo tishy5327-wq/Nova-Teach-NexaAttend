@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, memo, useMemo, lazy, Suspense } from "react";
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 const T = {
   // Brand
   green: "#2A6B4A",
   greenLight: "#5AC87A",
+  greenDim: "rgba(42,107,74,0.10)",
+  greenGlow: "rgba(42,107,74,0.35)",
 
   // Secondary
   blue: "#1A2B4A",
@@ -12,8 +14,12 @@ const T = {
 
   // Accent
   purple: "#3D1A4A",
+  purpleDim: "rgba(61,26,74,0.10)",
   amber: "#7A5000",
+  amberDim: "rgba(122,80,0,0.10)",
   red: "#7A1A1A",
+  cyan: "#0E5E63",
+  cyanDim: "rgba(14,94,99,0.10)",
 
   // Backgrounds
   bg: "#F7F5EF",
@@ -44,6 +50,21 @@ const F = {
   body: "'Inter', system-ui, sans-serif",
   mono: "'JetBrains Mono', 'Fira Code', monospace",
 };
+
+// ─── Site Config (single source of truth for contact/SEO) ────────────────────
+const SITE = {
+  name: "NexaAttend",
+  legalName: "Nova Teach Solution",
+  tagline: "School ERP, LMS & QR Attendance for Indian Schools",
+  url: "https://www.nexaattend.com",
+  whatsapp: "+919000000000", // TODO: replace with real WhatsApp Business number
+  whatsappDisplay: "+91 90000 00000",
+  founderEmail: "tishy5327@gmail.com",
+  founderName: "Tejas Iyer",
+  phone: "+91 90000 00000",
+};
+
+const waLink = (msg) => `https://wa.me/${SITE.whatsapp.replace(/[^\d]/g,"")}?text=${encodeURIComponent(msg)}`;
 
 // ─── Demo Data ───────────────────────────────────────────────────────────────
 const DEMO_ROLES = [
@@ -212,6 +233,9 @@ const Styles = () => (
     ::-webkit-scrollbar-track{background:transparent;}
     ::-webkit-scrollbar-thumb{background:${T.hint};border-radius:4px;}
     ::-webkit-scrollbar-thumb:hover{background:${T.muted};}
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    }
     @keyframes spin{to{transform:rotate(360deg)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
@@ -224,13 +248,29 @@ const Styles = () => (
     @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
     @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(34,197,94,.2)}50%{box-shadow:0 0 40px rgba(34,197,94,.5)}}
+    @keyframes popIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
     .fadeUp{animation:fadeUp .4s ease forwards}
     .nav-btn:hover{background:rgba(255,255,255,.06)!important}
     .table-row:hover td{background:rgba(255,255,255,.03)!important}
-    .card-hover:hover{border-color:rgba(255,255,255,.14)!important;transform:translateY(-1px)!important;box-shadow:0 8px 30px rgba(0,0,0,.3)!important}
+    .card-hover{transition:all .2s}
+    .card-hover:hover{border-color:rgba(28,27,23,.18)!important;transform:translateY(-2px)!important;box-shadow:0 12px 32px rgba(28,27,23,.08)!important}
     .course-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 40px rgba(0,0,0,.4)!important}
-    .btn-primary:hover{filter:brightness(1.1)!important}
-    .btn-ghost:hover{background:rgba(255,255,255,.06)!important}
+    .btn-primary:hover{filter:brightness(1.08)!important;transform:translateY(-1px)}
+    .btn-ghost:hover{background:rgba(28,27,23,.04)!important}
+    .btn-dim:hover{border-color:rgba(28,27,23,.25)!important}
+    a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid ${T.green}; outline-offset: 2px; border-radius: 4px;
+    }
+    .lp-link{position:relative}
+    .lp-link::after{content:"";position:absolute;left:0;right:100%;bottom:-3px;height:1.5px;background:${T.green};transition:right .2s ease}
+    .lp-link:hover::after{right:0}
+    @media (max-width: 860px){
+      .lp-hide-mobile{display:none!important}
+      .lp-grid-2{grid-template-columns:1fr!important}
+      .lp-grid-3{grid-template-columns:1fr!important}
+      .lp-grid-4{grid-template-columns:repeat(2,1fr)!important}
+      .lp-stack-mobile{flex-direction:column!important;align-items:stretch!important}
+    }
   `}</style>
 );
 
@@ -296,20 +336,31 @@ const Modal = memo(({ open, onClose, width=560, title, children }) => {
   );
 });
 
-const Btn = memo(({ children, onClick, variant="ghost", size="md", color, style={}, disabled }) => {
+const Btn = memo(({ children, onClick, variant="ghost", size="md", color, style={}, disabled, as, href, target, rel, "aria-label": ariaLabel }) => {
   const sizes = { sm:{fontSize:12,padding:"5px 12px"}, md:{fontSize:13,padding:"8px 16px"}, lg:{fontSize:15,padding:"11px 24px"} };
   const variants = {
-    primary: { background:T.green, color:"#0F1117", fontWeight:700 },
+    primary: { background:T.green, color:"#fff", fontWeight:700 },
     ghost:   { background:"transparent", color:T.muted, border:`1px solid ${T.border}` },
     dim:     { background:T.card, color:T.text, border:`1px solid ${T.border}` },
     danger:  { background:"rgba(239,68,68,.15)", color:T.red, border:`1px solid rgba(239,68,68,.3)` },
     success: { background:"rgba(34,197,94,.15)", color:T.green, border:`1px solid rgba(34,197,94,.3)` },
+    whatsapp:{ background:"#25D366", color:"#fff", fontWeight:700 },
   };
   const v = variants[variant] || variants.ghost;
+  const Tag = as || "button";
   return (
-    <button onClick={onClick} disabled={disabled} className={`btn-${variant}`} style={{ ...sizes[size], ...v, borderRadius:8, fontFamily:F.body, display:"inline-flex", alignItems:"center", gap:6, transition:"all .15s", opacity:disabled?.5:1, flexShrink:0, ...style }}>
+    <Tag
+      onClick={onClick}
+      disabled={Tag==="button" ? disabled : undefined}
+      href={href}
+      target={target}
+      rel={rel}
+      aria-label={ariaLabel}
+      className={`btn-${variant}`}
+      style={{ ...sizes[size], ...v, borderRadius:8, fontFamily:F.body, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6, transition:"all .15s", opacity:disabled?.5:1, flexShrink:0, cursor:disabled?"default":"pointer", ...style }}
+    >
       {children}
-    </button>
+    </Tag>
   );
 });
 
@@ -567,7 +618,7 @@ const LMSModule = memo(() => {
               <div key={c.id} className="course-card" style={{ background:T.card, borderRadius:16, border:`1px solid ${T.border}`, overflow:"hidden", cursor:"pointer", transition:"all .2s" }} onClick={()=>setCourseModal(c)}>
                 <div style={{ height:88, background:`linear-gradient(135deg, ${c.color}30, ${c.color}10)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:44, position:"relative" }}>
                   {c.emoji}
-                  {c.enrolled && <div style={{ position:"absolute", top:10, right:10, background:T.green, color:"#0F1117", fontSize:9, fontWeight:800, padding:"2px 8px", borderRadius:10, letterSpacing:".04em" }}>ENROLLED</div>}
+                  {c.enrolled && <div style={{ position:"absolute", top:10, right:10, background:T.green, color:"#fff", fontSize:9, fontWeight:800, padding:"2px 8px", borderRadius:10, letterSpacing:".04em" }}>ENROLLED</div>}
                 </div>
                 <div style={{ padding:"14px 16px" }}>
                   <div style={{ fontSize:10, fontWeight:700, color:c.color, letterSpacing:".07em", marginBottom:4 }}>{c.code}</div>
@@ -1103,7 +1154,7 @@ const OwnerDashboard = memo(({ user, onLogout }) => {
   const [tab, setTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [studentModal, setStudentModal] = useState(null);
-  const [notifications, setNotifications] = useState(DEMO_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState(NOTIFICATIONS_DATA);
   const [leavesData, setLeavesData] = useState([
     { name:"Mr. Kiran Mehta", type:"Medical", from:"Jun 8", to:"Jun 12", days:5, status:"Pending", reason:"Surgery" },
     { name:"Ms. Ritu Bansal",  type:"Casual",  from:"Jun 15",to:"Jun 15",days:1, status:"Approved",reason:"Personal" },
@@ -1888,242 +1939,10 @@ const TeacherDashboard = memo(({ user, onLogout }) => {
   );
 });
 
-// ─── Landing Page ─────────────────────────────────────────────────────────────
-const LandingPage = memo(({ onSelectRole }) => {
-  const [scrolled, setScrolled] = useState(false);
-  const [faqOpen, setFaqOpen] = useState(null);
-  const [pricingTab, setPricingTab] = useState("monthly");
-
-  useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", h, { passive:true });
-    return () => window.removeEventListener("scroll", h);
-  }, []);
-
-  const ticker = ["QR Code Attendance","AI-Powered Learning","Fee Management","Smart Timetable","Payroll Automation","Live LMS","Parent Portal","Exam Engine","Real-time Analytics","Assignment Tracker","Staff HR Module","Performance Reports"];
-
-  const features = [
-    { icon:"📱", title:"QR Code Attendance", desc:"Students scan in 3 seconds. Auto-mark, real-time dashboard, no proxies. Works offline too.", color:T.green },
-    { icon:"🤖", title:"AI-Powered LMS",     desc:"8 courses, 5 quiz types, live classes, library, gradebook — with AI content generation.", color:T.blue },
-    { icon:"💰", title:"Fee & Payroll",       desc:"Collect fees, track defaulters, process payroll. Everything automated, nothing missed.", color:T.amber },
-    { icon:"👪", title:"Parent Connect",     desc:"Live attendance, fee status, grades, and progress updates straight to parents.", color:T.cyan },
-  ];
-
-  const plans = [
-    { name:"Basic", monthly:"₹2,999", yearly:"₹27,990", popular:false,
-      features:["200 students","QR Attendance","Fee Management","Basic LMS","Email Support"] },
-    { name:"Standard", monthly:"₹4,999", yearly:"₹47,990", popular:true,
-      features:["500 students","QR Attendance","Full LMS","Payroll","Parent Portal","AI Tools","Priority Support"] },
-    { name:"Premium", monthly:"₹8,999", yearly:"₹85,990", popular:false,
-      features:["Unlimited students","All features","Custom branding","API access","Dedicated manager"] },
-  ];
-
-  const testimonials = [
-    { name:"Dr. Anjali Mehta", role:"Principal, Sunrise Academy", text:"NexaAttend transformed how we manage 304 students. QR attendance alone saves 2 hours daily.", rating:5 },
-    { name:"Mrs. Deepa Rao",   role:"Principal, DPS Vadodara",   text:"The AI assignment generator is a game changer. Our teachers save 3 hours per week.", rating:5 },
-    { name:"Mr. Rajan Shah",   role:"Owner, Modern School",      text:"Parents love the live updates. Complaints about attendance dropped 90%.", rating:5 },
-  ];
-
-  const faqs = [
-    { q:"Is there really no credit card required for the trial?", a:"Absolutely none. Start immediately with Google login, no billing details needed." },
-    { q:"How does QR attendance work?", a:"A new QR code is generated each session. Students scan with their phones — attendance is marked instantly and appears on the dashboard." },
-    { q:"Can multiple teachers use the system simultaneously?", a:"Yes. Unlimited simultaneous users on all plans. Each teacher sees only their classes." },
-    { q:"Is student data stored in India?", a:"Yes. All data lives on Google Cloud servers in Mumbai (asia-south1) under Firebase." },
-    { q:"What's included in the one-time setup?", a:"Data migration, full customization, and 2 days of on-site staff training. Currently ₹45,000 (was ₹75,000)." },
-    { q:"Can parents get real-time notifications?", a:"Yes. Push notifications via the parent portal whenever attendance is marked, fees are due, or grades are updated." },
-    { q:"Do you support Hindi and other languages?", a:"English is the primary interface. Regional language support for parent notifications is on our Q3 roadmap." },
-    { q:"What boards do you support?", a:"CBSE, ICSE, GSEB, IB, Cambridge, and all State Boards. The system is curriculum-agnostic." },
-  ];
-
-  return (
-    <div style={{ background:T.bg, minHeight:"100vh", overflowX:"hidden" }}>
-      {/* Navbar */}
-      <nav style={{ position:"fixed", top:0, left:0, right:0, zIndex:100, height:64, display:"flex", alignItems:"center", padding:"0 40px", background:scrolled?"rgba(15,17,23,.95)":"transparent", backdropFilter:scrolled?"blur(12px)":"none", borderBottom:scrolled?`1px solid ${T.border}`:"none", transition:"all .2s" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
-          <div style={{ width:28, height:28, borderRadius:8, background:T.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>🏫</div>
-          <span style={{ fontSize:16, fontWeight:800, fontFamily:F.display }}>NexaAttend</span>
-          <span style={{ fontSize:10, color:T.muted, marginLeft:4, fontFamily:F.mono }}>by Nova Teach</span>
-        </div>
-        <div style={{ display:"flex", gap:24, alignItems:"center", marginRight:32 }}>
-          {["Features","Pricing","FAQ"].map(l => <a key={l} href={`#${l.toLowerCase()}`} style={{ fontSize:13, color:T.muted, fontWeight:500 }}>{l}</a>)}
-        </div>
-        <Btn variant="primary" size="md" onClick={()=>document.getElementById("demo-section")?.scrollIntoView({behavior:"smooth"})}>
-          Try Demo →
-        </Btn>
-      </nav>
-
-      {/* Hero */}
-      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"120px 24px 80px", position:"relative" }}>
-        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 50% 30%, rgba(34,197,94,.08) 0%, transparent 70%)", pointerEvents:"none" }} />
-        <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:T.greenDim, border:`1px solid rgba(34,197,94,.3)`, padding:"6px 18px", borderRadius:24, marginBottom:28 }}>
-          <span style={{ width:7, height:7, borderRadius:"50%", background:T.green, display:"inline-block", animation:"pulse 2s infinite" }} />
-          <span style={{ fontSize:12, fontWeight:700, color:T.green, letterSpacing:".05em" }}>7-DAY FREE TRIAL · NO CARD REQUIRED</span>
-        </div>
-        <h1 style={{ fontFamily:F.display, fontSize:"clamp(36px,5vw,72px)", fontWeight:800, lineHeight:1.1, maxWidth:860, marginBottom:24 }}>
-          India's Smartest<br />
-          <span style={{ color:T.green }}>School ERP</span> with<br />
-          QR Attendance
-        </h1>
-        <p style={{ fontSize:18, color:T.muted, maxWidth:560, lineHeight:1.7, marginBottom:40 }}>
-          One platform for QR attendance, fees, LMS, payroll, exams, and parent communication. Built for Indian schools, loved by 500+ principals.
-        </p>
-        <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap", marginBottom:56 }}>
-          <Btn variant="primary" size="lg" onClick={()=>document.getElementById("demo-section")?.scrollIntoView({behavior:"smooth"})} style={{ minWidth:180 }}>
-            Start Free Trial →
-          </Btn>
-          <Btn variant="dim" size="lg">Watch 2-min Demo ▶</Btn>
-        </div>
-        <div style={{ display:"flex", gap:56, justifyContent:"center", flexWrap:"wrap" }}>
-          {[["500+","Schools live"],["1.2L+","Students tracked"],["99.2%","QR accuracy"],["₹0","To start"]].map(([v,l]) => (
-            <div key={l} style={{ textAlign:"center" }}>
-              <div style={{ fontSize:32, fontWeight:800, fontFamily:F.display, color:T.text }}>{v}</div>
-              <div style={{ fontSize:13, color:T.muted, marginTop:4 }}>{l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Ticker */}
-      <div style={{ background:T.surface, borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}`, padding:"14px 0", overflow:"hidden" }}>
-        <div style={{ display:"flex", animation:"ticker 25s linear infinite", width:"200%" }}>
-          {[...ticker,...ticker].map((item,i) => (
-            <span key={i} style={{ padding:"0 28px", color:T.muted, fontSize:13, fontWeight:500, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:12 }}>
-              <span style={{ color:T.green, fontSize:10 }}>◆</span> {item}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Features */}
-      <div id="features" style={{ maxWidth:1200, margin:"0 auto", padding:"96px 24px" }}>
-        <div style={{ textAlign:"center", marginBottom:64 }}>
-          <div style={{ fontSize:11, fontWeight:800, letterSpacing:".12em", color:T.green, marginBottom:12 }}>PLATFORM MODULES</div>
-          <h2 style={{ fontFamily:F.display, fontSize:"clamp(28px,3vw,48px)", fontWeight:800 }}>Everything your school needs</h2>
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:20 }}>
-          {features.map(f => (
-            <div key={f.title} className="card-hover" style={{ background:T.card, borderRadius:20, padding:28, border:`1px solid ${T.border}`, transition:"all .2s" }}>
-              <div style={{ width:52, height:52, borderRadius:14, background:`${f.color}18`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, marginBottom:18 }}>{f.icon}</div>
-              <h3 style={{ fontSize:18, fontWeight:700, fontFamily:F.display, marginBottom:10, color:f.color }}>{f.title}</h3>
-              <p style={{ fontSize:14, color:T.muted, lineHeight:1.7 }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Demo CTA Section */}
-      <div id="demo-section" style={{ background:T.surface, borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}`, padding:"80px 24px" }}>
-        <div style={{ maxWidth:900, margin:"0 auto", textAlign:"center" }}>
-          <div style={{ fontSize:11, fontWeight:800, letterSpacing:".12em", color:T.green, marginBottom:12 }}>INTERACTIVE DEMO</div>
-          <h2 style={{ fontFamily:F.display, fontSize:"clamp(24px,3vw,40px)", fontWeight:800, marginBottom:16 }}>Experience NexaAttend now</h2>
-          <p style={{ color:T.muted, fontSize:16, marginBottom:40, lineHeight:1.6 }}>Pick a role and explore the full platform. No login required for the demo.</p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:16, maxWidth:700, margin:"0 auto" }}>
-            {DEMO_ROLES.map(r => (
-              <button key={r.id} onClick={()=>onSelectRole(r)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:16, padding:"20px 16px", cursor:"pointer", transition:"all .2s", textAlign:"center" }}
-                onMouseEnter={e=>{ e.currentTarget.style.borderColor=r.color; e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow=`0 8px 30px ${r.color}30`; }}
-                onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}>
-                <div style={{ fontSize:32, marginBottom:8 }}>{r.icon}</div>
-                <div style={{ fontSize:13, fontWeight:700, color:r.color }}>{r.label}</div>
-                <div style={{ fontSize:11, color:T.muted, marginTop:4 }}>{r.id==="founder"?"Platform admin":"Demo role"}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing */}
-      <div id="pricing" style={{ maxWidth:1200, margin:"0 auto", padding:"96px 24px" }}>
-        <div style={{ textAlign:"center", marginBottom:48 }}>
-          <div style={{ fontSize:11, fontWeight:800, letterSpacing:".12em", color:T.green, marginBottom:12 }}>PRICING</div>
-          <h2 style={{ fontFamily:F.display, fontSize:"clamp(28px,3vw,48px)", fontWeight:800, marginBottom:12 }}>Simple, transparent pricing</h2>
-          <p style={{ color:T.muted, marginBottom:24 }}>One-time setup: <s style={{ opacity:.5 }}>₹75,000</s> → <strong style={{ color:T.green }}>₹45,000</strong> (limited time)</p>
-          <div style={{ display:"inline-flex", borderRadius:12, border:`1px solid ${T.border}`, overflow:"hidden", background:T.card }}>
-            {["monthly","yearly"].map(t => (
-              <button key={t} onClick={()=>setPricingTab(t)} style={{ padding:"9px 22px", fontSize:13, fontWeight:600, background:pricingTab===t?T.green:"transparent", color:pricingTab===t?"#0F1117":T.muted }}>
-                {t==="yearly"?"Yearly (save 2 mo.)":"Monthly"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20 }}>
-          {plans.map(p => (
-            <div key={p.name} style={{ background:T.card, border:`1.5px solid ${p.popular?T.green:T.border}`, borderRadius:20, padding:28, position:"relative", boxShadow:p.popular?`0 0 40px ${T.greenGlow}`:"none", transition:"all .2s" }}>
-              {p.popular && <div style={{ position:"absolute", top:-12, left:"50%", transform:"translateX(-50%)", background:T.green, color:"#0F1117", fontSize:10, fontWeight:800, padding:"4px 14px", borderRadius:12, letterSpacing:".06em", whiteSpace:"nowrap" }}>MOST POPULAR</div>}
-              <div style={{ fontSize:20, fontWeight:700, marginBottom:6 }}>{p.name}</div>
-              <div style={{ fontSize:36, fontWeight:800, fontFamily:F.display, color:T.green, marginBottom:4 }}>{pricingTab==="yearly"?p.yearly:p.monthly}</div>
-              <div style={{ fontSize:12, color:T.muted, marginBottom:24 }}>per {pricingTab==="yearly"?"year":"month"}</div>
-              {p.features.map(f => (
-                <div key={f} style={{ display:"flex", gap:10, marginBottom:10 }}>
-                  <span style={{ color:T.green, fontSize:14, flexShrink:0 }}>✓</span>
-                  <span style={{ fontSize:14, color:T.muted }}>{f}</span>
-                </div>
-              ))}
-              <Btn variant={p.popular?"primary":"dim"} size="lg" onClick={()=>document.getElementById("demo-section")?.scrollIntoView({behavior:"smooth"})} style={{ width:"100%", justifyContent:"center", marginTop:20 }}>
-                Start 7-Day Trial
-              </Btn>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Testimonials */}
-      <div style={{ background:T.surface, borderTop:`1px solid ${T.border}`, padding:"80px 24px" }}>
-        <div style={{ maxWidth:1200, margin:"0 auto" }}>
-          <div style={{ textAlign:"center", marginBottom:48 }}>
-            <h2 style={{ fontFamily:F.display, fontSize:"clamp(24px,3vw,40px)", fontWeight:800 }}>Trusted by school leaders</h2>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20 }}>
-            {testimonials.map((t,i) => (
-              <div key={i} className="card-hover" style={{ background:T.card, borderRadius:20, padding:24, border:`1px solid ${T.border}`, transition:"all .2s" }}>
-                <div style={{ fontSize:24, marginBottom:12 }}>{"⭐".repeat(t.rating)}</div>
-                <p style={{ fontSize:14, color:T.muted, lineHeight:1.7, marginBottom:16 }}>"{t.text}"</p>
-                <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                  <Avatar name={t.name} size={36} bg={T.green} />
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:700 }}>{t.name}</div>
-                    <div style={{ fontSize:11, color:T.muted }}>{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* FAQ */}
-      <div id="faq" style={{ maxWidth:800, margin:"0 auto", padding:"96px 24px" }}>
-        <div style={{ textAlign:"center", marginBottom:48 }}>
-          <h2 style={{ fontFamily:F.display, fontSize:"clamp(24px,3vw,40px)", fontWeight:800 }}>Frequently asked questions</h2>
-        </div>
-        {faqs.map((f,i) => (
-          <div key={i} style={{ borderBottom:`1px solid ${T.border}` }}>
-            <button onClick={()=>setFaqOpen(faqOpen===i?null:i)} style={{ width:"100%", padding:"20px 0", display:"flex", justifyContent:"space-between", alignItems:"center", fontFamily:F.body, fontSize:15, fontWeight:600, color:T.text, background:"none" }}>
-              {f.q}
-              <span style={{ fontSize:20, transform:faqOpen===i?"rotate(45deg)":"none", transition:"transform .2s", flexShrink:0, marginLeft:16, color:T.muted }}></span>
-            </button>
-            {faqOpen === i && <div style={{ paddingBottom:20, fontSize:14, color:T.muted, lineHeight:1.7, animation:"fadeUp .2s ease" }}>{f.a}</div>}
-          </div>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div style={{ background:T.surface, borderTop:`1px solid ${T.border}`, padding:"40px 24px", textAlign:"center" }}>
-        <div style={{ fontSize:18, fontWeight:800, fontFamily:F.display, marginBottom:4 }}>NexaAttend</div>
-        <div style={{ fontSize:12, color:T.muted, marginBottom:20 }}>Powered by Nova Teach Solution · India's Smartest School ERP</div>
-        <div style={{ display:"flex", gap:24, justifyContent:"center", marginBottom:16 }}>
-          {["Privacy Policy","Terms","Contact","WhatsApp Demo"].map(l => <a key={l} href="#" style={{ fontSize:12, color:T.muted }}>{l}</a>)}
-        </div>
-        <div style={{ fontSize:11, color:T.hint }}>© 2026 Nova Teach Solution. All rights reserved.</div>
-      </div>
-    </div>
-  );
-});
-
 // ─── Login / Role Selector Screen ─────────────────────────────────────────────
 const LoginScreen = memo(({ selectedRole, onLogin, onBack }) => {
-  const [mode, setMode] = useState("select"); // select | google | credentials
-
-  if(mode === "select") return (
+  if(!selectedRole) return null;
+  return (
     <div style={{ minHeight:"100vh", background:T.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
       <div style={{ width:"100%", maxWidth:520 }}>
         <button onClick={onBack} style={{ fontSize:13, color:T.muted, marginBottom:24, display:"flex", alignItems:"center", gap:6 }}>← Back</button>
@@ -2136,7 +1955,7 @@ const LoginScreen = memo(({ selectedRole, onLogin, onBack }) => {
           <button onClick={()=>onLogin(selectedRole)} style={{ padding:"16px 24px", borderRadius:16, border:`1px solid ${T.border}`, background:T.card, color:T.text, fontSize:15, fontWeight:600, display:"flex", alignItems:"center", gap:14, cursor:"pointer", transition:"all .2s", fontFamily:F.body }}
             onMouseEnter={e=>e.currentTarget.style.borderColor=T.green}
             onMouseLeave={e=>e.currentTarget.style.borderColor=T.border}>
-            <div style={{ width:40, height:40, borderRadius:12, background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>G</div>
+            <div style={{ width:40, height:40, borderRadius:12, background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, border:`1px solid ${T.border}` }}>G</div>
             <div style={{ textAlign:"left" }}>
               <div>Continue with Google</div>
               <div style={{ fontSize:12, color:T.muted, marginTop:1 }}>{selectedRole.email}</div>
@@ -2164,8 +1983,10 @@ const LoginScreen = memo(({ selectedRole, onLogin, onBack }) => {
       </div>
     </div>
   );
-  return null;
 });
+
+// ─── PLACEHOLDER: LandingPage will be inserted here by next edit ─────────────
+const LandingPage = memo(({ onSelectRole }) => <div>placeholder</div>);
 
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
