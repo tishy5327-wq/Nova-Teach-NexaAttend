@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, memo, useMemo, lazy, Suspense } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 const T = {
@@ -270,6 +271,7 @@ const Styles = () => (
       .lp-grid-3{grid-template-columns:1fr!important}
       .lp-grid-4{grid-template-columns:repeat(2,1fr)!important}
       .lp-stack-mobile{flex-direction:column!important;align-items:stretch!important}
+      .lp-mobile-toggle{display:block!important}
     }
   `}</style>
 );
@@ -1985,8 +1987,329 @@ const LoginScreen = memo(({ selectedRole, onLogin, onBack }) => {
   );
 });
 
-// ─── PLACEHOLDER: LandingPage will be inserted here by next edit ─────────────
-const LandingPage = memo(({ onSelectRole }) => <div>placeholder</div>);
+// ─── Landing Page ──────────────────────────────────────────────────────────
+const LP_FEATURES = [
+  { icon: "📱", title: "QR Attendance", body: "Students scan a session QR code at the door. Attendance lands in the register before the bell finishes ringing — no rosters, no roll call." },
+  { icon: "🖥️", title: "Full LMS", body: "Courses, quizzes, live classes, and a shared library — so teaching and attendance live in one place instead of three different apps." },
+  { icon: "✨", title: "AI Tools", body: "Generate assignments, quizzes, and performance analysis in seconds, scoped to the exact class and subject a teacher is standing in front of." },
+  { icon: "💰", title: "Fees & Payroll", body: "Track collection by student and class, run payroll for staff, and see exactly what's outstanding without exporting a single spreadsheet." },
+  { icon: "📊", title: "Reports", body: "Attendance, academic, and financial trends in one dashboard — built for the conversations a Principal actually has with a Board." },
+  { icon: "👪", title: "Parent Visibility", body: "Parents see attendance, grades, and fee status the moment they're updated — fewer calls to the front office, more trust in the school." },
+];
+
+const LP_STEPS = [
+  { n: "01", title: "Generate the session QR", body: "A teacher opens NexaAttend and generates a one-time QR code for that class period — refreshes automatically so codes can't be shared ahead of time." },
+  { n: "02", title: "Students scan in", body: "Each student scans with any phone camera. Attendance is logged with a timestamp and confidence score, instantly, no app install required." },
+  { n: "03", title: "Everyone sees it live", body: "Owners see the school-wide dashboard update in real time. Parents get the same record the moment it's marked — present, late, or absent." },
+];
+
+const LP_PLANS = [
+  { name: "Basic", price: 2999, students: "Up to 250 students", color: T.blue, features: ["QR Attendance", "Student & Staff records", "Fee tracking", "Email support"] },
+  { name: "Standard", price: 4999, students: "Up to 500 students", color: T.green, popular: true, features: ["Everything in Basic", "Full LMS & Quizzes", "AI assignment tools", "Priority support"] },
+  { name: "Premium", price: 8999, students: "Unlimited students", color: T.purple, features: ["Everything in Standard", "Live classes", "Multi-branch reporting", "Dedicated onboarding"] },
+];
+
+const LP_FAQS = [
+  { q: "Do students need to install an app?", a: "No. Scanning works with any phone's default camera app — there's nothing to download for students or parents." },
+  { q: "What happens if a student doesn't have a phone?", a: "Teachers can mark attendance manually from the same dashboard in a few taps; QR scanning is the fast path, not the only path." },
+  { q: "Can we migrate existing student and fee records?", a: "Yes — our onboarding team imports your existing spreadsheets during setup, included in every plan." },
+  { q: "Is there a contract or can we cancel anytime?", a: "Plans are billed monthly with no lock-in. You can cancel before your next renewal date at any time." },
+];
+
+const LPNavLink = ({ children, href }) => (
+  <a href={href} className="lp-link" style={{ fontSize: 14, color: "rgba(28,27,23,0.7)", fontWeight: 500 }}>{children}</a>
+);
+
+const LPSectionLabel = ({ children }) => (
+  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: T.green, marginBottom: 12, fontFamily: F.mono }}>
+    {children}
+  </div>
+);
+
+const LandingPage = memo(({ onSelectRole }) => {
+  const [scanTick, setScanTick] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setScanTick(t => (t + 1) % ATTENDANCE_LOG.length), 1400);
+    return () => clearInterval(id);
+  }, []);
+
+  const liveRow = ATTENDANCE_LOG[scanTick];
+
+  return (
+    <>
+      {/* ── Nav ───────────────────────────────────────────────────────── */}
+      <header style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(247,245,239,0.92)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: T.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏫</div>
+            <span style={{ fontFamily: F.display, fontWeight: 800, fontSize: 16, color: T.text }}>{SITE.name}</span>
+          </div>
+          <nav className="lp-hide-mobile" style={{ display: "flex", gap: 32, alignItems: "center" }}>
+            <LPNavLink href="#features">Features</LPNavLink>
+            <LPNavLink href="#how-it-works">How it works</LPNavLink>
+            <LPNavLink href="#pricing">Pricing</LPNavLink>
+            <LPNavLink href="#faq">FAQ</LPNavLink>
+          </nav>
+          <div className="lp-hide-mobile" style={{ display: "flex", gap: 10 }}>
+            <Btn variant="ghost" size="md" onClick={() => onSelectRole(DEMO_ROLES[1])}>Sign in</Btn>
+            <Btn variant="primary" size="md" onClick={() => onSelectRole(DEMO_ROLES[1])}>Try the demo →</Btn>
+          </div>
+          <button
+            onClick={() => setMobileNavOpen(v => !v)}
+            aria-label="Toggle menu"
+            style={{ display: "none", fontSize: 22, color: T.text }}
+            className="lp-mobile-toggle"
+          >
+            {mobileNavOpen ? "✕" : "☰"}
+          </button>
+        </div>
+        {mobileNavOpen && (
+          <div style={{ borderTop: `1px solid ${T.border}`, padding: "16px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <LPNavLink href="#features">Features</LPNavLink>
+            <LPNavLink href="#how-it-works">How it works</LPNavLink>
+            <LPNavLink href="#pricing">Pricing</LPNavLink>
+            <LPNavLink href="#faq">FAQ</LPNavLink>
+            <Btn variant="primary" size="md" onClick={() => onSelectRole(DEMO_ROLES[1])} style={{ justifyContent: "center", marginTop: 6 }}>Try the demo →</Btn>
+          </div>
+        )}
+      </header>
+
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "72px 24px 56px", display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 56, alignItems: "center" }} className="lp-grid-2">
+        <div>
+          <LPSectionLabel>School ERP · LMS · QR Attendance</LPSectionLabel>
+          <h1 style={{ fontFamily: F.display, fontSize: 46, lineHeight: 1.08, fontWeight: 800, color: T.text, letterSpacing: "-0.01em", marginBottom: 20 }}>
+            Attendance marked by the time the bell stops ringing.
+          </h1>
+          <p style={{ fontSize: 17, lineHeight: 1.6, color: T.muted, marginBottom: 32, maxWidth: 480 }}>
+            {SITE.tagline}. One QR scan replaces the register, the LMS replaces three other logins, and every parent sees the same record the school does — the moment it's marked.
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }} className="lp-stack-mobile">
+            <Btn variant="primary" size="lg" onClick={() => onSelectRole(DEMO_ROLES[1])}>Explore the live demo →</Btn>
+            <Btn as="a" href={waLink("Hi, I'd like to know more about NexaAttend for my school.")} target="_blank" rel="noopener noreferrer" variant="whatsapp" size="lg">💬 Chat on WhatsApp</Btn>
+          </div>
+          <div style={{ display: "flex", gap: 28, marginTop: 40, flexWrap: "wrap" }}>
+            {[["304", "students on Sunrise Academy"], ["6", "schools live across Gujarat"], ["93.4%", "average attendance accuracy"]].map(([v, l]) => (
+              <div key={l}>
+                <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 800, color: T.green }}>{v}</div>
+                <div style={{ fontSize: 12, color: T.muted, marginTop: 2, maxWidth: 120 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Signature element: live mock QR scan ticker */}
+        <div style={{ background: "#0d1117", borderRadius: 20, border: `1px solid rgba(34,197,94,.2)`, padding: 24, boxShadow: "0 24px 64px rgba(28,27,23,0.18)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: T.green, display: "inline-block", animation: "pulse 1.5s infinite" }} />
+              <span style={{ fontSize: 11, fontFamily: F.mono, fontWeight: 700, color: T.green, letterSpacing: ".06em" }}>LIVE QR SCAN — CLASS X-A</span>
+            </div>
+            <span style={{ fontSize: 10, fontFamily: F.mono, color: "rgba(255,255,255,.3)" }}>demo feed</span>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+            <div style={{ width: 132, height: 132, background: "#fff", borderRadius: 14, padding: 12, position: "relative", animation: "glow 2.4s ease-in-out infinite" }}>
+              <svg width="108" height="108" viewBox="0 0 108 108">
+                {[...Array(7)].map((_, r) => [...Array(7)].map((_, c) => {
+                  const pat = [[1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,1,0,1,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,1],[1,1,1,1,1,1,1]];
+                  return pat[r][c] ? <rect key={`tl${r}${c}`} x={c*6} y={r*6} width={5} height={5} fill="#111" rx="1" /> : null;
+                }))}
+                {[...Array(7)].map((_, r) => [...Array(7)].map((_, c) => {
+                  const pat = [[1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,1,0,1,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,1],[1,1,1,1,1,1,1]];
+                  return pat[r][c] ? <rect key={`br${r}${c}`} x={c*6+66} y={r*6+66} width={5} height={5} fill="#111" rx="1" /> : null;
+                }))}
+                {[...Array(7)].map((_, r) => [...Array(7)].map((_, c) => {
+                  const pat = [[1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,1,0,1,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,1],[1,1,1,1,1,1,1]];
+                  return pat[r][c] ? <rect key={`tr${r}${c}`} x={c*6+66} y={r*6} width={5} height={5} fill="#111" rx="1" /> : null;
+                }))}
+              </svg>
+              <div style={{ position: "absolute", inset: 12, borderRadius: 6, overflow: "hidden", pointerEvents: "none" }}>
+                <div style={{ width: "100%", height: 2, background: `linear-gradient(90deg, transparent, ${T.green}, transparent)`, animation: "scanline 1.8s ease-in-out infinite" }} />
+              </div>
+            </div>
+          </div>
+
+          <div key={scanTick} style={{ background: "rgba(255,255,255,.04)", borderRadius: 10, padding: "10px 14px", animation: "fadeUp .3s ease" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: F.mono }}>
+              <span style={{ color: "rgba(255,255,255,.85)", fontWeight: 600 }}>{liveRow.name}</span>
+              <span style={{ color: liveRow.status === "Present" ? T.greenLight : liveRow.status === "Late" ? "#F59E0B" : "#EF4444", fontWeight: 700 }}>{liveRow.status}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginTop: 4, color: "rgba(255,255,255,.35)", fontFamily: F.mono }}>
+              <span>{liveRow.roll}</span>
+              <span>{liveRow.time} · {liveRow.conf}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Logos / trust strip ──────────────────────────────────────── */}
+      <section style={{ borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}`, background: T.card }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 24px", display: "flex", gap: 40, justifyContent: "center", flexWrap: "wrap" }}>
+          {FOUNDER_SCHOOLS.map(s => (
+            <span key={s.name} style={{ fontSize: 13, color: T.hint, fontWeight: 600 }}>{s.name}</span>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Features ──────────────────────────────────────────────────── */}
+      <section id="features" style={{ maxWidth: 1180, margin: "0 auto", padding: "88px 24px" }}>
+        <div style={{ maxWidth: 560, marginBottom: 48 }}>
+          <LPSectionLabel>Everything in one login</LPSectionLabel>
+          <h2 style={{ fontFamily: F.display, fontSize: 32, fontWeight: 800, color: T.text, marginBottom: 14 }}>Built for how Indian schools actually run.</h2>
+          <p style={{ fontSize: 15, color: T.muted, lineHeight: 1.6 }}>Six modules, one dashboard — used by Founders, Owners, Teachers, Students, and Parents, each seeing exactly what's relevant to them.</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }} className="lp-grid-3">
+          {LP_FEATURES.map(f => (
+            <div key={f.title} className="card-hover" style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, transition: "all .2s" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: T.greenDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>{f.icon}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8, fontFamily: F.display }}>{f.title}</div>
+              <div style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.6 }}>{f.body}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── How it works ──────────────────────────────────────────────── */}
+      <section id="how-it-works" style={{ background: T.card, borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "88px 24px" }}>
+          <div style={{ maxWidth: 560, marginBottom: 48 }}>
+            <LPSectionLabel>From scan to report</LPSectionLabel>
+            <h2 style={{ fontFamily: F.display, fontSize: 32, fontWeight: 800, color: T.text, marginBottom: 14 }}>Three steps, every period, every day.</h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 32 }} className="lp-grid-3">
+            {LP_STEPS.map((s, i) => (
+              <div key={s.n} style={{ position: "relative", paddingLeft: 0 }}>
+                <div style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: T.green, marginBottom: 14 }}>{s.n}</div>
+                <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, fontFamily: F.display }}>{s.title}</div>
+                <div style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.6 }}>{s.body}</div>
+                {i < LP_STEPS.length - 1 && (
+                  <div className="lp-hide-mobile" style={{ position: "absolute", top: 10, right: -16, fontSize: 18, color: T.hint }}>→</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ───────────────────────────────────────────────────── */}
+      <section id="pricing" style={{ maxWidth: 1180, margin: "0 auto", padding: "88px 24px" }}>
+        <div style={{ maxWidth: 560, marginBottom: 48 }}>
+          <LPSectionLabel>Pricing</LPSectionLabel>
+          <h2 style={{ fontFamily: F.display, fontSize: 32, fontWeight: 800, color: T.text, marginBottom: 14 }}>Priced per school, not per headache.</h2>
+          <p style={{ fontSize: 15, color: T.muted, lineHeight: 1.6 }}>Every plan includes onboarding and data migration. Cancel anytime — no lock-in contracts.</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }} className="lp-grid-3">
+          {LP_PLANS.map(p => (
+            <div key={p.name} style={{ background: p.popular ? T.text : T.card, color: p.popular ? T.bg : T.text, border: `1px solid ${p.popular ? T.text : T.border}`, borderRadius: 18, padding: 28, position: "relative", display: "flex", flexDirection: "column" }}>
+              {p.popular && (
+                <div style={{ position: "absolute", top: -12, left: 24, background: T.green, color: "#fff", fontSize: 10, fontWeight: 800, padding: "4px 12px", borderRadius: 20, letterSpacing: ".05em" }}>MOST POPULAR</div>
+              )}
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: p.popular ? T.bg : p.color }}>{p.name}</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                <span style={{ fontFamily: F.display, fontSize: 34, fontWeight: 800 }}>{fmtINR(p.price)}</span>
+                <span style={{ fontSize: 13, opacity: 0.6 }}>/month</span>
+              </div>
+              <div style={{ fontSize: 12.5, opacity: 0.7, marginBottom: 24 }}>{p.students}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28, flex: 1 }}>
+                {p.features.map(f => (
+                  <div key={f} style={{ display: "flex", gap: 8, fontSize: 13, alignItems: "flex-start" }}>
+                    <span style={{ color: p.popular ? T.greenLight : T.green, flexShrink: 0 }}>✓</span>
+                    <span style={{ opacity: 0.85 }}>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <Btn
+                variant={p.popular ? "primary" : "dim"}
+                size="md"
+                onClick={() => onSelectRole(DEMO_ROLES[0])}
+                style={{ justifyContent: "center", ...(p.popular ? {} : { background: "transparent", color: p.popular ? T.bg : T.text, border: `1px solid ${p.popular ? T.bg : T.border}` }) }}
+              >
+                Talk to us →
+              </Btn>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── FAQ ───────────────────────────────────────────────────────── */}
+      <section id="faq" style={{ background: T.card, borderTop: `1px solid ${T.border}` }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", padding: "88px 24px" }}>
+          <div style={{ marginBottom: 40 }}>
+            <LPSectionLabel>Questions</LPSectionLabel>
+            <h2 style={{ fontFamily: F.display, fontSize: 32, fontWeight: 800, color: T.text }}>Frequently asked.</h2>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {LP_FAQS.map((f, i) => (
+              <div key={f.q} style={{ padding: "22px 0", borderBottom: i < LP_FAQS.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, fontFamily: F.display }}>{f.q}</div>
+                <div style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.6 }}>{f.a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA ─────────────────────────────────────────────────── */}
+      <section style={{ background: T.gradientDashboard, padding: "72px 24px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: F.display, fontSize: 30, fontWeight: 800, color: "#fff", marginBottom: 14 }}>See your school's attendance, fees, and grades in one place — today.</h2>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", marginBottom: 28 }}>No setup required to explore. Pick a role and walk through the real dashboard.</p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Btn variant="primary" size="lg" onClick={() => onSelectRole(DEMO_ROLES[1])}>Explore the live demo →</Btn>
+            <Btn as="a" href={waLink("Hi, I'd like to know more about NexaAttend for my school.")} target="_blank" rel="noopener noreferrer" variant="whatsapp" size="lg">💬 Chat on WhatsApp</Btn>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ────────────────────────────────────────────────────── */}
+      <footer style={{ background: "#0d1117", padding: "56px 24px 28px" }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 32, paddingBottom: 36, borderBottom: "1px solid rgba(247,245,239,0.08)" }} className="lp-grid-4">
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: T.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🏫</div>
+                <span style={{ fontFamily: F.display, fontWeight: 800, fontSize: 15, color: "#fff" }}>{SITE.name}</span>
+              </div>
+              <p style={{ fontSize: 13, color: "rgba(247,245,239,0.45)", lineHeight: 1.6, maxWidth: 240 }}>{SITE.tagline}, by {SITE.legalName}.</p>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(247,245,239,0.4)", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 14 }}>Product</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {["Features", "How it works", "Pricing"].map(l => (
+                  <a key={l} href={`#${l.toLowerCase().replace(/\s+/g, "-")}`} style={{ fontSize: 13, color: "rgba(247,245,239,0.65)" }}>{l}</a>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(247,245,239,0.4)", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 14 }}>Company</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <span style={{ fontSize: 13, color: "rgba(247,245,239,0.65)" }}>Founded by {SITE.founderName}</span>
+                <a href={`mailto:${SITE.founderEmail}`} style={{ fontSize: 13, color: "rgba(247,245,239,0.65)" }}>{SITE.founderEmail}</a>
+                <span style={{ fontSize: 13, color: "rgba(247,245,239,0.65)" }}>{SITE.phone}</span>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(247,245,239,0.4)", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 14 }}>Get in touch</div>
+              <Btn as="a" href={waLink("Hi, I'd like to know more about NexaAttend for my school.")} target="_blank" rel="noopener noreferrer" variant="whatsapp" size="sm">💬 WhatsApp us</Btn>
+            </div>
+          </div>
+
+          <div style={{ paddingTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>
+              © {new Date().getFullYear()} {SITE.legalName}. Founded by {SITE.founderName}.
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(247,245,239,0.22)" }}>{SITE.url.replace("https://", "")}</div>
+          </div>
+        </div>
+      </footer>
+
+      <Analytics />
+    </>
+  );
+});
 
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
